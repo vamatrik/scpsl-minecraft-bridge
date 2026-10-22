@@ -1,0 +1,21 @@
+{
+  "required": true,
+  "package": "dev.slbridge.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "client": [
+    "CameraMixin",
+    "HudMixin",
+    "GameRendererMixin",
+    "MinecraftMixin",
+    "InputMixin$Mouse",
+    "InputMixin$Keyboard",
+    "PlayerMixins$NoSendPosition",
+    "PlayerMixins$BlockChanged"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "mixins": [
+    "PlayerMixins$NoAutoPickup"
+  ]
+}

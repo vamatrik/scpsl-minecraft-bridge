@@ -1,0 +1,11 @@
+bin/
+obj/
+build/
+.gradle/
+*.user
+*.suo
+.vs/
+.idea/
+run/
+*.log
+launcher.json

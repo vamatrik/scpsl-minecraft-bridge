@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "slbridge",
+  "version": "${version}",
+  "name": "SCP:SL ↔ Minecraft Bridge",
+  "description": "Minecraft рисует мир, SCP: Secret Laboratory — персонажа и интерфейс. Мост синхронизирует камеру, коллизии, стрельбу и урон.",
+  "authors": ["slbridge"],
+  "license": "MIT",
+  "environment": "client",
+  "entrypoints": {
+    "client": ["dev.slbridge.SlBridgeClient"]
+  },
+  "mixins": ["slbridge.mixins.json"],
+  "depends": {
+    "fabricloader": ">=0.19.0",
+    "minecraft": "~26.3",
+    "java": ">=25",
+    "fabric-api": "*"
+  }
+}
