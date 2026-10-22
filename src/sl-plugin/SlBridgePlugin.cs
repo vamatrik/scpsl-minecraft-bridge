@@ -278,7 +278,17 @@ namespace SlBridge
         {
             SetLimits();
             if (!Config.DisableFacilityEvents) return;
-            try { Decontamination.Status = LightContainmentZoneDecontamination.DecontaminationController.DecontaminationStatus.Disabled; } catch { }
+            _deconPending = true; // выполним «decontamination disable», как только контроллер готов
+        }
+
+        private bool _deconPending = true;
+
+        /// <summary>Один раз за раунд — штатная команда RA «decontamination disable».</summary>
+        private void DisableDeconOnce()
+        {
+            if (!_deconPending || LightContainmentZoneDecontamination.DecontaminationController.Singleton == null) return;
+            _deconPending = false;
+            try { Logger.Info("[SlBridge] " + Server.RunCommand("decontamination disable")); } catch (Exception e) { Logger.Warn("decontamination disable: " + e.Message); }
         }
         private void OnWave(WaveRespawningEventArgs ev) { if (Config.DisableFacilityEvents) ev.IsAllowed = false; }
         private void OnDeadman(DeadmanSequenceActivatingEventArgs ev) { if (Config.DisableFacilityEvents) ev.IsAllowed = false; }
@@ -468,6 +478,7 @@ namespace SlBridge
         {
             if (_mc == null) return;
             _mc.Drain(Handle);
+            DisableDeconOnce();
             _collision.Process(Config.CollisionBudgetPerFrame);
 
             if (_player == null || !_player.IsOnline)
@@ -509,18 +520,6 @@ namespace SlBridge
             if (Time.time >= _nextHousekeeping)
             {
                 _nextHousekeeping = Time.time + 1f;
-                // обеззараживание LCZ: держим выключенным постоянно (на старте раунда синглтон бывает ещё не готов)
-                if (Config.DisableFacilityEvents)
-                {
-                    try
-                    {
-                        var dc = LightContainmentZoneDecontamination.DecontaminationController.Singleton;
-                        if (dc != null && dc.DecontaminationOverride != LightContainmentZoneDecontamination.DecontaminationController.DecontaminationStatus.Disabled)
-                            dc.DecontaminationOverride = LightContainmentZoneDecontamination.DecontaminationController.DecontaminationStatus.Disabled;
-                        if (_player.TryGetEffect<CustomPlayerEffects.Decontaminating>(out var dcon) && dcon.IsEnabled) _player.DisableEffect<CustomPlayerEffects.Decontaminating>();
-                    }
-                    catch { }
-                }
                 // Lightweight (прыжок как в Minecraft) — проверяем, что не слетел после возрождения/эффектов
                 if (Config.JumpBoostPercent > 0 && (!_player.TryGetEffect<Lightweight>(out var lw) || lw.Intensity != Config.JumpBoostPercent))
                     _player.EnableEffect<Lightweight>(Config.JumpBoostPercent, 0f);
