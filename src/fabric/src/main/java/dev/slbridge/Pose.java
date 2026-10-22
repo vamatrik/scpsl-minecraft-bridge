@@ -18,7 +18,9 @@ public final class Pose {
     public static volatile boolean beam;
 
     public static void set(double nx, double ny, double nz, float nyaw, float npitch, int seq, double nfeet) {
-        if (seq < minSeq) return;
+        // поза до телепорта: место старое, но повороты камеры принимаем — пока SL дожидается коллизий нового места,
+        // камера Minecraft не должна «замерзать»
+        if (seq < minSeq) { yaw = nyaw; pitch = npitch; lastUpdateNanos = System.nanoTime(); return; }
         lastSeq = seq;
         feetY = Double.isNaN(nfeet) ? ny - SlBridgeClient.EYE_HEIGHT : nfeet;
         x = nx; y = ny; z = nz; yaw = nyaw; pitch = npitch;

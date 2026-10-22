@@ -575,9 +575,6 @@ namespace SlBridge
 
         private void PendingTeleport(Vector3 pos)
         {
-            // стоим на месте
-            if (_lastGoodPos != Vector3.zero && (pos - _lastGoodPos).sqrMagnitude > 0.25f) _player.Position = _lastGoodPos;
-
             var mc = CoordMap.SlToMc(_tpTarget);
             float feetY = mc.y - FeetOffset(_player) - 0.05f;
             int cx = Mathf.FloorToInt(mc.x / 8f), cy = Mathf.FloorToInt(feetY / 8f), cz = Mathf.FloorToInt(mc.z / 8f);
@@ -593,9 +590,21 @@ namespace SlBridge
             string hint = _tpDim.EndsWith("the_nether") ? L.T("Незер", "Nether") : _tpDim.EndsWith("the_end") ? L.T("Энд", "The End") : null;
             if (!_hasSpawn) { _spawnSl = _tpTarget; _hasSpawn = true; _needSpawn = false; }
             if (_tpDim.EndsWith("overworld")) _spawnSl = _tpTarget;
-            _lastGoodPos = Vector3.zero;
-            _frozen = false;
-            TeleportTo(_tpTarget, hint);
+            if (ready)
+            {
+                // пол у клиента уже есть — просто переносим, без заморозки
+                if (_frozen) { _frozen = false; _player.Gravity = DefaultGravity * Config.GravityScale; }
+                _teleportFreezeAt = -1f;
+                _lastGoodPos = _tpTarget;
+                _player.Position = _tpTarget;
+                if (hint != null) _player.SendHint(hint, 4f);
+            }
+            else
+            {
+                _lastGoodPos = Vector3.zero;
+                _frozen = false;
+                TeleportTo(_tpTarget, hint); // дождались таймаута — с заморозкой до появления пола
+            }
         }
 
         private string KeyBelow(int cx, int cy, int cz) => $"{cx},{cy - 1},{cz}";
@@ -741,9 +750,7 @@ namespace SlBridge
                     _worldItems.Clear();
                     _mobs.Clear();
                     _mc.Send("{\"t\":\"resync\"}"); // Minecraft заново пришлёт все ячейки вокруг нового места
-                    _frozen = true;
-                    _player.Gravity = Vector3.zero;
-                    _lastGoodPos = _player.Position;
+                    // игрока не замораживаем: пока ждём, он стоит на коллизиях старого места
                     break;
                 }
 
