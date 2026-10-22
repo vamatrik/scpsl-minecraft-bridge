@@ -15,18 +15,26 @@ namespace SlBridge
         public bool Has(string key) => _sections.ContainsKey(key);
         private readonly Dictionary<string, float> _builtAt = new Dictionary<string, float>();
         /// <summary>Секция построена и прошло не меньше delay секунд — клиент SL точно успел получить её коробки.</summary>
-        public bool HasStable(string key, float delay) => _builtAt.TryGetValue(key, out var t) && Time.time - t >= delay;
+        public bool HasStable(string key, float delay, float since = float.NegativeInfinity)
+            => _builtAt.TryGetValue(key, out var t) && t >= since && Time.time - t >= delay;
+
+        /// <summary>Убрать секции, которые не обновлялись с момента t (остались от прошлого места/измерения).</summary>
+        public void RemoveOlderThan(float t)
+        {
+            foreach (var k in new List<string>(_sections.Keys))
+                if (!_builtAt.TryGetValue(k, out var bt) || bt < t) Remove(k);
+        }
 
         /// <summary>
         /// Есть ли под ногами (точка в координатах SL) настоящая опора: коробка, верх которой чуть ниже ног,
         /// в секции, которая не менялась delay секунд. Нужна после порталов: платформа Энда и новый портал
         /// появляются в мире Minecraft уже после прибытия — пустая секция «построена», но пола в ней ещё нет.
         /// </summary>
-        public bool HasGroundUnder(Vector3 feet, float delay)
+        public bool HasGroundUnder(Vector3 feet, float delay, float since = float.NegativeInfinity)
         {
             foreach (var kv in _sections)
             {
-                if (!HasStable(kv.Key, delay)) continue;
+                if (!HasStable(kv.Key, delay, since)) continue;
                 foreach (var t in kv.Value)
                 {
                     if (t == null || t.IsDestroyed) continue;

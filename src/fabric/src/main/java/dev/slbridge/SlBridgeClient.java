@@ -242,6 +242,6 @@ public final class SlBridgeClient implements ClientModInitializer {
         p.setDeltaMovement(Vec3.ZERO);
         p.snapTo(Pose.x, Pose.feetY, Pose.z, Pose.yaw, Pose.pitch);
 
-        collisions.tick(mc.level, bridge, config.collisionRadiusCells, config.collisionCellsPerTick);
+        collisions.tick(mc.level, bridge, config.collisionRadiusH, config.collisionRadiusV, config.collisionCellsPerTick);
     }
 }

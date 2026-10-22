@@ -64,6 +64,12 @@ namespace SlBridge
         private int _armorTier = -1;
         private float _nextHousekeeping;
         private bool _frozen;
+        // отложенный телепорт из Minecraft
+        private bool _tpPending;
+        private Vector3 _tpTarget;
+        private int _tpSeq;
+        private string _tpDim;
+        private float _tpAt;
         private float _teleportFreezeAt = -1f;
         private Vector3 _lastGoodPos;
         private Player _cmdPlayer;
@@ -185,6 +191,7 @@ namespace SlBridge
         private void OnWaiting()
         {
             _deconPending = true; // новая сцена — новый контроллер обеззараживания
+            _tpPending = false;
             NewRoundObjects();
             _inv.Clear();
             _player = null;
@@ -366,6 +373,7 @@ namespace SlBridge
             _respawnAt = Time.time + Config.RespawnDelay;
             _needRespawn = true;
             _hasSpawn = false;
+            _tpPending = false;
         }
 
         private void OnSetting(ReferenceHub hub, ServerSpecificSettingBase setting)
@@ -523,7 +531,8 @@ namespace SlBridge
             _backdrop.Attach(_player);
 
             // Заморозка: пока коллизии под ногами ещё не построены — не даём упасть/уйти в пустоту.
-            if (_hasSpawn) FreezeIfNotBuilt(pos);
+            if (_tpPending) PendingTeleport(pos);
+            else if (_hasSpawn) FreezeIfNotBuilt(pos);
 
             if (Time.time >= _nextHousekeeping)
             {
@@ -563,6 +572,31 @@ namespace SlBridge
         }
 
         private static FieldInfo _marshCooldown;
+
+        private void PendingTeleport(Vector3 pos)
+        {
+            // стоим на месте
+            if (_lastGoodPos != Vector3.zero && (pos - _lastGoodPos).sqrMagnitude > 0.25f) _player.Position = _lastGoodPos;
+
+            var mc = CoordMap.SlToMc(_tpTarget);
+            float feetY = mc.y - FeetOffset(_player) - 0.05f;
+            int cx = Mathf.FloorToInt(mc.x / 8f), cy = Mathf.FloorToInt(feetY / 8f), cz = Mathf.FloorToInt(mc.z / 8f);
+            float d = Config.UnfreezeDelay;
+            bool cellReady = _collision.HasStable($"{cx},{cy},{cz}", d, _tpAt)
+                             && (feetY - cy * 8f > 1.5f || _collision.HasStable(KeyBelow(cx, cy, cz), d, _tpAt));
+            bool ready = cellReady && _collision.HasGroundUnder(_tpTarget + Vector3.down * FeetOffset(_player), d, _tpAt);
+            if (!ready && Time.time - _tpAt < Config.TeleportMaxWait) return;
+
+            _tpPending = false;
+            _poseSeq = _tpSeq; // с этого момента Minecraft снова принимает позы SL
+            _collision.RemoveOlderThan(_tpAt); // коллизии старого места больше не нужны
+            string hint = _tpDim.EndsWith("the_nether") ? L.T("Незер", "Nether") : _tpDim.EndsWith("the_end") ? L.T("Энд", "The End") : null;
+            if (!_hasSpawn) { _spawnSl = _tpTarget; _hasSpawn = true; _needSpawn = false; }
+            if (_tpDim.EndsWith("overworld")) _spawnSl = _tpTarget;
+            _lastGoodPos = Vector3.zero;
+            _frozen = false;
+            TeleportTo(_tpTarget, hint);
+        }
 
         private string KeyBelow(int cx, int cy, int cz) => $"{cx},{cy - 1},{cz}";
 
@@ -695,20 +729,21 @@ namespace SlBridge
 
                 case "teleport":
                 {
+                    // Minecraft телепортировал игрока (портал, жемчуг, /tp). Сам SL-игрок пока стоит на месте (заморожен
+                    // на старых коллизиях), а Minecraft присылает коллизии нового места. Переносим, только когда пол там
+                    // построен и простоял UnfreezeDelay — коробки успели дойти до клиента SL.
                     if (_player == null) break;
-                    _poseSeq = (int)m.Num("seq");
-                    var target = CoordMap.McToSl(m.Num("x"), m.Num("y") + 0.05, m.Num("z")) + Vector3.up * FeetOffset(_player);
-                    _collision.Clear();
+                    _tpSeq = (int)m.Num("seq");
+                    _tpTarget = CoordMap.McToSl(m.Num("x"), m.Num("y") + 0.05, m.Num("z")) + Vector3.up * FeetOffset(_player);
+                    _tpDim = m.Str("dim", "");
+                    _tpAt = Time.time;
+                    _tpPending = true;
                     _worldItems.Clear();
                     _mobs.Clear();
-                    _mc.Send("{\"t\":\"resync\"}");
-                    string dim = m.Str("dim", "");
-                    string hint = dim.EndsWith("the_nether") ? L.T("Незер", "Nether") : dim.EndsWith("the_end") ? L.T("Энд", "The End") : null;
-                    if (!_hasSpawn) { _spawnSl = target; _hasSpawn = true; _needSpawn = false; }
-                    if (dim.EndsWith("overworld")) _spawnSl = target;
-                    _lastGoodPos = Vector3.zero;
-                    _frozen = false;
-                    TeleportTo(target, hint);
+                    _mc.Send("{\"t\":\"resync\"}"); // Minecraft заново пришлёт все ячейки вокруг нового места
+                    _frozen = true;
+                    _player.Gravity = Vector3.zero;
+                    _lastGoodPos = _player.Position;
                     break;
                 }
 
