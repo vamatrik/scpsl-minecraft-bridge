@@ -4,7 +4,7 @@
   "version": "${version}",
   "name": "SCP:SL ↔ Minecraft Bridge",
   "description": "Minecraft рисует мир, SCP: Secret Laboratory — персонажа и интерфейс. Мост синхронизирует камеру, коллизии, стрельбу и урон.",
-  "authors": ["slbridge"],
+  "authors": ["Claude", "Vamatrik"],
   "license": "MIT",
   "environment": "client",
   "entrypoints": {

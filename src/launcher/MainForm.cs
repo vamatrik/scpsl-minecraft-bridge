@@ -57,8 +57,8 @@ namespace SlBridge.Launcher
             side.Controls.Add(logo);
             _nav = new[] { NavButton("1  Подготовка", 0), NavButton("2  Играть", 1), NavButton("?  Справка", 2) };
             for (int i = 0; i < _nav.Length; i++) { _nav[i].Location = new Point(10, 100 + i * 46); side.Controls.Add(_nav[i]); }
-            var ver = Ui.Label("мост 0.3", 8.5f, Ui.Muted);
-            ver.Location = new Point(18, 640);
+            var ver = Ui.Label("мост 0.3.1\nClaude x Vamatrik", 8.5f, Ui.Muted);
+            ver.Location = new Point(18, 626);
             side.Controls.Add(ver);
 
             _prep = BuildPrep();
@@ -308,6 +308,12 @@ namespace SlBridge.Launcher
 
         private void RefreshStatus()
         {
+            try { RefreshStatusCore(); }
+            catch (Exception e) { FileLog("Статус: " + e); }
+        }
+
+        private void RefreshStatusCore()
+        {
             if (!_play.Visible) return;
             bool srv = Orchestrator.ServerRunning, srvReady = srv && _orc.ServerReady;
             _rows[0].Set(srvReady ? Ui.Ok : srv ? Ui.Warn : Ui.Off, srvReady ? "готов (127.0.0.1:" + _cfg.SlServerPort + ")" : srv ? "запускается…" : "выключен");
@@ -428,14 +434,32 @@ namespace SlBridge.Launcher
 
         private void Log(string s)
         {
-            if (InvokeRequired) { BeginInvoke(new Action(() => Log(s))); return; }
-            if (_log == null) return;
+            FileLog(s);
+            if (IsDisposed) return;
+            if (InvokeRequired) { try { BeginInvoke(new Action(() => Log2(s))); } catch { } return; }
+            Log2(s);
+        }
+
+        private void Log2(string s)
+        {
+            if (_log == null || _log.IsDisposed) return;
             _log.AppendText($"[{DateTime.Now:HH:mm:ss}] {s}\r\n");
+        }
+
+        /// <summary>launcher.log рядом с exe — туда же падают все неожиданные ошибки (без всплывающих окон).</summary>
+        public static void FileLog(string s)
+        {
+            try { File.AppendAllText(Path.Combine(LauncherConfig.BaseDir, "launcher.log"), $"[{DateTime.Now:dd.MM HH:mm:ss}] {s}\r\n"); } catch { }
         }
 
         [STAThread]
         private static void Main()
         {
+            // Никаких всплывающих окон с ошибками: всё неожиданное — в launcher.log.
+            Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
+            Application.ThreadException += (_, e) => FileLog("Ошибка: " + e.Exception);
+            AppDomain.CurrentDomain.UnhandledException += (_, e) => FileLog("Ошибка: " + e.ExceptionObject);
+            System.Threading.Tasks.TaskScheduler.UnobservedTaskException += (_, e) => { FileLog("Ошибка задачи: " + e.Exception); e.SetObserved(); };
             Application.EnableVisualStyles();
             Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
             Application.Run(new MainForm());

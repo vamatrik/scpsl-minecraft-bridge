@@ -294,7 +294,14 @@ public final class ServerBridge {
                 e -> e.isAlive() && !(e instanceof net.minecraft.world.entity.player.Player) && !e.isSpectator());
         StringBuilder sig = new StringBuilder();
         JsonArray arr = new JsonArray();
+        // Эндер-дракон — составной: его хитбоксы — это части (голова, шея, тело, хвост, крылья), а не огромная коробка.
+        List<net.minecraft.world.entity.Entity> boxes = new ArrayList<>();
         for (var e : list) {
+            if (e instanceof net.minecraft.world.entity.boss.enderdragon.EnderDragon dragon) {
+                java.util.Collections.addAll(boxes, dragon.getSubEntities());
+            } else boxes.add(e);
+        }
+        for (var e : boxes) {
             AABB b = e.getBoundingBox();
             double x = Math.round((b.minX + b.maxX) * 5) / 10.0, y = Math.round(b.minY * 10) / 10.0, z = Math.round((b.minZ + b.maxZ) * 5) / 10.0;
             double w = Math.round(b.getXsize() * 20) / 20.0, h = Math.round(b.getYsize() * 20) / 20.0, d = Math.round(b.getZsize() * 20) / 20.0;

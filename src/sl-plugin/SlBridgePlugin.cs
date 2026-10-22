@@ -28,7 +28,7 @@ namespace SlBridge
 
         public override string Name => "SlBridge";
         public override string Description => "Мост SCP:SL ↔ Minecraft: Minecraft рисует мир, SL — персонажа и интерфейс.";
-        public override string Author => "slbridge";
+        public override string Author => "Claude x Vamatrik";
         public override Version Version => new Version(0, 2, 0);
         // Берём версию LabAPI, которая сейчас запущена, — плагин не придётся пересобирать ради номера версии.
         public override Version RequiredApiVersion => LabApiProperties.CurrentVersion;

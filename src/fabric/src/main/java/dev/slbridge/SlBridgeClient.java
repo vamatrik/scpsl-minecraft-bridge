@@ -110,6 +110,10 @@ public final class SlBridgeClient implements ClientModInitializer {
     }
 
     private void onDisconnect() {
+        Minecraft.getInstance().execute(() -> {
+            var o = Minecraft.getInstance().options;
+            if (savedBob != null) { o.bobView().set(savedBob); o.damageTiltStrength().set(savedTilt); savedBob = null; }
+        });
         Pose.active = false;
         uiMode = false;
         Pose.minSeq = 0;
@@ -172,6 +176,8 @@ public final class SlBridgeClient implements ClientModInitializer {
     }
 
     private static String rememberedWorld;
+    private static Boolean savedBob;
+    private static Double savedTilt;
 
     private void clientTick(Minecraft mc) {
         // Запрос лаунчера «открой/создай мир» — выполняется с главного меню, один раз.
@@ -214,6 +220,11 @@ public final class SlBridgeClient implements ClientModInitializer {
 
         // Minecraft работает в фоне под окном SCP:SL — он не должен ставить игру на паузу и снижать FPS.
         mc.options.pauseOnLostFocus = false;
+        // Покачивание камеры при ходьбе и наклон при уроне сдвигают картинку Minecraft относительно прицела SL —
+        // на дальних дистанциях это промах на целый блок. Выключаем, пока работает мост (и возвращаем потом).
+        if (savedBob == null) { savedBob = mc.options.bobView().get(); savedTilt = mc.options.damageTiltStrength().get(); }
+        if (mc.options.bobView().get()) mc.options.bobView().set(false);
+        if (mc.options.damageTiltStrength().get() != 0.0) mc.options.damageTiltStrength().set(0.0);
         if (mc.options.inactivityFpsLimit().get() != InactivityFpsLimit.MINIMIZED)
             mc.options.inactivityFpsLimit().set(InactivityFpsLimit.MINIMIZED);
         mc.hitResult = null;
