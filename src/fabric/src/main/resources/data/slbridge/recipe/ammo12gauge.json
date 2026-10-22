@@ -1,0 +1,25 @@
+{
+ "type": "minecraft:crafting_shaped",
+ "category": "equipment",
+ "pattern": [
+  "GG",
+  "##"
+ ],
+ "key": {
+  "#": "minecraft:iron_ingot",
+  "G": "minecraft:gunpowder"
+ },
+ "result": {
+  "id": "minecraft:paper",
+  "count": 1,
+  "components": {
+   "minecraft:custom_data": {
+    "slItem": "Ammo12gauge"
+   },
+   "minecraft:item_name": "Патроны 12 калибра (80)",
+   "minecraft:item_model": "minecraft:iron_nugget",
+   "minecraft:enchantment_glint_override": true,
+   "minecraft:rarity": "rare"
+  }
+ }
+}

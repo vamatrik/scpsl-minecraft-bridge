@@ -1,0 +1,26 @@
+{
+ "type": "minecraft:crafting_shaped",
+ "category": "equipment",
+ "pattern": [
+  "###",
+  "DDD",
+  "###"
+ ],
+ "key": {
+  "#": "minecraft:iron_ingot",
+  "D": "minecraft:diamond"
+ },
+ "result": {
+  "id": "minecraft:paper",
+  "count": 1,
+  "components": {
+   "minecraft:custom_data": {
+    "slItem": "MicroHID"
+   },
+   "minecraft:item_name": "Micro H.I.D.",
+   "minecraft:item_model": "minecraft:lightning_rod",
+   "minecraft:enchantment_glint_override": true,
+   "minecraft:rarity": "rare"
+  }
+ }
+}

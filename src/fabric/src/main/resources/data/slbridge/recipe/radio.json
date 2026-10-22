@@ -1,0 +1,26 @@
+{
+ "type": "minecraft:crafting_shaped",
+ "category": "equipment",
+ "pattern": [
+  "#",
+  "R",
+  "#"
+ ],
+ "key": {
+  "#": "minecraft:iron_ingot",
+  "R": "minecraft:redstone"
+ },
+ "result": {
+  "id": "minecraft:paper",
+  "count": 1,
+  "components": {
+   "minecraft:custom_data": {
+    "slItem": "Radio"
+   },
+   "minecraft:item_name": "Рация",
+   "minecraft:item_model": "minecraft:compass",
+   "minecraft:enchantment_glint_override": true,
+   "minecraft:rarity": "rare"
+  }
+ }
+}

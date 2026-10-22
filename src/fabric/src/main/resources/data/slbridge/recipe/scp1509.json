@@ -1,0 +1,26 @@
+{
+ "type": "minecraft:crafting_shaped",
+ "category": "equipment",
+ "pattern": [
+  "  #",
+  " # ",
+  "S  "
+ ],
+ "key": {
+  "#": "minecraft:iron_ingot",
+  "S": "minecraft:stick"
+ },
+ "result": {
+  "id": "minecraft:paper",
+  "count": 1,
+  "components": {
+   "minecraft:custom_data": {
+    "slItem": "SCP1509"
+   },
+   "minecraft:item_name": "Мачете (SCP-1509)",
+   "minecraft:item_model": "minecraft:iron_sword",
+   "minecraft:enchantment_glint_override": true,
+   "minecraft:rarity": "rare"
+  }
+ }
+}

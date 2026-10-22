@@ -15,8 +15,11 @@ namespace SlBridge
         public string Name;
         public int Count;
         public int Max = 64;
+        /// <summary>Если не null — это предмет SCP:SL (ItemType), скрафченный в Minecraft.</summary>
+        public string Sl;
+        public string Model;
 
-        public McStack Clone() => new McStack { Id = Id, Name = Name, Count = Count, Max = Max };
+        public McStack Clone() => new McStack { Id = Id, Name = Name, Count = Count, Max = Max, Sl = Sl, Model = Model };
 
         public static McStack FromMsg(Dictionary<string, object> o)
         {
@@ -27,11 +30,15 @@ namespace SlBridge
                 Name = o.Str("name", o.Str("id")),
                 Count = Math.Max(1, (int)o.Num("count", 1)),
                 Max = Math.Max(1, (int)o.Num("max", 64)),
+                Sl = o.Has("sl") ? o.Str("sl") : null,
+                Model = o.Has("model") ? o.Str("model") : null,
             };
         }
 
         public string ToJson()
-            => "{\"id\":\"" + MiniJson.Escape(Id) + "\",\"count\":" + Count + ",\"name\":\"" + MiniJson.Escape(Name ?? Id) + "\",\"max\":" + Max + "}";
+            => "{\"id\":\"" + MiniJson.Escape(Id) + "\",\"count\":" + Count + ",\"name\":\"" + MiniJson.Escape(Name ?? Id) + "\",\"max\":" + Max
+               + (Sl != null ? ",\"sl\":\"" + MiniJson.Escape(Sl) + "\"" : "")
+               + (Model != null ? ",\"model\":\"" + MiniJson.Escape(Model) + "\"" : "") + "}";
     }
 
     /// <summary>

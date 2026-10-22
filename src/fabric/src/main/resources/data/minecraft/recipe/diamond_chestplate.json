@@ -1,0 +1,25 @@
+{
+ "type": "minecraft:crafting_shaped",
+ "category": "equipment",
+ "pattern": [
+  "D D",
+  "DDD",
+  "DDD"
+ ],
+ "key": {
+  "D": "minecraft:diamond"
+ },
+ "result": {
+  "id": "minecraft:paper",
+  "count": 1,
+  "components": {
+   "minecraft:custom_data": {
+    "slItem": "ArmorCombat"
+   },
+   "minecraft:item_name": "Боевая броня",
+   "minecraft:item_model": "minecraft:diamond_chestplate",
+   "minecraft:enchantment_glint_override": true,
+   "minecraft:rarity": "rare"
+  }
+ }
+}

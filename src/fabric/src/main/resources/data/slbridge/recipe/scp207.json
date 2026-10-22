@@ -1,0 +1,23 @@
+{
+ "type": "minecraft:crafting_shapeless",
+ "category": "misc",
+ "ingredients": [
+  "minecraft:sugar",
+  "minecraft:sugar",
+  "minecraft:cocoa_beans",
+  "minecraft:glass_bottle"
+ ],
+ "result": {
+  "id": "minecraft:paper",
+  "count": 1,
+  "components": {
+   "minecraft:custom_data": {
+    "slItem": "SCP207"
+   },
+   "minecraft:item_name": "SCP-207",
+   "minecraft:item_model": "minecraft:honey_bottle",
+   "minecraft:enchantment_glint_override": true,
+   "minecraft:rarity": "rare"
+  }
+ }
+}

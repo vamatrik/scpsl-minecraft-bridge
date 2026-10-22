@@ -1,0 +1,26 @@
+{
+ "type": "minecraft:crafting_shaped",
+ "category": "equipment",
+ "pattern": [
+  "DND",
+  "DDD",
+  "DDD"
+ ],
+ "key": {
+  "D": "minecraft:diamond",
+  "N": "minecraft:netherite_ingot"
+ },
+ "result": {
+  "id": "minecraft:paper",
+  "count": 1,
+  "components": {
+   "minecraft:custom_data": {
+    "slItem": "ArmorHeavy"
+   },
+   "minecraft:item_name": "Тяжёлая броня",
+   "minecraft:item_model": "minecraft:netherite_chestplate",
+   "minecraft:enchantment_glint_override": true,
+   "minecraft:rarity": "rare"
+  }
+ }
+}

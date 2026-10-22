@@ -1,0 +1,24 @@
+{
+ "type": "minecraft:crafting_shaped",
+ "category": "equipment",
+ "pattern": [
+  "QVQ"
+ ],
+ "key": {
+  "Q": "minecraft:glass_pane",
+  "V": "minecraft:ender_eye"
+ },
+ "result": {
+  "id": "minecraft:paper",
+  "count": 1,
+  "components": {
+   "minecraft:custom_data": {
+    "slItem": "SCP1344"
+   },
+   "minecraft:item_name": "SCP-1344 (очки)",
+   "minecraft:item_model": "minecraft:spyglass",
+   "minecraft:enchantment_glint_override": true,
+   "minecraft:rarity": "rare"
+  }
+ }
+}

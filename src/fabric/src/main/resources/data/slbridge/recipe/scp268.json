@@ -1,0 +1,21 @@
+{
+ "type": "minecraft:crafting_shapeless",
+ "category": "misc",
+ "ingredients": [
+  "minecraft:leather_helmet",
+  "minecraft:ender_pearl"
+ ],
+ "result": {
+  "id": "minecraft:paper",
+  "count": 1,
+  "components": {
+   "minecraft:custom_data": {
+    "slItem": "SCP268"
+   },
+   "minecraft:item_name": "SCP-268 (кепка)",
+   "minecraft:item_model": "minecraft:leather_helmet",
+   "minecraft:enchantment_glint_override": true,
+   "minecraft:rarity": "rare"
+  }
+ }
+}

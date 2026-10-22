@@ -1,0 +1,24 @@
+{
+ "type": "minecraft:crafting_shaped",
+ "category": "equipment",
+ "pattern": [
+  "##",
+  "# "
+ ],
+ "key": {
+  "#": "minecraft:iron_ingot"
+ },
+ "result": {
+  "id": "minecraft:paper",
+  "count": 1,
+  "components": {
+   "minecraft:custom_data": {
+    "slItem": "GunCOM15"
+   },
+   "minecraft:item_name": "COM-15",
+   "minecraft:item_model": "minecraft:crossbow",
+   "minecraft:enchantment_glint_override": true,
+   "minecraft:rarity": "rare"
+  }
+ }
+}

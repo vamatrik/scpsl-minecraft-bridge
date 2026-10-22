@@ -3,7 +3,11 @@ package dev.slbridge;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.component.CustomData;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -21,6 +25,12 @@ public final class ItemJson {
         o.addProperty("count", s.getCount());
         o.addProperty("name", s.getHoverName().getString());
         o.addProperty("max", s.getMaxStackSize());
+        String sl = slKey(s);
+        if (sl != null) {
+            o.addProperty("sl", sl);
+            Identifier model = s.get(DataComponents.ITEM_MODEL);
+            if (model != null) o.addProperty("model", model.toString());
+        }
         return o;
     }
 
@@ -28,6 +38,13 @@ public final class ItemJson {
         JsonArray a = new JsonArray();
         for (ItemStack s : stacks) if (!s.isEmpty()) a.add(toJson(s));
         return a;
+    }
+
+    /** Ключ предмета SCP:SL (ItemType), если это результат SL-рецепта. */
+    public static String slKey(ItemStack s) {
+        CustomData cd = s.get(DataComponents.CUSTOM_DATA);
+        if (cd == null) return null;
+        return cd.copyTag().getString("slItem").orElse(null);
     }
 
     public static Item item(String id) {
@@ -41,7 +58,17 @@ public final class ItemJson {
         JsonObject o = e.getAsJsonObject();
         Item it = item(o.get("id").getAsString());
         if (it == net.minecraft.world.item.Items.AIR) return ItemStack.EMPTY;
-        return new ItemStack(it, Math.max(1, o.get("count").getAsInt()));
+        ItemStack st = new ItemStack(it, Math.max(1, o.get("count").getAsInt()));
+        if (o.has("sl")) {
+            // предмет SCP:SL, лежащий в мире Minecraft (не влез в инвентарь) — восстанавливаем метку
+            CompoundTag tag = new CompoundTag();
+            tag.putString("slItem", o.get("sl").getAsString());
+            st.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
+            if (o.has("name")) st.set(DataComponents.ITEM_NAME, Component.literal(o.get("name").getAsString()));
+            if (o.has("model")) { Identifier m = Identifier.tryParse(o.get("model").getAsString()); if (m != null) st.set(DataComponents.ITEM_MODEL, m); }
+            st.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true);
+        }
+        return st;
     }
 
     public static List<ItemStack> listFromJson(JsonElement e) {

@@ -418,6 +418,8 @@ namespace SlBridge
 
         private void GiveBack(McStack s)
         {
+            if (s == null) return;
+            if (!string.IsNullOrEmpty(s.Sl)) { GiveSl(s); return; }
             int left = _inv.Add(_player, s);
             if (left > 0)
             {
@@ -426,6 +428,38 @@ namespace SlBridge
                 DropToMinecraft(rest, false);
                 _player.SendHint("<size=22>Инвентарь полон — часть выпала</size>", 1.5f);
             }
+        }
+
+        /// <summary>Предмет SCP:SL, скрафченный в Minecraft: выдаём настоящий предмет (патроны — по 80 за штуку).</summary>
+        private void GiveSl(McStack s)
+        {
+            if (!Enum.TryParse(s.Sl, out ItemType type) || type == ItemType.None)
+            {
+                Logger.Warn("Неизвестный предмет SL из рецепта: " + s.Sl);
+                return;
+            }
+            if (type.ToString().StartsWith("Ammo"))
+            {
+                int add = 80 * s.Count;
+                int now = _player.GetAmmo(type);
+                _player.SetAmmo(type, (ushort)Math.Min(ushort.MaxValue, now + add));
+                _player.SendHint($"<size=22>+{add} {s.Name}</size>", 2f);
+                return;
+            }
+            int given = 0;
+            for (int i = 0; i < s.Count; i++)
+            {
+                if (_player.Items.Count() >= 8 || _player.AddItem(type, InventorySystem.Items.ItemAddReason.AdminCommand) == null)
+                {
+                    var rest = s.Clone();
+                    rest.Count = s.Count - i;
+                    DropToMinecraft(rest, false);
+                    _player.SendHint("<size=22>Инвентарь полон — предмет выпал рядом</size>", 2f);
+                    break;
+                }
+                given++;
+            }
+            if (given > 0 && Config.DebugLog) Logger.Info($"Выдан предмет SL {type} ×{given}");
         }
 
         // ───────────── каждый кадр ─────────────
@@ -475,6 +509,18 @@ namespace SlBridge
             if (Time.time >= _nextHousekeeping)
             {
                 _nextHousekeeping = Time.time + 1f;
+                // обеззараживание LCZ: держим выключенным постоянно (на старте раунда синглтон бывает ещё не готов)
+                if (Config.DisableFacilityEvents)
+                {
+                    try
+                    {
+                        var dc = LightContainmentZoneDecontamination.DecontaminationController.Singleton;
+                        if (dc != null && dc.DecontaminationOverride != LightContainmentZoneDecontamination.DecontaminationController.DecontaminationStatus.Disabled)
+                            dc.DecontaminationOverride = LightContainmentZoneDecontamination.DecontaminationController.DecontaminationStatus.Disabled;
+                        if (_player.TryGetEffect<CustomPlayerEffects.Decontaminating>(out var dcon) && dcon.IsEnabled) _player.DisableEffect<CustomPlayerEffects.Decontaminating>();
+                    }
+                    catch { }
+                }
                 // Lightweight (прыжок как в Minecraft) — проверяем, что не слетел после возрождения/эффектов
                 if (Config.JumpBoostPercent > 0 && (!_player.TryGetEffect<Lightweight>(out var lw) || lw.Intensity != Config.JumpBoostPercent))
                     _player.EnableEffect<Lightweight>(Config.JumpBoostPercent, 0f);
@@ -776,6 +822,7 @@ namespace SlBridge
                     var was = _inv.Get(item);
                     if (was == null) { if (now != null) GiveBack(now); continue; }
                     if (now == null) _inv.Replace(_player, serial, null);
+                    else if (!string.IsNullOrEmpty(now.Sl)) { _inv.Replace(_player, serial, null); GiveSl(now); }
                     else if (now.Id != was.Id || now.Count != was.Count) _inv.Replace(_player, serial, now);
                 }
                 else if (now != null) GiveBack(now);

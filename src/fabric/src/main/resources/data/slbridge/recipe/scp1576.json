@@ -1,0 +1,21 @@
+{
+ "type": "minecraft:crafting_shapeless",
+ "category": "misc",
+ "ingredients": [
+  "minecraft:note_block",
+  "minecraft:ender_pearl"
+ ],
+ "result": {
+  "id": "minecraft:paper",
+  "count": 1,
+  "components": {
+   "minecraft:custom_data": {
+    "slItem": "SCP1576"
+   },
+   "minecraft:item_name": "SCP-1576 (граммофон)",
+   "minecraft:item_model": "minecraft:jukebox",
+   "minecraft:enchantment_glint_override": true,
+   "minecraft:rarity": "rare"
+  }
+ }
+}

@@ -1,0 +1,22 @@
+{
+ "type": "minecraft:crafting_shapeless",
+ "category": "misc",
+ "ingredients": [
+  "minecraft:glass_bottle",
+  "minecraft:glowstone_dust",
+  "minecraft:sugar"
+ ],
+ "result": {
+  "id": "minecraft:paper",
+  "count": 1,
+  "components": {
+   "minecraft:custom_data": {
+    "slItem": "SCP1853"
+   },
+   "minecraft:item_name": "SCP-1853",
+   "minecraft:item_model": "minecraft:dragon_breath",
+   "minecraft:enchantment_glint_override": true,
+   "minecraft:rarity": "rare"
+  }
+ }
+}

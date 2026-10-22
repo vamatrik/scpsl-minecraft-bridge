@@ -13,7 +13,7 @@ namespace SlBridge.Launcher
         private readonly LauncherConfig _cfg;
         private readonly Orchestrator _orc;
         private readonly Panel _content = new Panel { Dock = DockStyle.Fill, BackColor = Ui.Bg };
-        private readonly Panel _prep, _play, _help;
+        private readonly Panel _prep, _play, _crafts, _help;
         private readonly Button[] _nav;
         private readonly System.Windows.Forms.Timer _timer = new System.Windows.Forms.Timer { Interval = 1000 };
 
@@ -55,16 +55,17 @@ namespace SlBridge.Launcher
             var logo = Ui.Label("SCP:SL\n× Minecraft", 16f, Ui.Text, FontStyle.Bold);
             logo.Location = new Point(18, 18);
             side.Controls.Add(logo);
-            _nav = new[] { NavButton("1  Подготовка", 0), NavButton("2  Играть", 1), NavButton("?  Справка", 2) };
+            _nav = new[] { NavButton("1  Подготовка", 0), NavButton("2  Играть", 1), NavButton("⚒  Крафты", 2), NavButton("?  Справка", 3) };
             for (int i = 0; i < _nav.Length; i++) { _nav[i].Location = new Point(10, 100 + i * 46); side.Controls.Add(_nav[i]); }
-            var ver = Ui.Label("мост 0.3.1\nClaude x Vamatrik", 8.5f, Ui.Muted);
+            var ver = Ui.Label("мост 0.4.0\nClaude x Vamatrik", 8.5f, Ui.Muted);
             ver.Location = new Point(18, 626);
             side.Controls.Add(ver);
 
             _prep = BuildPrep();
             _play = BuildPlay();
+            _crafts = CraftsPage.Build();
             _help = BuildHelp();
-            _content.Controls.AddRange(new Control[] { _prep, _play, _help });
+            _content.Controls.AddRange(new Control[] { _prep, _play, _crafts, _help });
             Controls.Add(_content);
             Controls.Add(side);
 
@@ -91,7 +92,8 @@ namespace SlBridge.Launcher
         {
             _prep.Visible = page == 0;
             _play.Visible = page == 1;
-            _help.Visible = page == 2;
+            _crafts.Visible = page == 2;
+            _help.Visible = page == 3;
             for (int i = 0; i < _nav.Length; i++) _nav[i].BackColor = i == page ? Ui.Card : Ui.Side;
             if (page == 0) RefreshPrep();
             if (page == 1) LoadWorlds();
@@ -369,6 +371,7 @@ namespace SlBridge.Launcher
               "Стрельба по блоку — ломает его (камень — несколько попаданий). По мобу — урон.\n" +
               "Зажать E на предмете на земле — подобрать. Q — выбросить стак.\n" +
               "E (взаимодействие Minecraft) — поставить блок из руки, открыть дверь, нажать рычаг, съесть еду, использовать огниво/ведро/око Эндера, открыть верстак/печь/сундук.\n" +
+              "Оружие, патроны, броню, аптечки и SCP-предметы можно скрафтить — рисунки рецептов во вкладке «⚒ Крафты».\n" +
               "I — инвентарь Minecraft с крафтом 2×2. В окнах Minecraft предметы таскаются мышкой; закрыть — E или Esc.\n" +
               "Клавиши E и I меняются в SL: Esc → Настройки → Server-specific.\n" +
               "Консоль SL (~): .mc <команда Minecraft>, например .mc time set day. В админ-панели (M) — просто mc time set day.");

@@ -1,0 +1,22 @@
+{
+ "type": "minecraft:crafting_shapeless",
+ "category": "misc",
+ "group": "slbridge_medkit",
+ "ingredients": [
+  "minecraft:honey_bottle",
+  "minecraft:honey_bottle"
+ ],
+ "result": {
+  "id": "minecraft:paper",
+  "count": 1,
+  "components": {
+   "minecraft:custom_data": {
+    "slItem": "Medkit"
+   },
+   "minecraft:item_name": "Аптечка",
+   "minecraft:item_model": "minecraft:red_dye",
+   "minecraft:enchantment_glint_override": true,
+   "minecraft:rarity": "rare"
+  }
+ }
+}

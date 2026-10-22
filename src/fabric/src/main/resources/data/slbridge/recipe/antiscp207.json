@@ -1,0 +1,23 @@
+{
+ "type": "minecraft:crafting_shapeless",
+ "category": "misc",
+ "ingredients": [
+  "minecraft:sugar",
+  "minecraft:sugar",
+  "minecraft:spider_eye",
+  "minecraft:glass_bottle"
+ ],
+ "result": {
+  "id": "minecraft:paper",
+  "count": 1,
+  "components": {
+   "minecraft:custom_data": {
+    "slItem": "AntiSCP207"
+   },
+   "minecraft:item_name": "Анти-SCP-207",
+   "minecraft:item_model": "minecraft:potion",
+   "minecraft:enchantment_glint_override": true,
+   "minecraft:rarity": "rare"
+  }
+ }
+}

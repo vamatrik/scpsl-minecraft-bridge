@@ -1,0 +1,21 @@
+{
+ "type": "minecraft:crafting_shapeless",
+ "category": "misc",
+ "ingredients": [
+  "minecraft:flower_pot",
+  "minecraft:blue_ice"
+ ],
+ "result": {
+  "id": "minecraft:paper",
+  "count": 1,
+  "components": {
+   "minecraft:custom_data": {
+    "slItem": "SCP244b"
+   },
+   "minecraft:item_name": "SCP-244-B (ваза)",
+   "minecraft:item_model": "minecraft:flower_pot",
+   "minecraft:enchantment_glint_override": true,
+   "minecraft:rarity": "rare"
+  }
+ }
+}

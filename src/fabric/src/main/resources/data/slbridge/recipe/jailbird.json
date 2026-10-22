@@ -1,0 +1,26 @@
+{
+ "type": "minecraft:crafting_shaped",
+ "category": "equipment",
+ "pattern": [
+  "D",
+  "#",
+  "#"
+ ],
+ "key": {
+  "#": "minecraft:iron_ingot",
+  "D": "minecraft:diamond"
+ },
+ "result": {
+  "id": "minecraft:paper",
+  "count": 1,
+  "components": {
+   "minecraft:custom_data": {
+    "slItem": "Jailbird"
+   },
+   "minecraft:item_name": "Дубинка (Jailbird)",
+   "minecraft:item_model": "minecraft:mace",
+   "minecraft:enchantment_glint_override": true,
+   "minecraft:rarity": "rare"
+  }
+ }
+}

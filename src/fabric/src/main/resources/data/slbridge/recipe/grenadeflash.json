@@ -1,0 +1,22 @@
+{
+ "type": "minecraft:crafting_shapeless",
+ "category": "misc",
+ "ingredients": [
+  "minecraft:iron_ingot",
+  "minecraft:glowstone_dust",
+  "minecraft:gunpowder"
+ ],
+ "result": {
+  "id": "minecraft:paper",
+  "count": 1,
+  "components": {
+   "minecraft:custom_data": {
+    "slItem": "GrenadeFlash"
+   },
+   "minecraft:item_name": "Светошумовая граната",
+   "minecraft:item_model": "minecraft:glowstone_dust",
+   "minecraft:enchantment_glint_override": true,
+   "minecraft:rarity": "rare"
+  }
+ }
+}

@@ -1,0 +1,25 @@
+{
+ "type": "minecraft:crafting_shaped",
+ "category": "equipment",
+ "pattern": [
+  "##B",
+  "#  "
+ ],
+ "key": {
+  "#": "minecraft:iron_ingot",
+  "B": "minecraft:iron_block"
+ },
+ "result": {
+  "id": "minecraft:paper",
+  "count": 1,
+  "components": {
+   "minecraft:custom_data": {
+    "slItem": "ParticleDisruptor"
+   },
+   "minecraft:item_name": "Молекулярный разрушитель",
+   "minecraft:item_model": "minecraft:trident",
+   "minecraft:enchantment_glint_override": true,
+   "minecraft:rarity": "rare"
+  }
+ }
+}
