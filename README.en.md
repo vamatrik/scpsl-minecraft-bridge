@@ -38,6 +38,9 @@ The protocol between the parts is in [`docs/PROTOCOL.md`](docs/PROTOCOL.md).
 3. **Play** tab — pick or create a world, press “Play”. In SL: Play → Direct connect → Ctrl+V.
 
 If the overlay covers something: **Ctrl+Shift+F12** turns it off/on, **Ctrl+Shift+F11** shows the mask.
+**Ctrl+Shift+F10** — quick exit (closes SL, Minecraft with saving, the server and the overlay; same as the “Quit” button in SL: Esc → Settings → Server-specific).
+
+You start with a machete (to break blocks and fight) and one medkit — everything else is crafted. When you die, everything, SL items included, drops on the ground as Minecraft items.
 
 ## Controls
 
@@ -51,7 +54,7 @@ If the overlay covers something: **Ctrl+Shift+F12** turns it off/on, **Ctrl+Shif
 
 ## Crafting
 
-Every SL item is crafted on a Minecraft crafting table (or with quick crafting in the Server-specific menu). The result immediately becomes a real SCP:SL item in your inventory; ammo is added 80 at a time. Shapes can be mirrored horizontally, and small shapes can go anywhere in the grid. The vanilla iron and diamond chestplates are replaced by SL light and combat armor (in the bridge, Minecraft armor comes from your SL armor anyway). Darkness in Minecraft is real — craft a lantern and hold it lit in your hand (a flashlight works too, but is dimmer). The drawings are also in the launcher, “⚒ Crafting” tab.
+Every SL item is crafted on a Minecraft crafting table (E on the table). The result immediately becomes a real SCP:SL item in your inventory; ammo is added 80 at a time. Shapes can be mirrored horizontally, and small shapes can go anywhere in the grid. The vanilla iron and diamond chestplates are replaced by SL light and combat armor (in the bridge, Minecraft armor comes from your SL armor anyway). Darkness in Minecraft is real — craft a lantern and hold it lit in your hand (a flashlight works too, but is dimmer). The drawings are also in the launcher, “⚒ Crafting” tab.
 
 Legend: `#` — Iron ingot, `B` — Iron block, `D` — Diamond, `N` — Netherite ingot, `G` — Gunpowder, `S` — Stick, `R` — Redstone, `T` — Torch, `X` — TNT, `L` — Glowstone dust, `U` — Sugar, `O` — Glass bottle, `C` — Cocoa beans, `E` — Spider eye, `M` — Slimeball, `H` — Leather cap, `P` — Ender pearl, `F` — Flower pot, `I` — Packed ice, `Y` — Blue ice, `W` — Bowl, `K` — Note block, `V` — Eye of ender, `Q` — Glass pane, `A` — Glass, `J` — Coal, `·` — empty.
 

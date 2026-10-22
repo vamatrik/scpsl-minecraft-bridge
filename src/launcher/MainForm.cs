@@ -59,7 +59,7 @@ namespace SlBridge.Launcher
             side.Controls.Add(logo);
             _nav = new[] { NavButton(L.T("1  Подготовка", "1  Setup"), 0), NavButton(L.T("2  Играть", "2  Play"), 1), NavButton(L.T("⚒  Крафты", "⚒  Crafting"), 2), NavButton(L.T("?  Справка", "?  Help"), 3) };
             for (int i = 0; i < _nav.Length; i++) { _nav[i].Location = new Point(10, 100 + i * 46); side.Controls.Add(_nav[i]); }
-            var ver = Ui.Label(L.T("мост 0.5.0\nClaude x Vamatrik", "bridge 0.5.0\nClaude x Vamatrik"), 8.5f, Ui.Muted);
+            var ver = Ui.Label(L.T("мост 0.6.0\nClaude x Vamatrik", "bridge 0.6.0\nClaude x Vamatrik"), 8.5f, Ui.Muted);
             ver.Location = new Point(18, 626);
             side.Controls.Add(ver);
 
@@ -82,7 +82,8 @@ namespace SlBridge.Launcher
             Controls.Add(_content);
             Controls.Add(side);
 
-            _timer.Tick += (_, _) => RefreshStatus();
+            _timer.Tick += (_, _) => { RefreshStatus(); CheckQuitRequest(); };
+            try { if (File.Exists(QuitFile)) File.Delete(QuitFile); } catch { } // старый запрос с прошлого раза
             _timer.Start();
             RefreshPrep();
             bool ready = _orc.SlClientFound && _orc.SlServerFound && _orc.ModInstalled;
@@ -174,7 +175,7 @@ namespace SlBridge.Launcher
             flow.Controls.Add(_stMod);
 
             var tip = new StepCard(6, L.T("Если оверлей что-то перекрывает", "If the overlay covers something"),
-                L.T("Ctrl+Shift+F12 — выключить/включить оверлей (картинку Minecraft поверх SL).\nCtrl+Shift+F11 — показать маску: белым — где подставляется Minecraft.", "Ctrl+Shift+F12 — turn the overlay (Minecraft picture over SL) off/on.\nCtrl+Shift+F11 — show the mask: white is where Minecraft is drawn."), w);
+                L.T("Ctrl+Shift+F12 — выключить/включить оверлей (картинку Minecraft поверх SL).\nCtrl+Shift+F11 — показать маску: белым — где подставляется Minecraft.\nCtrl+Shift+F10 — быстрый выход (закрыть всё, кроме лаунчера).", "Ctrl+Shift+F12 — turn the overlay (Minecraft picture over SL) off/on.\nCtrl+Shift+F11 — show the mask: white is where Minecraft is drawn.\nCtrl+Shift+F10 — quick exit (close everything except the launcher)."), w);
             tip.SetStatus(null, L.T("на заметку", "good to know"));
             flow.Controls.Add(tip);
 
@@ -357,6 +358,60 @@ namespace SlBridge.Launcher
             finally { _busy = false; _cts = null; LoadWorlds(); }
         }
 
+        // ───── быстрый выход: Ctrl+Shift+F10 (глобально) или кнопка «Выйти» в Server-specific SL ─────
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")] private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint mods, uint vk);
+        [System.Runtime.InteropServices.DllImport("user32.dll")] private static extern bool UnregisterHotKey(IntPtr hWnd, int id);
+        private const int HotkeyQuit = 0x5110;
+        private bool _quitting;
+
+        protected override void OnHandleCreated(EventArgs e)
+        {
+            base.OnHandleCreated(e);
+            // MOD_CONTROL | MOD_SHIFT | MOD_NOREPEAT, VK_F10
+            if (!RegisterHotKey(Handle, HotkeyQuit, 0x0002 | 0x0004 | 0x4000, 0x79)) FileLog("Ctrl+Shift+F10: hotkey is busy");
+        }
+
+        protected override void OnHandleDestroyed(EventArgs e)
+        {
+            UnregisterHotKey(Handle, HotkeyQuit);
+            base.OnHandleDestroyed(e);
+        }
+
+        protected override void WndProc(ref Message m)
+        {
+            if (m.Msg == 0x0312 && m.WParam.ToInt32() == HotkeyQuit) { _ = QuickExit(); return; }
+            base.WndProc(ref m);
+        }
+
+        private static string QuitFile => Path.Combine(Path.GetDirectoryName(LauncherConfig.LanguageFile), "quit.req");
+
+        /// <summary>Плагин SL кладёт quit.req, когда в игре нажали «Выйти».</summary>
+        private void CheckQuitRequest()
+        {
+            try
+            {
+                if (!File.Exists(QuitFile)) return;
+                File.Delete(QuitFile);
+                _ = QuickExit();
+            }
+            catch { }
+        }
+
+        private async System.Threading.Tasks.Task QuickExit()
+        {
+            if (_quitting) return;
+            _quitting = true;
+            try
+            {
+                Log(L.T("Быстрый выход — закрываю SL, Minecraft, сервер и оверлей.", "Quick exit — closing SL, Minecraft, the server and the overlay."));
+                await Stop();
+                if (WindowState == FormWindowState.Minimized) WindowState = FormWindowState.Normal;
+                Activate();
+            }
+            finally { _quitting = false; }
+        }
+
         private async System.Threading.Tasks.Task Stop()
         {
             _cts?.Cancel();
@@ -390,7 +445,9 @@ namespace SlBridge.Launcher
               L.T("Консоль SL (~): .mc <команда Minecraft>, например .mc time set day. В админ-панели (M) — просто mc time set day.", "SL console (~): .mc <Minecraft command>, e.g. .mc time set day. In the admin panel (M) — just mc time set day."));
             H(L.T("Оверлей", "Overlay"));
             P(L.T("Ctrl+Shift+F12 — выключить/включить оверлей (если что-то перекрывает или нужно увидеть «голый» SL).\n", "Ctrl+Shift+F12 — turn the overlay off/on (if something is covered or you want to see “bare” SL).\n") +
-              L.T("Ctrl+Shift+F11 — показать маску (белое — где подставляется Minecraft).\n", "Ctrl+Shift+F11 — show the mask (white is where Minecraft is drawn).\n") +
+              L.T("Ctrl+Shift+F11 — показать маску (белое — где подставляется Minecraft).\n" +
+              "Ctrl+Shift+F10 — быстрый выход: закрыть SL, Minecraft (с сохранением), сервер и оверлей. То же — кнопка «Выйти» в SL: Esc → Настройки → Server-specific.\n", "Ctrl+Shift+F11 — show the mask (white is where Minecraft is drawn).\n" +
+              "Ctrl+Shift+F10 — quick exit: close SL, Minecraft (saving the world), the server and the overlay. Same as the “Quit” button in SL: Esc → Settings → Server-specific.\n") +
               L.T("SL должен быть в оконном режиме или «без рамки», не в эксклюзивном полноэкранном.", "SL must run windowed or borderless, not in exclusive fullscreen."));
             H(L.T("Если что-то не так", "Troubleshooting"));
             P(L.T("• Сервер не стартует — сделай «Первый запуск сервера» в «Подготовке» и ответь на его вопросы.\n", "• The server doesn't start — do “First server run” in “Setup” and answer its questions.\n") +

@@ -259,13 +259,27 @@ for food, n, k, o in medkits: L.append(f"            ({cs(FOOD_RU[food])}, {cs(F
 L += ['        };', '    }', '}']
 open(os.path.join(LAUNCHER, 'RecipeData.g.cs'), 'w', encoding='utf-8').write('\n'.join(L) + '\n')
 
+# ── названия и иконки предметов SL для плагина (выпадение при смерти) ──
+ICONS = {}
+for key, name, icon, *_ in SHAPED + SHAPELESS: ICONS[key] = (name, NAMES_EN[key], icon)
+ICONS['Medkit'] = ('Аптечка', 'Medkit', 'red_dye')
+P = ['// Сгенерировано tools/gen_recipes.py — не править руками.', 'using System.Collections.Generic;', '', 'namespace SlBridge', '{',
+     '    /// <summary>Название (ru/en) и иконка Minecraft для предметов SL, которые лежат в мире Minecraft.</summary>',
+     '    public static class SlItemNames', '    {',
+     '        public static readonly Dictionary<string, (string Ru, string En, string Icon)> All = new Dictionary<string, (string, string, string)>', '        {']
+for k, (ru, en, ic) in sorted(ICONS.items()):
+    if k.startswith('Ammo'): ru, en = ru.replace(' (80)', ''), en.replace(' (80)', '')
+    P.append(f'            ["{k}"] = ({cs(ru)}, {cs(en)}, "{ic}"),')
+P += ['        };', '    }', '}']
+open(os.path.join(LAUNCHER, '..', 'sl-plugin', 'SlItemNames.g.cs'), 'w', encoding='utf-8').write('\n'.join(P) + '\n')
+
 # ── фрагменты README (ru и en) ──
 TXT = {
- 'ru': dict(intro='Все предметы SL крафтятся на верстаке Minecraft (или через быстрый крафт в меню Server-specific). Готовый предмет сразу становится настоящим предметом SCP:SL в инвентаре; патроны добавляются по 80 штук. Форму можно отражать по горизонтали, а маленькие формы ставить в любое место сетки. Ванильные железная и алмазная кирасы заменены лёгкой и боевой бронёй SL (в мосте броня Minecraft всё равно берётся из брони SL). В темноте Minecraft темно по-настоящему — скрафти лампу и держи её включённой в руке (фонарик тоже светит, но слабее). Рисунки есть и в лаунчере, вкладка «⚒ Крафты».\n',
+ 'ru': dict(intro='Все предметы SL крафтятся на верстаке Minecraft (E по верстаку). Готовый предмет сразу становится настоящим предметом SCP:SL в инвентаре; патроны добавляются по 80 штук. Форму можно отражать по горизонтали, а маленькие формы ставить в любое место сетки. Ванильные железная и алмазная кирасы заменены лёгкой и боевой бронёй SL (в мосте броня Minecraft всё равно берётся из брони SL). В темноте Minecraft темно по-настоящему — скрафти лампу и держи её включённой в руке (фонарик тоже светит, но слабее). Рисунки есть и в лаунчере, вкладка «⚒ Крафты».\n',
             legend='Обозначения', empty='пусто', anyorder='в любом порядке', medkits='Аптечки из еды',
             medtext='10 единиц голода = 1 аптечка. Кладёшь в сетку несколько одинаковых продуктов в любом порядке:\n',
             head='| Еда | Голод | Сколько положить | Аптечек |'),
- 'en': dict(intro='Every SL item is crafted on a Minecraft crafting table (or with quick crafting in the Server-specific menu). The result immediately becomes a real SCP:SL item in your inventory; ammo is added 80 at a time. Shapes can be mirrored horizontally, and small shapes can go anywhere in the grid. The vanilla iron and diamond chestplates are replaced by SL light and combat armor (in the bridge, Minecraft armor comes from your SL armor anyway). Darkness in Minecraft is real — craft a lantern and hold it lit in your hand (a flashlight works too, but is dimmer). The drawings are also in the launcher, “⚒ Crafting” tab.\n',
+ 'en': dict(intro='Every SL item is crafted on a Minecraft crafting table (E on the table). The result immediately becomes a real SCP:SL item in your inventory; ammo is added 80 at a time. Shapes can be mirrored horizontally, and small shapes can go anywhere in the grid. The vanilla iron and diamond chestplates are replaced by SL light and combat armor (in the bridge, Minecraft armor comes from your SL armor anyway). Darkness in Minecraft is real — craft a lantern and hold it lit in your hand (a flashlight works too, but is dimmer). The drawings are also in the launcher, “⚒ Crafting” tab.\n',
             legend='Legend', empty='empty', anyorder='in any order', medkits='Medkits from food',
             medtext='10 hunger points = 1 medkit. Put several identical food items into the grid in any order:\n',
             head='| Food | Hunger | How many | Medkits |'),

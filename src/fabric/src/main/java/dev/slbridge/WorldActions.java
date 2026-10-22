@@ -56,7 +56,12 @@ public final class WorldActions {
             if (target instanceof LivingEntity le0) { le0.damageCooldownTime = 0; le0.hurtTime = 0; }
             target.setInvulnerableTime(0);
             Vec3 velBefore = target.getDeltaMovement();
-            target.hurtServer(level, level.damageSources().playerAttack(player), mcDamage);
+            // Эндермен уворачивается от пуль, как от стрел: снаряд → он телепортируется и урона не получает.
+            // Холодное оружие (Jailbird, мачете — с отбрасыванием) бьёт его обычным ударом.
+            var src = !knockback && target instanceof net.minecraft.world.entity.monster.Enderman
+                    ? level.damageSources().thrown(player, player)
+                    : level.damageSources().playerAttack(player);
+            target.hurtServer(level, src, mcDamage);
             // отбрасывание — только от холодного оружия (Jailbird, SCP-1509); пули и Micro HID моба не толкают
             if (!knockback) target.setDeltaMovement(velBefore);
             if (target instanceof LivingEntity le1) le1.damageCooldownTime = 0;

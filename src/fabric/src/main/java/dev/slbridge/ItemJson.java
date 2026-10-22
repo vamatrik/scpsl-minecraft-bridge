@@ -28,6 +28,8 @@ public final class ItemJson {
         String sl = slKey(s);
         if (sl != null) {
             o.addProperty("sl", sl);
+            int ammo = s.get(DataComponents.CUSTOM_DATA).copyTag().getIntOr("slAmmo", 0);
+            if (ammo > 0) o.addProperty("slAmmo", ammo);
             Identifier model = s.get(DataComponents.ITEM_MODEL);
             if (model != null) o.addProperty("model", model.toString());
         }
@@ -63,6 +65,7 @@ public final class ItemJson {
             // предмет SCP:SL, лежащий в мире Minecraft (не влез в инвентарь) — восстанавливаем метку
             CompoundTag tag = new CompoundTag();
             tag.putString("slItem", o.get("sl").getAsString());
+            if (o.has("slAmmo")) tag.putInt("slAmmo", o.get("slAmmo").getAsInt());
             st.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
             if (o.has("name")) st.set(DataComponents.ITEM_NAME, Component.literal(o.get("name").getAsString()));
             if (o.has("model")) { Identifier m = Identifier.tryParse(o.get("model").getAsString()); if (m != null) st.set(DataComponents.ITEM_MODEL, m); }

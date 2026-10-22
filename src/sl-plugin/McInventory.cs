@@ -18,8 +18,20 @@ namespace SlBridge
         /// <summary>Если не null — это предмет SCP:SL (ItemType), скрафченный в Minecraft.</summary>
         public string Sl;
         public string Model;
+        /// <summary>Для патронов SL, выпавших при смерти: точное количество (иначе 80 за штуку).</summary>
+        public int Ammo;
 
-        public McStack Clone() => new McStack { Id = Id, Name = Name, Count = Count, Max = Max, Sl = Sl, Model = Model };
+        public McStack Clone() => new McStack { Id = Id, Name = Name, Count = Count, Max = Max, Sl = Sl, Model = Model, Ammo = Ammo };
+
+        /// <summary>Предмет SL как предмет Minecraft (для выпадения в мир).</summary>
+        public static McStack ForSl(ItemType type, int ammo = 0)
+        {
+            string key = type.ToString();
+            string name = key, icon = key.StartsWith("Ammo") ? "iron_nugget" : key.StartsWith("Keycard") ? "name_tag" : key.StartsWith("Gun") ? "crossbow" : "paper";
+            if (SlItemNames.All.TryGetValue(key, out var n)) { name = L.T(n.Ru, n.En); icon = n.Icon; }
+            if (ammo > 0) name += " (" + ammo + ")";
+            return new McStack { Id = "minecraft:paper", Name = name, Count = 1, Max = 64, Sl = key, Model = "minecraft:" + icon, Ammo = ammo };
+        }
 
         public static McStack FromMsg(Dictionary<string, object> o)
         {
@@ -32,13 +44,15 @@ namespace SlBridge
                 Max = Math.Max(1, (int)o.Num("max", 64)),
                 Sl = o.Has("sl") ? o.Str("sl") : null,
                 Model = o.Has("model") ? o.Str("model") : null,
+                Ammo = (int)o.Num("slAmmo", 0),
             };
         }
 
         public string ToJson()
             => "{\"id\":\"" + MiniJson.Escape(Id) + "\",\"count\":" + Count + ",\"name\":\"" + MiniJson.Escape(Name ?? Id) + "\",\"max\":" + Max
                + (Sl != null ? ",\"sl\":\"" + MiniJson.Escape(Sl) + "\"" : "")
-               + (Model != null ? ",\"model\":\"" + MiniJson.Escape(Model) + "\"" : "") + "}";
+               + (Model != null ? ",\"model\":\"" + MiniJson.Escape(Model) + "\"" : "")
+               + (Ammo > 0 ? ",\"slAmmo\":" + Ammo : "") + "}";
     }
 
     /// <summary>

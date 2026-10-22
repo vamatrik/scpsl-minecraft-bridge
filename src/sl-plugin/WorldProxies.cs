@@ -13,6 +13,9 @@ namespace SlBridge
         private readonly Config _cfg;
         public int SectionCount => _sections.Count;
         public bool Has(string key) => _sections.ContainsKey(key);
+        private readonly Dictionary<string, float> _builtAt = new Dictionary<string, float>();
+        /// <summary>Секция построена и прошло не меньше delay секунд — клиент SL точно успел получить её коробки.</summary>
+        public bool HasStable(string key, float delay) => _builtAt.TryGetValue(key, out var t) && Time.time - t >= delay;
         public int BoxCount { get { int n = 0; foreach (var l in _sections.Values) n += l.Count; return n; } }
         public int ReceivedSinceReset;
 
@@ -66,6 +69,7 @@ namespace SlBridge
                 toy.Spawn();
                 list.Add(toy);
             }
+            if (!_sections.ContainsKey(key) || !_builtAt.ContainsKey(key)) _builtAt[key] = Time.time;
             _sections[key] = list;
             ReceivedSinceReset++;
         }
@@ -75,6 +79,7 @@ namespace SlBridge
             if (!_sections.TryGetValue(key, out var list)) return;
             foreach (var t in list) if (!t.IsDestroyed) t.Destroy();
             _sections.Remove(key);
+            _builtAt.Remove(key);
         }
 
         public void Clear()

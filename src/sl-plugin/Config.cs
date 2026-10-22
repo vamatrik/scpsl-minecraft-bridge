@@ -21,15 +21,11 @@ namespace SlBridge
         [Description("Роль, которой играет игрок в мире Minecraft.")]
         public RoleTypeId Role { get; set; } = RoleTypeId.Tutorial;
 
-        [Description("Стартовые предметы.")]
-        public List<ItemType> Loadout { get; set; } = new List<ItemType> { ItemType.GunE11SR, ItemType.GunCOM18, ItemType.Medkit };
+        [Description("Стартовые предметы (и после смерти): мачете — ломать и бить, аптечка — один раз отхилиться. Остальное крафтится.")]
+        public List<ItemType> Loadout { get; set; } = new List<ItemType> { ItemType.SCP1509, ItemType.Medkit };
 
         [Description("Стартовые патроны: тип → количество.")]
-        public Dictionary<ItemType, ushort> Ammo { get; set; } = new Dictionary<ItemType, ushort>
-        {
-            { ItemType.Ammo556x45, 200 },
-            { ItemType.Ammo9x19, 120 },
-        };
+        public Dictionary<ItemType, ushort> Ammo { get; set; } = new Dictionary<ItemType, ushort>();
 
         [Description("Сам запускать раунд, когда заходит игрок, и не давать ему закончиться.")]
         public bool AutoStartRound { get; set; } = true;
@@ -58,6 +54,9 @@ namespace SlBridge
         public float BackdropHalfSize { get; set; } = 2.5f;
         [Description("Высота центра комнаты над точкой игрока (примерно уровень глаз).")]
         public float BackdropCenterHeight { get; set; } = 0.6f;
+
+        [Description("После телепорта/портала игрок висит, пока пол под ним не построен и не простоял столько секунд (чтобы коробки дошли до клиента).")]
+        public float UnfreezeDelay { get; set; } = 0.6f;
 
         [Description("Яркость света в Minecraft от лампы (Lantern) в руке, 0–15. Без лампы в темноте темно.")]
         public int LanternLight { get; set; } = 14;
