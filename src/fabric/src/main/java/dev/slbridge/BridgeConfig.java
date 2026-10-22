@@ -19,11 +19,9 @@ public final class BridgeConfig {
     /** Сколько выстрелов нужно на единицу твёрдости блока (камень 1.5 → 3 выстрела). */
     public float shotsPerHardness = 2f;
     /** Радиус коллизий в ячейках 8×8×8 вокруг игрока. */
-    /** Радиус коллизий вокруг игрока в блоках: по горизонтали и по вертикали. */
-    public int collisionRadiusH = 18;
-    public int collisionRadiusV = 12;
+    public int collisionRadiusCells = 1;
     /** Сколько ячеек коллизий пересчитывать за тик (больше — быстрее подгрузка, но тяжелее). */
-    public int collisionCellsPerTick = 10;
+    public int collisionCellsPerTick = 6;
     /** Дальность «использовать» (E), блоков. */
     public double reach = 5.0;
     /** Дальность луча фонарика, блоков. */
@@ -43,8 +41,7 @@ public final class BridgeConfig {
         c.fov = Float.parseFloat(p.getProperty("fov", String.valueOf(c.fov)));
         c.damageScale = Float.parseFloat(p.getProperty("damageScale", String.valueOf(c.damageScale)));
         c.shotsPerHardness = Float.parseFloat(p.getProperty("shotsPerHardness", String.valueOf(c.shotsPerHardness)));
-        c.collisionRadiusH = Integer.parseInt(p.getProperty("collisionRadiusH", String.valueOf(c.collisionRadiusH)));
-        c.collisionRadiusV = Integer.parseInt(p.getProperty("collisionRadiusV", String.valueOf(c.collisionRadiusV)));
+        c.collisionRadiusCells = Integer.parseInt(p.getProperty("collisionRadiusCells", String.valueOf(c.collisionRadiusCells)));
         c.collisionCellsPerTick = Integer.parseInt(p.getProperty("collisionCellsPerTick", String.valueOf(c.collisionCellsPerTick)));
         c.reach = Double.parseDouble(p.getProperty("reach", String.valueOf(c.reach)));
         c.flashlightRange = Double.parseDouble(p.getProperty("flashlightRange", String.valueOf(c.flashlightRange)));
@@ -55,8 +52,7 @@ public final class BridgeConfig {
         out.setProperty("fov", String.valueOf(c.fov));
         out.setProperty("damageScale", String.valueOf(c.damageScale));
         out.setProperty("shotsPerHardness", String.valueOf(c.shotsPerHardness));
-        out.setProperty("collisionRadiusH", String.valueOf(c.collisionRadiusH));
-        out.setProperty("collisionRadiusV", String.valueOf(c.collisionRadiusV));
+        out.setProperty("collisionRadiusCells", String.valueOf(c.collisionRadiusCells));
         out.setProperty("collisionCellsPerTick", String.valueOf(c.collisionCellsPerTick));
         out.setProperty("reach", String.valueOf(c.reach));
         out.setProperty("flashlightRange", String.valueOf(c.flashlightRange));

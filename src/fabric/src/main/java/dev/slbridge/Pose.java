@@ -16,6 +16,8 @@ public final class Pose {
     public static volatile int lamp;
     /** true — фонарик (узкий луч), false — лампа (свет вокруг). */
     public static volatile boolean beam;
+    /** Измерение, где сейчас игрок (на сервере). Коллизии строим только из этого измерения. */
+    public static volatile net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level> dim;
 
     public static void set(double nx, double ny, double nz, float nyaw, float npitch, int seq, double nfeet) {
         // поза до телепорта: место старое, но повороты камеры принимаем — пока SL дожидается коллизий нового места,

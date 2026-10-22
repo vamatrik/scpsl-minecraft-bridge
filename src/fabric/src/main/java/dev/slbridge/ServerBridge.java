@@ -299,6 +299,7 @@ public final class ServerBridge {
     private void sendTeleport(ServerPlayer sp) {
         teleportSeq++;
         Vec3 p = sp.position();
+        Pose.dim = sp.level().dimension();
         Pose.teleport(p.x, p.y + SlBridgeClient.EYE_HEIGHT, p.z, teleportSeq);
         lastSnap = p;
         lastLevel = sp.level();
@@ -482,8 +483,25 @@ public final class ServerBridge {
         BlockHitResult hit = level.clip(new ClipContext(from, from.add(dir.scale(cfg.reach)), ClipContext.Block.OUTLINE, ClipContext.Fluid.NONE, sp));
         boolean done = false;
         if (hit.getType() == HitResult.Type.BLOCK) {
+            // Стройка под себя: блок ставится туда, где стоит тело игрока, а игрок в прыжке (ноги выше пола).
+            // Minecraft бы отказал (место занято игроком) — поднимаем тело над новым блоком, а SL сообщаем подняться.
+            BlockPos place = level.getBlockState(hit.getBlockPos()).canBeReplaced() ? hit.getBlockPos() : hit.getBlockPos().relative(hit.getDirection());
+            Vec3 before = sp.position();
+            boolean under = sp.getMainHandItem().getItem() instanceof net.minecraft.world.item.BlockItem
+                    && sp.getBoundingBox().intersects(new net.minecraft.world.phys.AABB(place))
+                    && before.y > place.getY() + 0.1 && before.y < place.getY() + 1.0;
+            if (under) sp.setPos(before.x, place.getY() + 1.0, before.z);
             InteractionResult res = sp.gameMode.useItemOn(sp, level, sp.getMainHandItem(), InteractionHand.MAIN_HAND, hit);
             done = res.consumesAction();
+            if (under) {
+                if (done && !level.getBlockState(place).getCollisionShape(level, place).isEmpty()) {
+                    lastSnap = sp.position();
+                    JsonObject n = new JsonObject();
+                    n.addProperty("t", "nudge");
+                    n.addProperty("fy", place.getY() + 1.0);
+                    bridge.send(n);
+                } else sp.setPos(before.x, before.y, before.z);
+            }
         }
         if (sp.containerMenu != sp.inventoryMenu) {
             // открылся настоящий интерфейс Minecraft (верстак, печь, сундук…) — предметы остаются в MC до закрытия

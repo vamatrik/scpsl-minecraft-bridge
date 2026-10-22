@@ -21,7 +21,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * Превращает блоки Minecraft вокруг игрока в коллизионные параллелепипеды и отправляет их в SCP:SL.
  *
  * Оптимизации:
- *  • мир режется на ячейки 8×8×8, отправляются ячейки в радиусе ~18 блоков по горизонтали и ~12 по вертикали;
+ *  • мир режется на ячейки 8×8×8, отправляется только куб 3×3×3 ячеек вокруг игрока;
  *  • ячейка пересчитывается, только когда в ней изменился блок или она впервые попала в радиус;
  *  • за тик считается не больше нескольких ячеек, ближайшие — первыми;
  *  • полные блоки с открытой гранью жадно склеиваются в крупные боксы, внутренние не отправляются.
@@ -43,17 +43,10 @@ public final class CollisionStreamer {
 
     public void reset() { sent.clear(); dirty.clear(); }
 
-    /** Расстояние от точки до ячейки (0, если внутри) — по горизонтали и вертикали отдельно. */
-    private static double axisDist(double p, int c) {
-        double lo = c * C, hi = lo + C;
-        return p < lo ? lo - p : p > hi ? p - hi : 0;
-    }
-
-    /**
-     * radiusH/radiusV — в блоках: берём ячейки, ближайшая точка которых не дальше радиуса
-     * (по горизонтали — круг, по вертикали — отдельно). Ближайшие ячейки — первыми.
-     */
-    public void tick(Level level, BridgeServer bridge, int radiusH, int radiusV, int budget) {
+    public void tick(Level level, BridgeServer bridge, int radius, int budget) {
+        // Клиент ещё в старом измерении (экран загрузки после портала), а позиция уже новая — не строим
+        // коллизии нового места из блоков старого измерения.
+        if (Pose.dim != null && level.dimension() != Pose.dim) return;
         if (!Pose.active) return;
         if (level != lastLevel) { // другое измерение / новый мир
             lastLevel = level;
@@ -65,12 +58,9 @@ public final class CollisionStreamer {
 
         List<long[]> todo = new ArrayList<>(); // {key, dist²}
         Set<Long> wanted = new HashSet<>();
-        int rc = (radiusH + C - 1) / C + 1, rv = (radiusV + C - 1) / C + 1;
-        for (int cx = pcx - rc; cx <= pcx + rc; cx++)
-            for (int cy = pcy - rv; cy <= pcy + rv; cy++)
-                for (int cz = pcz - rc; cz <= pcz + rc; cz++) {
-                    double hx = axisDist(Pose.x, cx), hz = axisDist(Pose.z, cz), vy = axisDist(Pose.feetY + 0.9, cy);
-                    if (hx * hx + hz * hz > (double) radiusH * radiusH || vy > radiusV) continue;
+        for (int cx = pcx - radius; cx <= pcx + radius; cx++)
+            for (int cy = pcy - radius; cy <= pcy + radius; cy++)
+                for (int cz = pcz - radius; cz <= pcz + radius; cz++) {
                     // ячейки выше/ниже мира тоже отправляем (пустыми) — SL знает, что там «построено» и не замораживает
                     long key = BlockPos.asLong(cx, cy, cz);
                     wanted.add(key);

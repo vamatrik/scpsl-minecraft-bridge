@@ -119,6 +119,7 @@ public final class SlBridgeClient implements ClientModInitializer {
         });
         Pose.active = false;
         Pose.lamp = 0;
+        Pose.dim = null;
         uiMode = false;
         Pose.minSeq = 0;
         Pose.lastSeq = 0;
@@ -242,6 +243,6 @@ public final class SlBridgeClient implements ClientModInitializer {
         p.setDeltaMovement(Vec3.ZERO);
         p.snapTo(Pose.x, Pose.feetY, Pose.z, Pose.yaw, Pose.pitch);
 
-        collisions.tick(mc.level, bridge, config.collisionRadiusH, config.collisionRadiusV, config.collisionCellsPerTick);
+        collisions.tick(mc.level, bridge, config.collisionRadiusCells, config.collisionCellsPerTick);
     }
 }

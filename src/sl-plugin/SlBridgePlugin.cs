@@ -64,6 +64,7 @@ namespace SlBridge
         private int _armorTier = -1;
         private float _nextHousekeeping;
         private bool _frozen;
+        private float _nudgeUntil = -1f;
         // отложенный телепорт из Minecraft
         private bool _tpPending;
         private Vector3 _tpTarget;
@@ -531,6 +532,11 @@ namespace SlBridge
             _backdrop.Attach(_player);
 
             // Заморозка: пока коллизии под ногами ещё не построены — не даём упасть/уйти в пустоту.
+            if (_nudgeUntil > 0f && Time.time >= _nudgeUntil)
+            {
+                _nudgeUntil = -1f;
+                if (!_frozen) _player.Gravity = DefaultGravity * Config.GravityScale;
+            }
             if (_tpPending) PendingTeleport(pos);
             else if (_hasSpawn) FreezeIfNotBuilt(pos);
 
@@ -751,6 +757,20 @@ namespace SlBridge
                     _mobs.Clear();
                     _mc.Send("{\"t\":\"resync\"}"); // Minecraft заново пришлёт все ячейки вокруг нового места
                     // игрока не замораживаем: пока ждём, он стоит на коллизиях старого места
+                    break;
+                }
+
+                case "nudge":
+                {
+                    // поставил блок под себя в прыжке — встаём на него; держим, пока его коробка не дойдёт до клиента
+                    if (_player == null || _tpPending) break;
+                    var cur = CoordMap.SlToMc(_player.Position);
+                    var up = CoordMap.McToSl(cur.x, m.Num("fy") + 0.02, cur.z) + Vector3.up * FeetOffset(_player);
+                    if (up.y <= _player.Position.y) break;
+                    _player.Position = up;
+                    _lastGoodPos = up;
+                    _player.Gravity = Vector3.zero;
+                    _nudgeUntil = Time.time + Config.BuildUpHold;
                     break;
                 }
 
