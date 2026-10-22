@@ -184,6 +184,7 @@ namespace SlBridge
 
         private void OnWaiting()
         {
+            _deconPending = true; // новая сцена — новый контроллер обеззараживания
             NewRoundObjects();
             _inv.Clear();
             _player = null;
@@ -278,17 +279,24 @@ namespace SlBridge
         {
             SetLimits();
             if (!Config.DisableFacilityEvents) return;
-            _deconPending = true; // выполним «decontamination disable», как только контроллер готов
+            _deconPending = true; // выключим обеззараживание, как только контроллер готов
         }
 
         private bool _deconPending = true;
 
-        /// <summary>Один раз за раунд — штатная команда RA «decontamination disable».</summary>
+        /// <summary>Один раз за раунд, когда контроллер обеззараживания готов: выключаем его через LabAPI.</summary>
         private void DisableDeconOnce()
         {
-            if (!_deconPending || LightContainmentZoneDecontamination.DecontaminationController.Singleton == null) return;
+            if (!_deconPending || !Config.DisableFacilityEvents) return;
+            var dc = LightContainmentZoneDecontamination.DecontaminationController.Singleton;
+            if (dc == null) return;
             _deconPending = false;
-            try { Logger.Info("[SlBridge] " + Server.RunCommand("decontamination disable")); } catch (Exception e) { Logger.Warn("decontamination disable: " + e.Message); }
+            try
+            {
+                Decontamination.Status = LightContainmentZoneDecontamination.DecontaminationController.DecontaminationStatus.Disabled;
+                Logger.Info(L.T("[SlBridge] Обеззараживание LCZ выключено: ", "[SlBridge] LCZ decontamination disabled: ") + Decontamination.Status);
+            }
+            catch (Exception e) { Logger.Warn("[SlBridge] Decontamination.Status: " + e.Message); _deconPending = true; }
         }
         private void OnWave(WaveRespawningEventArgs ev) { if (Config.DisableFacilityEvents) ev.IsAllowed = false; }
         private void OnDeadman(DeadmanSequenceActivatingEventArgs ev) { if (Config.DisableFacilityEvents) ev.IsAllowed = false; }
