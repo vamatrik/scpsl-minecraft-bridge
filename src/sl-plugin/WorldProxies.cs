@@ -184,14 +184,21 @@ namespace SlBridge
     /// Вне карты комплекса SCP:SL не умеет точно синхронизировать позиции — для этого нужны WaypointToy.
     /// Ставим их сеткой 256 м вокруг игрока.
     /// </summary>
+    /// <summary>
+    /// Точки привязки координат SL (WaypointToy). Позиции игрока в сети SL передаются относительно ближайшей
+    /// точки и только в её пределах (±128 м), а всего таких точек в игре не больше 255 (вместе с комнатами комплекса).
+    /// Поэтому держим точки только вокруг игрока (и вокруг места, куда его сейчас перенесём), дальние удаляем.
+    /// </summary>
     public sealed class Waypoints
     {
         private const float Cell = 250f;
         private readonly Dictionary<Vector3Int, WaypointToy> _cells = new Dictionary<Vector3Int, WaypointToy>();
 
+        private static Vector3Int CellOf(Vector3 p) => new Vector3Int(Mathf.FloorToInt(p.x / Cell), Mathf.FloorToInt(p.y / Cell), Mathf.FloorToInt(p.z / Cell));
+
         public void Ensure(Vector3 p)
         {
-            var c = new Vector3Int(Mathf.FloorToInt(p.x / Cell), Mathf.FloorToInt(p.y / Cell), Mathf.FloorToInt(p.z / Cell));
+            var c = CellOf(p);
             for (int dx = -1; dx <= 1; dx++)
             for (int dy = -1; dy <= 1; dy++)
             for (int dz = -1; dz <= 1; dz++)
@@ -206,6 +213,25 @@ namespace SlBridge
                 _cells[k] = w;
             }
         }
+
+        /// <summary>Удалить точки дальше одной ячейки от всех переданных позиций (освобождает номера точек).</summary>
+        public void Prune(params Vector3[] keepAround)
+        {
+            var keep = new List<Vector3Int>();
+            foreach (var p in keepAround) keep.Add(CellOf(p));
+            foreach (var k in new List<Vector3Int>(_cells.Keys))
+            {
+                bool near = false;
+                foreach (var c in keep)
+                    if (Mathf.Abs(k.x - c.x) <= 1 && Mathf.Abs(k.y - c.y) <= 1 && Mathf.Abs(k.z - c.z) <= 1) { near = true; break; }
+                if (near) continue;
+                var w = _cells[k];
+                if (w != null && !w.IsDestroyed) w.Destroy();
+                _cells.Remove(k);
+            }
+        }
+
+        public int Count => _cells.Count;
 
         public void Clear()
         {

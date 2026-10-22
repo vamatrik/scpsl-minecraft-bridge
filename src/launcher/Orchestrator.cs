@@ -242,22 +242,33 @@ namespace SlBridge.Launcher
             if (!await WaitFor(() => BridgeConnected, 60, L.T("подключение моста", "bridge connection"), ct)) return;
             _log(L.T("Мост SCP:SL ↔ Minecraft подключён.", "SCP:SL ↔ Minecraft bridge connected."));
 
-            if (!CompositorRunning)
-            {
-                if (File.Exists(_c.CompositorExe))
-                {
-                    _log(L.T("Запускаю оверлей…", "Starting the overlay…"));
-                    Process.Start(new ProcessStartInfo(_c.CompositorExe) { WorkingDirectory = Path.GetDirectoryName(_c.CompositorExe), UseShellExecute = true });
-                }
-                else _log(L.T("Не найден оверлей: ", "Overlay not found: ") + _c.CompositorExe);
-            }
             if (!SlClientRunning)
             {
                 _log(L.T("Запускаю SCP:SL через Steam…", "Starting SCP:SL via Steam…"));
                 Process.Start(new ProcessStartInfo($"steam://run/700330//{_c.SlClientArgs}/") { UseShellExecute = true });
             }
             _log(L.T($"Готово! В SL: Play → Direct connect → 127.0.0.1:{_c.SlServerPort} (адрес в буфере обмена — Ctrl+V).", $"Done! In SL: Play → Direct connect → 127.0.0.1:{_c.SlServerPort} (the address is in your clipboard — Ctrl+V)."));
+
+            // Оверлей — только когда игрок зашёл на сервер (в меню SL он не нужен).
+            if (!CompositorRunning)
+            {
+                _log(L.T("Оверлей включится, когда зайдёшь на сервер.", "The overlay will start once you join the server."));
+                while (!PlayerJoined)
+                {
+                    if (ct.IsCancellationRequested || !ServerRunning) return;
+                    await Task.Delay(1000);
+                }
+                if (File.Exists(_c.CompositorExe))
+                {
+                    _log(L.T("Ты на сервере — запускаю оверлей…", "You're on the server — starting the overlay…"));
+                    Process.Start(new ProcessStartInfo(_c.CompositorExe) { WorkingDirectory = Path.GetDirectoryName(_c.CompositorExe), UseShellExecute = true });
+                }
+                else _log(L.T("Не найден оверлей: ", "Overlay not found: ") + _c.CompositorExe);
+            }
         }
+
+        /// <summary>Игрок зашёл на сервер (строка плагина в логе сервера).</summary>
+        public bool PlayerJoined => ServerRunning && ServerLogTail().Contains("[SlBridge] Player joined the server");
 
         private async Task<bool> WaitFor(Func<bool> cond, int seconds, string what, CancellationToken ct)
         {

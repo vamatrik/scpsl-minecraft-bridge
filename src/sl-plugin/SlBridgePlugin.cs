@@ -207,6 +207,7 @@ namespace SlBridge
         private void OnJoined(PlayerJoinedEventArgs ev)
         {
             if (ev.Player.IsHost || ev.Player.IsDummy || ev.Player.IsNpc) return;
+            Logger.Info("[SlBridge] Player joined the server"); // по этой строке лаунчер запускает оверлей
             if (!string.IsNullOrEmpty(Config.AutoGrantGroup))
             {
                 var group = ServerStatic.PermissionsHandler?.GetGroup(Config.AutoGrantGroup);
@@ -529,6 +530,7 @@ namespace SlBridge
 
             Vector3 pos = _player.Position;
             _waypoints.Ensure(pos);
+            if (_tpPending) _waypoints.Ensure(_tpTarget); // точки привязки у места прибытия — заранее, чтобы клиент их уже знал
             _backdrop.Attach(_player);
 
             // Заморозка: пока коллизии под ногами ещё не построены — не даём упасть/уйти в пустоту.
@@ -543,6 +545,7 @@ namespace SlBridge
             if (Time.time >= _nextHousekeeping)
             {
                 _nextHousekeeping = Time.time + 1f;
+                if (_tpPending) _waypoints.Prune(pos, _tpTarget); else _waypoints.Prune(pos);
                 // Lightweight (прыжок как в Minecraft) — проверяем, что не слетел после возрождения/эффектов
                 if (Config.JumpBoostPercent > 0 && (!_player.TryGetEffect<Lightweight>(out var lw) || lw.Intensity != Config.JumpBoostPercent))
                     _player.EnableEffect<Lightweight>(Config.JumpBoostPercent, 0f);
@@ -591,6 +594,7 @@ namespace SlBridge
             if (!ready && Time.time - _tpAt < Config.TeleportMaxWait) return;
 
             _tpPending = false;
+            Logger.Info($"[SlBridge/TP] перенос через {Time.time - _tpAt:0.0} с, пол {(ready ? "есть" : "НЕ найден (таймаут)")}, секций {_collision.SectionCount}, очередь {_collision.Pending}");
             _poseSeq = _tpSeq; // с этого момента Minecraft снова принимает позы SL
             _collision.RemoveOlderThan(_tpAt); // коллизии старого места больше не нужны
             string hint = _tpDim.EndsWith("the_nether") ? L.T("Незер", "Nether") : _tpDim.EndsWith("the_end") ? L.T("Энд", "The End") : null;
@@ -642,6 +646,7 @@ namespace SlBridge
             }
             if (!_frozen)
             {
+                Logger.Info($"[SlBridge/TP] заморозка: ячейка под ногами {key} не построена (секций {_collision.SectionCount}, очередь {_collision.Pending})");
                 _frozen = true;
                 _player.Gravity = Vector3.zero;
                 if (_lastGoodPos != Vector3.zero) _player.Position = _lastGoodPos; // откат на последнее «построенное» место
@@ -753,6 +758,7 @@ namespace SlBridge
                     _tpDim = m.Str("dim", "");
                     _tpAt = Time.time;
                     _tpPending = true;
+                    Logger.Info($"[SlBridge/TP] телепорт Minecraft → {_tpDim} ({m.Num("x"):0.0}, {m.Num("y"):0.0}, {m.Num("z"):0.0}), ждём коллизии; точек привязки {_waypoints.Count}");
                     _worldItems.Clear();
                     _mobs.Clear();
                     _mc.Send("{\"t\":\"resync\"}"); // Minecraft заново пришлёт все ячейки вокруг нового места
