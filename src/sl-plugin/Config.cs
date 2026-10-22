@@ -56,12 +56,14 @@ namespace SlBridge
         public float BackdropCenterHeight { get; set; } = 0.6f;
 
         [Description("После телепорта/портала игрок висит, пока пол под ним не построен и не простоял столько секунд (чтобы коробки дошли до клиента).")]
-        public float UnfreezeDelay { get; set; } = 0.6f;
+        public float UnfreezeDelay { get; set; } = 1f;
+        [Description("Сколько секунд максимум ждать пола под ногами после телепорта (если там правда пустота — потом отпускаем).")]
+        public float TeleportMaxWait { get; set; } = 10f;
 
         [Description("Яркость света в Minecraft от лампы (Lantern) в руке, 0–15. Без лампы в темноте темно.")]
         public int LanternLight { get; set; } = 14;
-        [Description("Яркость света в Minecraft от включённого фонарика в руке, 0–15.")]
-        public int FlashlightLight { get; set; } = 11;
+        [Description("Яркость пятна от включённого фонарика в руке, 0–15: светит узким лучом туда, куда смотришь (дальше — тусклее).")]
+        public int FlashlightLight { get; set; } = 15;
 
         [Description("Свет над игроком, чтобы оружие в руках не было чёрным.")]
         public float LightIntensity { get; set; } = 1.5f;

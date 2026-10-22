@@ -111,7 +111,7 @@ namespace SlBridge.Compositor
                     lastLayout = sw.ElapsedMilliseconds;
                     FindWindows();
                     UpdateUiMode();
-                    bool ok = _enabled && !_mcUi && _sl != null && !Native.IsIconic(_sl.Hwnd);
+                    bool ok = _enabled && _sl != null && !Native.IsIconic(_sl.Hwnd);
                     if (ok)
                     {
                         slRect = Native.ClientScreenRect(_sl.Hwnd);
@@ -134,8 +134,8 @@ namespace SlBridge.Compositor
                 if (!visible || _sl == null) { Thread.Sleep(20); continue; }
 
                 bool newSl = _sl.Poll(_ctx);
-                if (_mc != null) _mc.Poll(_ctx);
-                if (!newSl) { Thread.Sleep(1); continue; }
+                bool newMc = _mc != null && _mc.Poll(_ctx);
+                if (!newSl && !(_mcUi && newMc)) { Thread.Sleep(1); continue; }
                 Render();
             }
         }
@@ -187,7 +187,7 @@ namespace SlBridge.Compositor
                 if (_mcFitAttempts >= 5) return;
                 _mcFitAttempts++;
                 Log($"Окно Minecraft → {slRect.Left},{slRect.Top} {slRect.W}x{slRect.H}, попытка {_mcFitAttempts}");
-                Native.SetWindowPos(_mc.Hwnd, _mcUi ? Native.HWND_TOP : Native.HWND_BOTTOM, slRect.Left, slRect.Top, slRect.W, slRect.H, Native.SWP_NOACTIVATE);
+                Native.SetWindowPos(_mc.Hwnd, Native.HWND_BOTTOM, slRect.Left, slRect.Top, slRect.W, slRect.H, Native.SWP_NOACTIVATE | (_mcUi ? 0x0004u /*SWP_NOZORDER: оверлей должен остаться сверху*/ : 0u));
             }
             else
             {
@@ -207,7 +207,6 @@ namespace SlBridge.Compositor
             if (want)
             {
                 Log("Интерфейс Minecraft открыт — фокус в Minecraft");
-                Native.ShowWindow(_hwnd, 0);
                 Native.SetWindowPos(_mc.Hwnd, Native.HWND_TOPMOST, 0, 0, 0, 0, Native.SWP_NOMOVE | Native.SWP_NOSIZE | Native.SWP_SHOWWINDOW);
                 Native.ForceForeground(_mc.Hwnd);
             }
@@ -305,7 +304,7 @@ namespace SlBridge.Compositor
             {
                 KR = _s.KeyColor.Length > 0 ? _s.KeyColor[0] : 0, KG = _s.KeyColor.Length > 1 ? _s.KeyColor[1] : 1, KB = _s.KeyColor.Length > 2 ? _s.KeyColor[2] : 0,
                 KeyThreshold = _s.KeyThreshold, KeySoftness = _s.KeySoftness, KeyMinBrightness = _s.KeyMinBrightness,
-                ShowMask = _showMask ? 1 : 0, HasMc = (_mc != null && _mc.Srv != null) ? 1 : 0,
+                ShowMask = (_mcUi && _mc != null && _mc.Srv != null) ? 2 : _showMask ? 1 : 0, HasMc = (_mc != null && _mc.Srv != null) ? 1 : 0,
                 Adaptive = _s.AdaptiveKey ? 1 : 0,
             };
             ClientUv(_sl, out p.SlOx, out p.SlOy, out p.SlSx, out p.SlSy);

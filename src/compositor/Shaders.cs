@@ -43,6 +43,9 @@ float3 Hue(float3 c) { return c / max(max(max(c.r, c.g), c.b), 1e-3); }
 
 float4 PS(V i) : SV_Target
 {
+    // Окно Minecraft открыто (верстак, инвентарь): показываем Minecraft целиком, без ключа.
+    // Оверлей остаётся поверх — так рабочий стол всегда собирает DWM и захват экрана (OBS) не чернеет.
+    if (ShowMask > 1.5) return float4(McTex.Sample(Lin, McUv.xy + i.uv * McUv.zw).rgb, 1);
     float2 slUv = SlUv.xy + i.uv * SlUv.zw;
     float3 s = SlTex.Sample(Lin, slUv).rgb;
 

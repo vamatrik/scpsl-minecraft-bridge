@@ -141,7 +141,7 @@ public final class SlBridgeClient implements ClientModInitializer {
                 mc.execute(collisions::reset);
                 serverBridge.resetStreams();
             }
-            case "pose" -> { Pose.lamp = m.has("lamp") ? m.get("lamp").getAsInt() : 0; Pose.set(m.get("x").getAsDouble(), m.get("y").getAsDouble(), m.get("z").getAsDouble(),
+            case "pose" -> { Pose.lamp = m.has("lamp") ? m.get("lamp").getAsInt() : 0; Pose.beam = m.has("beam") && m.get("beam").getAsInt() != 0; Pose.set(m.get("x").getAsDouble(), m.get("y").getAsDouble(), m.get("z").getAsDouble(),
                     m.get("yaw").getAsFloat(), m.get("pitch").getAsFloat(), m.has("seq") ? m.get("seq").getAsInt() : 0,
                     m.has("fy") ? m.get("fy").getAsDouble() : Double.NaN);
             }

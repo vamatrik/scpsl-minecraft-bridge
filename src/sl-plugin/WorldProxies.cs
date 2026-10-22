@@ -16,6 +16,30 @@ namespace SlBridge
         private readonly Dictionary<string, float> _builtAt = new Dictionary<string, float>();
         /// <summary>Секция построена и прошло не меньше delay секунд — клиент SL точно успел получить её коробки.</summary>
         public bool HasStable(string key, float delay) => _builtAt.TryGetValue(key, out var t) && Time.time - t >= delay;
+
+        /// <summary>
+        /// Есть ли под ногами (точка в координатах SL) настоящая опора: коробка, верх которой чуть ниже ног,
+        /// в секции, которая не менялась delay секунд. Нужна после порталов: платформа Энда и новый портал
+        /// появляются в мире Minecraft уже после прибытия — пустая секция «построена», но пола в ней ещё нет.
+        /// </summary>
+        public bool HasGroundUnder(Vector3 feet, float delay)
+        {
+            foreach (var kv in _sections)
+            {
+                if (!HasStable(kv.Key, delay)) continue;
+                foreach (var t in kv.Value)
+                {
+                    if (t == null || t.IsDestroyed) continue;
+                    Vector3 c = t.Position, sz = t.Scale;
+                    float top = c.y + Mathf.Abs(sz.y) * 0.5f;
+                    if (top > feet.y + 0.5f || top < feet.y - 1.2f) continue;
+                    if (Mathf.Abs(feet.x - c.x) > Mathf.Abs(sz.x) * 0.5f + 0.3f) continue;
+                    if (Mathf.Abs(feet.z - c.z) > Mathf.Abs(sz.z) * 0.5f + 0.3f) continue;
+                    return true;
+                }
+            }
+            return false;
+        }
         public int BoxCount { get { int n = 0; foreach (var l in _sections.Values) n += l.Count; return n; } }
         public int ReceivedSinceReset;
 
@@ -69,7 +93,7 @@ namespace SlBridge
                 toy.Spawn();
                 list.Add(toy);
             }
-            if (!_sections.ContainsKey(key) || !_builtAt.ContainsKey(key)) _builtAt[key] = Time.time;
+            _builtAt[key] = Time.time; // время последнего обновления: новые коробки ещё должны дойти до клиента
             _sections[key] = list;
             ReceivedSinceReset++;
         }

@@ -50,11 +50,11 @@ You start with a machete (to break blocks and fight) and one medkit — everythi
 * **E** (interact) — place a block, doors/levers, food, flint and steel/bucket/eye of ender, crafting table/furnace/chest (Minecraft window).
 * **I** — Minecraft inventory with 2×2 crafting. Keys can be rebound in SL: Esc → Settings → Server-specific.
 * SL console (`~`): `.mc time set day`; in the admin panel: `mc give @s diamond 5`.
-* Darkness is real: hold a lit **lantern** (or flashlight) to light up caves and nights.
+* Darkness is real: hold a lit **lantern** (lights up around you) or a **flashlight** (a narrow beam where you look).
 
 ## Crafting
 
-Every SL item is crafted on a Minecraft crafting table (E on the table). The result immediately becomes a real SCP:SL item in your inventory; ammo is added 80 at a time. Shapes can be mirrored horizontally, and small shapes can go anywhere in the grid. The vanilla iron and diamond chestplates are replaced by SL light and combat armor (in the bridge, Minecraft armor comes from your SL armor anyway). Darkness in Minecraft is real — craft a lantern and hold it lit in your hand (a flashlight works too, but is dimmer). The drawings are also in the launcher, “⚒ Crafting” tab.
+Every SL item is crafted on a Minecraft crafting table (E on the table). The result immediately becomes a real SCP:SL item in your inventory; ammo is added 80 at a time. Shapes can be mirrored horizontally, and small shapes can go anywhere in the grid. The vanilla iron and diamond chestplates are replaced by SL light and combat armor (in the bridge, Minecraft armor comes from your SL armor anyway). Darkness in Minecraft is real — craft a lantern and hold it lit in your hand (or a flashlight — it shines a narrow beam where you look). The drawings are also in the launcher, “⚒ Crafting” tab.
 
 Legend: `#` — Iron ingot, `B` — Iron block, `D` — Diamond, `N` — Netherite ingot, `G` — Gunpowder, `S` — Stick, `R` — Redstone, `T` — Torch, `X` — TNT, `L` — Glowstone dust, `U` — Sugar, `O` — Glass bottle, `C` — Cocoa beans, `E` — Spider eye, `M` — Slimeball, `H` — Leather cap, `P` — Ender pearl, `F` — Flower pot, `I` — Packed ice, `Y` — Blue ice, `W` — Bowl, `K` — Note block, `V` — Eye of ender, `Q` — Glass pane, `A` — Glass, `J` — Coal, `·` — empty.
 

@@ -25,11 +25,11 @@ namespace SlBridge.Launcher
                 L.T("Крафтится на верстаке Minecraft: E по верстаку открывает его окно, предметы таскаются мышкой. " +
                 "Готовый предмет сразу становится настоящим предметом SCP:SL в инвентаре, патроны добавляются по 80 штук. " +
                 "Форму можно отражать слева направо, маленькие формы — ставить в любое место сетки. Кирасы Minecraft из железа и алмазов заменены лёгкой и боевой бронёй SL. " +
-                "В темноте Minecraft по-настоящему темно — скрафти лампу и держи её включённой в руке (фонарик тоже светит, но слабее).",
+                "В темноте Minecraft по-настоящему темно — скрафти лампу и держи её включённой в руке (или фонарик — он светит узким лучом туда, куда смотришь).",
                 "Craft on a Minecraft crafting table: E on the table opens its window, drag items with the mouse. " +
                 "The result immediately becomes a real SCP:SL item in your inventory; ammo is added 80 at a time. " +
                 "Shapes can be mirrored left to right, small shapes can go anywhere in the grid. Minecraft iron and diamond chestplates are replaced by SL light and combat armor. " +
-                "Darkness in Minecraft is real — craft a lantern and hold it lit in your hand (a flashlight works too, but is dimmer)."), full)));
+                "Darkness in Minecraft is real — craft a lantern and hold it lit in your hand (or a flashlight — it shines a narrow beam where you look)."), full)));
             flow.Controls.Add(Break(new LegendPanel(full)));
 
             string group = null;

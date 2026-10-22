@@ -14,6 +14,8 @@ public final class Pose {
     public static volatile int lastSeq;
     /** Свет от лампы/фонарика в руке SL (0 — нет, иначе уровень 1..15). */
     public static volatile int lamp;
+    /** true — фонарик (узкий луч), false — лампа (свет вокруг). */
+    public static volatile boolean beam;
 
     public static void set(double nx, double ny, double nz, float nyaw, float npitch, int seq, double nfeet) {
         if (seq < minSeq) return;

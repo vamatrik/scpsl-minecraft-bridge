@@ -24,6 +24,8 @@ public final class BridgeConfig {
     public int collisionCellsPerTick = 6;
     /** Дальность «использовать» (E), блоков. */
     public double reach = 5.0;
+    /** Дальность луча фонарика, блоков. */
+    public double flashlightRange = 28.0;
     /** Сколько HP SL лечит одно очко сытости еды (хлеб = 5 → 12.5 HP). */
     public float healPerFoodPoint = 2.5f;
 
@@ -42,6 +44,7 @@ public final class BridgeConfig {
         c.collisionRadiusCells = Integer.parseInt(p.getProperty("collisionRadiusCells", String.valueOf(c.collisionRadiusCells)));
         c.collisionCellsPerTick = Integer.parseInt(p.getProperty("collisionCellsPerTick", String.valueOf(c.collisionCellsPerTick)));
         c.reach = Double.parseDouble(p.getProperty("reach", String.valueOf(c.reach)));
+        c.flashlightRange = Double.parseDouble(p.getProperty("flashlightRange", String.valueOf(c.flashlightRange)));
         c.healPerFoodPoint = Float.parseFloat(p.getProperty("healPerFoodPoint", String.valueOf(c.healPerFoodPoint)));
 
         Properties out = new Properties();
@@ -52,6 +55,7 @@ public final class BridgeConfig {
         out.setProperty("collisionRadiusCells", String.valueOf(c.collisionRadiusCells));
         out.setProperty("collisionCellsPerTick", String.valueOf(c.collisionCellsPerTick));
         out.setProperty("reach", String.valueOf(c.reach));
+        out.setProperty("flashlightRange", String.valueOf(c.flashlightRange));
         out.setProperty("healPerFoodPoint", String.valueOf(c.healPerFoodPoint));
 
         try (Writer w = Files.newBufferedWriter(file)) { out.store(w, "SCP:SL <-> Minecraft bridge"); } catch (IOException e) { SlBridgeClient.LOG.warn("config write failed", e); }

@@ -64,6 +64,7 @@ namespace SlBridge
         private int _armorTier = -1;
         private float _nextHousekeeping;
         private bool _frozen;
+        private float _teleportFreezeAt = -1f;
         private Vector3 _lastGoodPos;
         private Player _cmdPlayer;
         private static readonly Vector3 DefaultGravity = new Vector3(0f, -19.6f, 0f);
@@ -569,6 +570,13 @@ namespace SlBridge
             bool built = _frozen ? _collision.HasStable(key, Config.UnfreezeDelay)
                                    && (feetInCell > 1.5f || _collision.HasStable(KeyBelow(cx, cyFeet, cz), Config.UnfreezeDelay))
                                  : _collision.Has(key);
+            if (built && _frozen && _teleportFreezeAt >= 0f)
+            {
+                // после телепорта/портала — ещё и настоящий пол под ногами (или прошло TeleportMaxWait: значит, там правда пусто)
+                Vector3 feet = pos + Vector3.down * FeetOffset(_player);
+                built = _collision.HasGroundUnder(feet, Config.UnfreezeDelay) || Time.time - _teleportFreezeAt > Config.TeleportMaxWait;
+            }
+            if (built) _teleportFreezeAt = -1f;
             if (built)
             {
                 _lastGoodPos = pos;
@@ -624,7 +632,7 @@ namespace SlBridge
             CoordMap.DirToMcAngles(cam.forward, out float yaw, out float pitch);
             float feet = CoordMap.SlToMc(_player.Position).y - FeetOffset(_player);
             _mc.Send("{\"t\":\"pose\",\"x\":" + F(eye.x) + ",\"y\":" + F(eye.y) + ",\"z\":" + F(eye.z)
-                + ",\"fy\":" + F(feet) + ",\"yaw\":" + F(yaw) + ",\"pitch\":" + F(pitch) + ",\"seq\":" + _poseSeq + ",\"lamp\":" + LampLevel() + "}");
+                + ",\"fy\":" + F(feet) + ",\"yaw\":" + F(yaw) + ",\"pitch\":" + F(pitch) + ",\"seq\":" + _poseSeq + ",\"lamp\":" + LampLevel() + ",\"beam\":" + (_player.CurrentItem?.Type == ItemType.Flashlight ? 1 : 0) + "}");
         }
 
         /// <summary>Лампа (Lantern) или фонарик в руке и включены — светят в Minecraft.</summary>
@@ -651,6 +659,7 @@ namespace SlBridge
             if (_player == null) return;
             _collision.ReceivedSinceReset = 0;
             _frozen = true;
+            _teleportFreezeAt = Time.time; // после телепорта отпускаем только на настоящий пол
             _player.Gravity = Vector3.zero;
             _lastGoodPos = target;
             _player.Position = target;
