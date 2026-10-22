@@ -16,7 +16,10 @@
    "minecraft:custom_data": {
     "slItem": "ParticleDisruptor"
    },
-   "minecraft:item_name": "Молекулярный разрушитель",
+   "minecraft:item_name": {
+    "translate": "item.slbridge.particledisruptor",
+    "fallback": "Particle Disruptor"
+   },
    "minecraft:item_model": "minecraft:trident",
    "minecraft:enchantment_glint_override": true,
    "minecraft:rarity": "rare"

@@ -16,7 +16,10 @@
    "minecraft:custom_data": {
     "slItem": "GunSCP127"
    },
-   "minecraft:item_name": "SCP-127",
+   "minecraft:item_name": {
+    "translate": "item.slbridge.gunscp127",
+    "fallback": "SCP-127"
+   },
    "minecraft:item_model": "minecraft:crossbow",
    "minecraft:enchantment_glint_override": true,
    "minecraft:rarity": "rare"

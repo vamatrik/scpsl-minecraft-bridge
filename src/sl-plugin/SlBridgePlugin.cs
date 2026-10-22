@@ -101,6 +101,7 @@ namespace SlBridge
         public override void Enable()
         {
             Instance = this;
+            L.Load(Config.Language);
             CoordMap.Origin = new Vector3(Config.OriginX, Config.OriginY, Config.OriginZ);
             NewRoundObjects();
             _menu = new McMenu();
@@ -135,7 +136,7 @@ namespace SlBridge
             ServerSpecificSettingsSync.ServerOnSettingValueReceived += OnSetting;
             StaticUnityMethods.OnUpdate += OnUpdate;
             SetLimits();
-            Logger.Info("[SlBridge] Включён");
+            Logger.Info(L.T("[SlBridge] Включён", "[SlBridge] Enabled"));
         }
 
         public override void Disable()
@@ -202,7 +203,7 @@ namespace SlBridge
             {
                 var group = ServerStatic.PermissionsHandler?.GetGroup(Config.AutoGrantGroup);
                 if (group != null) ev.Player.UserGroup = group;
-                else Logger.Warn($"[SlBridge] Группа '{Config.AutoGrantGroup}' не найдена в config_remoteadmin.txt");
+                else Logger.Warn(L.T($"[SlBridge] Группа '{Config.AutoGrantGroup}' не найдена в config_remoteadmin.txt", $"[SlBridge] Group '{Config.AutoGrantGroup}' not found in config_remoteadmin.txt"));
             }
             _menu.SendTo(ev.Player.ReferenceHub);
             if (Config.AutoStartRound && !Round.IsRoundStarted)
@@ -311,7 +312,7 @@ namespace SlBridge
             if (!_worldItems.TryGetEntity(ev.Interactable, out int id, out var stack)) return;
             bool hasRoom = _player.Items.Count() < 8
                            || (stack != null && _inv.All.Any(s => s.Id == stack.Id && s.Count < s.Max));
-            if (!hasRoom) { _player.SendHint("<size=22>Инвентарь полон</size>", 1.5f); return; }
+            if (!hasRoom) { _player.SendHint(L.T("<size=22>Инвентарь полон</size>", "<size=22>Inventory is full</size>"), 1.5f); return; }
             _mc.Send("{\"t\":\"pickup\",\"e\":" + id + "}");
         }
 
@@ -404,7 +405,7 @@ namespace SlBridge
         {
             var hub = _player.ReferenceHub;
             int idx = McMenu.Selected(hub, McMenu.CraftDrop);
-            if (idx < 0 || idx >= _menu.CraftIds.Count) { _player.SendHint("<size=22>Сначала выбери рецепт (нажми «Обновить»)</size>", 2f); return; }
+            if (idx < 0 || idx >= _menu.CraftIds.Count) { _player.SendHint(L.T("<size=22>Сначала выбери рецепт (нажми «Обновить»)</size>", "<size=22>Pick a recipe first (press “Refresh”)</size>"), 2f); return; }
             int times = McMenu.AmountFor(McMenu.Selected(hub, McMenu.CraftAmt), _menu.CraftMax[idx]);
             _mc.Send("{\"t\":\"craft\",\"rid\":\"" + MiniJson.Escape(_menu.CraftIds[idx]) + "\",\"times\":" + times + ",\"inv\":" + _inv.SnapshotJson() + "}");
         }
@@ -413,7 +414,7 @@ namespace SlBridge
         {
             var hub = _player.ReferenceHub;
             int idx = McMenu.Selected(hub, McMenu.SmeltDrop);
-            if (idx < 0 || idx >= _menu.SmeltIds.Count) { _player.SendHint("<size=22>Нечего плавить — подойди к печке и нажми «Обновить»</size>", 2f); return; }
+            if (idx < 0 || idx >= _menu.SmeltIds.Count) { _player.SendHint(L.T("<size=22>Нечего плавить — подойди к печке и нажми «Обновить»</size>", "<size=22>Nothing to smelt — walk up to a furnace and press “Refresh”</size>"), 2f); return; }
             int times = McMenu.AmountFor(McMenu.Selected(hub, McMenu.SmeltAmt), _menu.SmeltMax[idx]);
             _mc.Send("{\"t\":\"smelt\",\"rid\":\"" + MiniJson.Escape(_menu.SmeltIds[idx]) + "\",\"times\":" + times + ",\"inv\":" + _inv.SnapshotJson() + "}");
         }
@@ -436,7 +437,7 @@ namespace SlBridge
                 var rest = s.Clone();
                 rest.Count = left;
                 DropToMinecraft(rest, false);
-                _player.SendHint("<size=22>Инвентарь полон — часть выпала</size>", 1.5f);
+                _player.SendHint(L.T("<size=22>Инвентарь полон — часть выпала</size>", "<size=22>Inventory is full — some items dropped</size>"), 1.5f);
             }
         }
 
@@ -464,7 +465,7 @@ namespace SlBridge
                     var rest = s.Clone();
                     rest.Count = s.Count - i;
                     DropToMinecraft(rest, false);
-                    _player.SendHint("<size=22>Инвентарь полон — предмет выпал рядом</size>", 2f);
+                    _player.SendHint(L.T("<size=22>Инвентарь полон — предмет выпал рядом</size>", "<size=22>Inventory is full — the item dropped nearby</size>"), 2f);
                     break;
                 }
                 given++;
@@ -529,7 +530,7 @@ namespace SlBridge
             }
 
             if (_hasSpawn && pos.y < CoordMap.Origin.y + Config.VoidY)
-                TeleportTo(_spawnSl, "Ты выпал из мира — возвращаю на точку появления.");
+                TeleportTo(_spawnSl, L.T("Ты выпал из мира — возвращаю на точку появления.", "You fell out of the world — returning you to spawn."));
 
             PollMelee();
 
@@ -618,7 +619,14 @@ namespace SlBridge
             CoordMap.DirToMcAngles(cam.forward, out float yaw, out float pitch);
             float feet = CoordMap.SlToMc(_player.Position).y - FeetOffset(_player);
             _mc.Send("{\"t\":\"pose\",\"x\":" + F(eye.x) + ",\"y\":" + F(eye.y) + ",\"z\":" + F(eye.z)
-                + ",\"fy\":" + F(feet) + ",\"yaw\":" + F(yaw) + ",\"pitch\":" + F(pitch) + ",\"seq\":" + _poseSeq + "}");
+                + ",\"fy\":" + F(feet) + ",\"yaw\":" + F(yaw) + ",\"pitch\":" + F(pitch) + ",\"seq\":" + _poseSeq + ",\"lamp\":" + LampLevel() + "}");
+        }
+
+        /// <summary>Лампа (Lantern) или фонарик в руке и включены — светят в Minecraft.</summary>
+        private int LampLevel()
+        {
+            if (!(_player.CurrentItem is LightItem li) || !li.IsEmitting) return 0;
+            return li.Type == ItemType.Lantern ? Config.LanternLight : li.Type == ItemType.Flashlight ? Config.FlashlightLight : 0;
         }
 
         private void GiveLoadout(Player p)
@@ -652,7 +660,7 @@ namespace SlBridge
             switch (t)
             {
                 case "hello":
-                    Logger.Info("[SlBridge] Minecraft подключён, версия протокола " + m.Num("ver"));
+                    Logger.Info(L.T("[SlBridge] Minecraft подключён, версия протокола ", "[SlBridge] Minecraft connected, protocol version ") + m.Num("ver"));
                     break;
 
                 case "spawn":
@@ -660,7 +668,7 @@ namespace SlBridge
                     _spawnSl = CoordMap.McToSl(m.Num("x"), m.Num("y") + 0.05, m.Num("z")) + Vector3.up * FeetOffset(_player);
                     _hasSpawn = true;
                     _needSpawn = false;
-                    TeleportTo(_spawnSl, "Добро пожаловать в мир Minecraft!");
+                    TeleportTo(_spawnSl, L.T("Добро пожаловать в мир Minecraft!", "Welcome to the Minecraft world!"));
                     break;
 
                 case "teleport":
@@ -673,7 +681,7 @@ namespace SlBridge
                     _mobs.Clear();
                     _mc.Send("{\"t\":\"resync\"}");
                     string dim = m.Str("dim", "");
-                    string hint = dim.EndsWith("the_nether") ? "Незер" : dim.EndsWith("the_end") ? "Энд" : null;
+                    string hint = dim.EndsWith("the_nether") ? L.T("Незер", "Nether") : dim.EndsWith("the_end") ? L.T("Энд", "The End") : null;
                     if (!_hasSpawn) { _spawnSl = target; _hasSpawn = true; _needSpawn = false; }
                     if (dim.EndsWith("overworld")) _spawnSl = target;
                     _lastGoodPos = Vector3.zero;
@@ -732,7 +740,7 @@ namespace SlBridge
                     // предметы теперь в окне Minecraft — карты-заглушки убираем, вернутся при закрытии
                     _uiOpen = true;
                     _inv.TakeAll(_player);
-                    _player.SendHint("<size=22>Окно Minecraft: перекладывай мышкой. Закрыть — E или Esc.</size>", 3f);
+                    _player.SendHint(L.T("<size=22>Окно Minecraft: перекладывай мышкой. Закрыть — E или Esc.</size>", "<size=22>Minecraft window: drag items with the mouse. Close with E or Esc.</size>"), 3f);
                     break;
 
                 case "invSync":
@@ -752,14 +760,14 @@ namespace SlBridge
                     {
                         var res = o.TryGetValue("result", out var r) ? r as Dictionary<string, object> : null;
                         int cnt = res != null ? (int)res.Num("count", 1) : 1;
-                        labels.Add($"{res?.Str("name") ?? "?"}{(cnt > 1 ? " ×" + cnt : "")}  (можно {(int)o.Num("max")})");
+                        labels.Add(L.T($"{res?.Str("name") ?? "?"}{(cnt > 1 ? " ×" + cnt : "")}  (можно {(int)o.Num("max")})", $"{res?.Str("name") ?? "?"}{(cnt > 1 ? " ×" + cnt : "")}  (up to {(int)o.Num("max")})"));
                         ids.Add(o.Str("rid"));
                         max.Add((int)o.Num("max", 1));
                     }
                     _menu.SetCraft(_player.ReferenceHub, labels, ids, max);
                     _menu.SetStatus(_player.ReferenceHub, m.Bool("table")
-                        ? $"Верстак рядом — доступно рецептов: {ids.Count}."
-                        : $"Без верстака (только 2×2) — доступно рецептов: {ids.Count}. Подойди к верстаку для остальных.");
+                        ? L.T($"Верстак рядом — доступно рецептов: {ids.Count}.", $"Crafting table nearby — recipes available: {ids.Count}.")
+                        : L.T($"Без верстака (только 2×2) — доступно рецептов: {ids.Count}. Подойди к верстаку для остальных.", $"No crafting table (2×2 only) — recipes available: {ids.Count}. Walk up to a crafting table for the rest."));
                     break;
                 }
 
@@ -771,7 +779,7 @@ namespace SlBridge
                     {
                         var inp = o.TryGetValue("input", out var a) ? a as Dictionary<string, object> : null;
                         var res = o.TryGetValue("result", out var r) ? r as Dictionary<string, object> : null;
-                        labels.Add($"{inp?.Str("name")} → {res?.Str("name")}  (можно {(int)o.Num("max")})");
+                        labels.Add(L.T($"{inp?.Str("name")} → {res?.Str("name")}  (можно {(int)o.Num("max")})", $"{inp?.Str("name")} → {res?.Str("name")}  (up to {(int)o.Num("max")})"));
                         ids.Add(o.Str("rid"));
                         max.Add((int)o.Num("max", 1));
                     }
@@ -786,7 +794,7 @@ namespace SlBridge
                 case "cmdOut":
                 {
                     var lines = m.Arr("lines").OfType<string>().ToList();
-                    string text = lines.Count > 0 ? string.Join("\n", lines) : "(без ответа)";
+                    string text = lines.Count > 0 ? string.Join("\n", lines) : L.T("(без ответа)", "(no output)");
                     if (_cmdPlayer != null && _cmdPlayer.IsOnline)
                     {
                         _cmdPlayer.SendConsoleMessage("[Minecraft] /" + m.Str("cmd") + "\n" + text, "yellow");
@@ -833,13 +841,13 @@ namespace SlBridge
             if (_player == null) return;
             if (!m.Bool("ok"))
             {
-                _player.SendHint("<size=22>" + m.Str("msg", "Не получилось") + "</size>", 2f);
+                _player.SendHint("<size=22>" + m.Str("msg", L.T("Не получилось", "Failed")) + "</size>", 2f);
                 return;
             }
             foreach (var c in m.Arr("consume").OfType<Dictionary<string, object>>())
                 if (!_inv.Consume(_player, c.Str("id"), (int)c.Num("count")))
                 {
-                    _player.SendHint("<size=22>Инвентарь изменился — попробуй ещё раз</size>", 2f);
+                    _player.SendHint(L.T("<size=22>Инвентарь изменился — попробуй ещё раз</size>", "<size=22>Your inventory changed — try again</size>"), 2f);
                     RequestLists();
                     return;
                 }
@@ -850,8 +858,8 @@ namespace SlBridge
                 names.Add($"{s.Name} ×{s.Count}");
                 GiveBack(s);
             }
-            _player.SendHint("<size=22>Получено: " + string.Join(", ", names) + "</size>", 2.5f);
-            _menu.SetStatus(_player.ReferenceHub, "Готово: " + string.Join(", ", names));
+            _player.SendHint(L.T("<size=22>Получено: ", "<size=22>Received: ") + string.Join(", ", names) + "</size>", 2.5f);
+            _menu.SetStatus(_player.ReferenceHub, L.T("Готово: ", "Done: ") + string.Join(", ", names));
         }
     }
 }

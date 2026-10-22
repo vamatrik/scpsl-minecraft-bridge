@@ -15,7 +15,10 @@
    "minecraft:custom_data": {
     "slItem": "GunRevolver"
    },
-   "minecraft:item_name": ".44 Револьвер",
+   "minecraft:item_name": {
+    "translate": "item.slbridge.gunrevolver",
+    "fallback": ".44 Revolver"
+   },
    "minecraft:item_model": "minecraft:crossbow",
    "minecraft:enchantment_glint_override": true,
    "minecraft:rarity": "rare"

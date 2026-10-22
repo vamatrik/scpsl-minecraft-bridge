@@ -42,7 +42,7 @@ public final class LaunchRequest {
             req = JsonParser.parseString(Files.readString(f, StandardCharsets.UTF_8)).getAsJsonObject();
             Files.deleteIfExists(f); // одноразово: следующий ручной запуск Minecraft не уйдёт сам в мир
         } catch (Exception e) {
-            SlBridgeClient.LOG.warn("[SLBridge] Не прочитал запрос лаунчера", e);
+            SlBridgeClient.LOG.warn(Lang.t("[SLBridge] Не прочитал запрос лаунчера", "[SLBridge] Could not read the launcher request"), e);
             return;
         }
         String action = req.has("action") ? req.get("action").getAsString() : "open";
@@ -50,21 +50,21 @@ public final class LaunchRequest {
             if ("create".equals(action)) create(mc, req);
             else open(mc, req.get("world").getAsString());
         } catch (Exception e) {
-            SlBridgeClient.LOG.error("[SLBridge] Не удалось выполнить запрос лаунчера", e);
+            SlBridgeClient.LOG.error(Lang.t("[SLBridge] Не удалось выполнить запрос лаунчера", "[SLBridge] Could not run the launcher request"), e);
         }
     }
 
     private static void open(Minecraft mc, String folder) {
         if (!mc.getLevelSource().levelExists(folder)) {
-            SlBridgeClient.LOG.warn("[SLBridge] Мир «{}» не найден", folder);
+            SlBridgeClient.LOG.warn(Lang.t("[SLBridge] Мир «{}» не найден", "[SLBridge] World \"{}\" not found"), folder);
             return;
         }
-        SlBridgeClient.LOG.info("[SLBridge] Открываю мир «{}» (по запросу лаунчера)", folder);
+        SlBridgeClient.LOG.info(Lang.t("[SLBridge] Открываю мир «{}» (по запросу лаунчера)", "[SLBridge] Opening world \"{}\" (launcher request)"), folder);
         mc.createWorldOpenFlows().openWorld(folder, () -> mc.gui.setScreen(new TitleScreen()));
     }
 
     private static void create(Minecraft mc, JsonObject r) {
-        String name = r.has("name") ? r.get("name").getAsString() : "Мир SCP";
+        String name = r.has("name") ? r.get("name").getAsString() : Lang.t("Мир SCP", "SCP World");
         // папка: имя без запрещённых символов, уникальное
         String folder = name.replaceAll("[\\\\/:*?\"<>|.]", "_").trim();
         if (folder.isEmpty()) folder = "World";
@@ -92,7 +92,7 @@ public final class LaunchRequest {
             case "amplified" -> WorldPresets.AMPLIFIED;
             default -> WorldPresets.NORMAL;
         };
-        SlBridgeClient.LOG.info("[SLBridge] Создаю мир «{}» (папка «{}»): {}, {}, читы={}, тип={}", name, folder, mode, diff, cheats, preset);
+        SlBridgeClient.LOG.info(Lang.t("[SLBridge] Создаю мир «{}» (папка «{}»): {}, {}, читы={}, тип={}", "[SLBridge] Creating world \"{}\" (folder \"{}\"): {}, {}, cheats={}, type={}"), name, folder, mode, diff, cheats, preset);
         final ResourceKey<WorldPreset> p = preset;
         mc.createWorldOpenFlows().createFreshLevel(folder, settings, options,
                 provider -> provider.lookupOrThrow(Registries.WORLD_PRESET).getOrThrow(p).value().createWorldDimensions(),
@@ -117,7 +117,7 @@ public final class LaunchRequest {
             }
             Files.writeString(f, new Gson().toJson(out), StandardCharsets.UTF_8);
         } catch (Exception e) {
-            SlBridgeClient.LOG.warn("[SLBridge] Не записал недавние миры", e);
+            SlBridgeClient.LOG.warn(Lang.t("[SLBridge] Не записал недавние миры", "[SLBridge] Could not save recent worlds"), e);
         }
     }
 

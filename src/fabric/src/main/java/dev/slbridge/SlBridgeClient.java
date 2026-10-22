@@ -58,11 +58,14 @@ public final class SlBridgeClient implements ClientModInitializer {
 
         ClientTickEvents.END_CLIENT_TICK.register(this::clientTick);
         ServerTickEvents.END_SERVER_TICK.register(server -> {
-            if (!isBridgeActive()) return;
+            if (!isBridgeActive()) { serverBridge.clearLamp(); return; }
             serverBridge.tick(server);
             ServerPlayer sp = ServerBridge.player(server);
             if (sp != null) actions.tick(sp.level());
         });
+
+        // выход из мира — убрать свет лампы, чтобы не остался в сохранении
+        net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STOPPING.register(server -> serverBridge.clearLamp());
 
         // Урон игроку Minecraft не наносится — он пересылается в SCP:SL (×5) и снимается там.
         ServerLivingEntityEvents.ALLOW_DAMAGE.register((entity, source, amount) -> {
@@ -115,6 +118,7 @@ public final class SlBridgeClient implements ClientModInitializer {
             if (savedBob != null) { o.bobView().set(savedBob); o.damageTiltStrength().set(savedTilt); savedBob = null; }
         });
         Pose.active = false;
+        Pose.lamp = 0;
         uiMode = false;
         Pose.minSeq = 0;
         Pose.lastSeq = 0;
@@ -137,9 +141,10 @@ public final class SlBridgeClient implements ClientModInitializer {
                 mc.execute(collisions::reset);
                 serverBridge.resetStreams();
             }
-            case "pose" -> Pose.set(m.get("x").getAsDouble(), m.get("y").getAsDouble(), m.get("z").getAsDouble(),
+            case "pose" -> { Pose.lamp = m.has("lamp") ? m.get("lamp").getAsInt() : 0; Pose.set(m.get("x").getAsDouble(), m.get("y").getAsDouble(), m.get("z").getAsDouble(),
                     m.get("yaw").getAsFloat(), m.get("pitch").getAsFloat(), m.has("seq") ? m.get("seq").getAsInt() : 0,
                     m.has("fy") ? m.get("fy").getAsDouble() : Double.NaN);
+            }
             case "spawnReq" -> mc.execute(() -> {
                 LocalPlayer p = mc.player;
                 Vec3 h = home != null ? home : (p != null ? p.position() : null);

@@ -13,7 +13,10 @@
    "minecraft:custom_data": {
     "slItem": "SCP1853"
    },
-   "minecraft:item_name": "SCP-1853",
+   "minecraft:item_name": {
+    "translate": "item.slbridge.scp1853",
+    "fallback": "SCP-1853"
+   },
    "minecraft:item_model": "minecraft:dragon_breath",
    "minecraft:enchantment_glint_override": true,
    "minecraft:rarity": "rare"

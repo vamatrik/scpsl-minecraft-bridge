@@ -15,7 +15,10 @@
    "minecraft:custom_data": {
     "slItem": "Ammo44cal"
    },
-   "minecraft:item_name": "Патроны .44 (80)",
+   "minecraft:item_name": {
+    "translate": "item.slbridge.ammo44cal",
+    "fallback": ".44 ammo (80)"
+   },
    "minecraft:item_model": "minecraft:iron_nugget",
    "minecraft:enchantment_glint_override": true,
    "minecraft:rarity": "rare"

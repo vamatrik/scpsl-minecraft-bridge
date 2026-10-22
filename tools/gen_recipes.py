@@ -3,7 +3,7 @@
 Запуск: python3 gen_recipes.py <fabric_resources_dir> <launcher_dir> <readme_fragment.md> [vanilla_recipe_dir]"""
 import json, os, sys, math, glob
 
-RES, LAUNCHER, README = sys.argv[1], sys.argv[2], sys.argv[3]
+RES, LAUNCHER, README = sys.argv[1], sys.argv[2], sys.argv[3]  # README: префикс, пишутся <README>.ru.md и <README>.en.md
 VANILLA = sys.argv[4] if len(sys.argv) > 4 else None
 
 # Обозначения в сетках: символ -> (id, подпись, цвет для лаунчера)
@@ -34,7 +34,9 @@ LEG = {
     'Q': ('minecraft:glass_pane',  'Стеклянная панель','#CFE8F0'),
     'A': ('minecraft:glass',       'Стекло',          '#DDF0F5'),
     'Z': ('minecraft:copper_ingot','Медный слиток',   '#C87850'),
+    'J': ('minecraft:coal',        'Уголь',           '#2B2B2B'),
 }
+LEG_EN = {'#': 'Iron ingot', 'B': 'Iron block', 'D': 'Diamond', 'N': 'Netherite ingot', 'G': 'Gunpowder', 'S': 'Stick', 'R': 'Redstone', 'T': 'Torch', 'X': 'TNT', 'L': 'Glowstone dust', 'U': 'Sugar', 'O': 'Glass bottle', 'C': 'Cocoa beans', 'E': 'Spider eye', 'M': 'Slimeball', 'H': 'Leather cap', 'P': 'Ender pearl', 'F': 'Flower pot', 'I': 'Packed ice', 'Y': 'Blue ice', 'W': 'Bowl', 'K': 'Note block', 'V': 'Eye of ender', 'Q': 'Glass pane', 'A': 'Glass', 'Z': 'Copper ingot', 'J': 'Coal'}
 
 # (ключ ItemType SL, имя, иконка, группа, форма|список для бесформенных, кол-во)
 SHAPED = [
@@ -71,6 +73,7 @@ SHAPED = [
     ('Radio',      'Рация',             'compass',  'Снаряжение', ['#', 'R', '#'], 1),
     ('Flashlight', 'Фонарик',           'lantern',  'Снаряжение', ['T', '#', '#'], 1),
     ('SCP1344',    'SCP-1344 (очки)',   'spyglass', 'SCP', ['QVQ'], 1),
+    ('Lantern',    'Лампа',             'lantern',  'Снаряжение', ['JJJ', 'SSS', 'JJJ'], 1),
 ]
 SHAPELESS = [
     ('GrenadeHE',   'Осколочная граната', 'fire_charge', 'Снаряжение', ['#', 'X'], 1),
@@ -90,6 +93,9 @@ SHAPELESS = [
     ('SCP1576',     'SCP-1576 (граммофон)','jukebox',   'SCP', ['K', 'P'], 1),
 ]
 
+NAMES_EN = {'GunCOM15': 'COM-15', 'GunCOM18': 'COM-18', 'GunCom45': 'COM-45', 'GunRevolver': '.44 Revolver', 'GunFSP9': 'FSP-9', 'GunCrossvec': 'Crossvec', 'GunE11SR': 'MTF-E11-SR', 'GunAK': 'AK', 'GunA7': 'A7', 'GunShotgun': 'Shotgun', 'GunLogicer': 'Logicer', 'GunFRMG0': 'FR-MG-0', 'GunSCP127': 'SCP-127', 'ParticleDisruptor': 'Particle Disruptor', 'MicroHID': 'Micro H.I.D.', 'Jailbird': 'Jailbird', 'SCP1509': 'Machete (SCP-1509)', 'Ammo9x19': '9x19 ammo (80)', 'Ammo556x45': '5.56x45 ammo (80)', 'Ammo762x39': '7.62x39 ammo (80)', 'Ammo12gauge': '12 gauge ammo (80)', 'Ammo44cal': '.44 ammo (80)', 'ArmorLight': 'Light Armor', 'ArmorCombat': 'Combat Armor', 'ArmorHeavy': 'Heavy Armor', 'Radio': 'Radio', 'Flashlight': 'Flashlight', 'SCP1344': 'SCP-1344 (goggles)', 'Lantern': 'Lantern', 'GrenadeHE': 'Frag Grenade', 'GrenadeFlash': 'Flashbang', 'Painkillers': 'Painkillers', 'Adrenaline': 'Adrenaline', 'SCP500': 'SCP-500 (panacea)', 'SCP207': 'SCP-207', 'AntiSCP207': 'Anti-SCP-207', 'SCP018': 'SCP-018 (ball)', 'SCP268': 'SCP-268 (cap)', 'SCP244a': 'SCP-244-A (vase)', 'SCP244b': 'SCP-244-B (vase)', 'SCP1853': 'SCP-1853', 'SCP2176': 'SCP-2176 (bulb)', 'SCP330': 'SCP-330 (candy)', 'SCP1576': 'SCP-1576 (gramophone)', 'Medkit': 'Medkit'}
+GROUPS_EN = {'Оружие': 'Weapons', 'Особое оружие': 'Special weapons', 'Патроны': 'Ammo', 'Броня': 'Armor', 'Снаряжение': 'Equipment', 'SCP': 'SCP', 'Медицина': 'Medical'}
+
 # еда -> голод (сколько единиц восстанавливает); 10 единиц = 1 аптечка
 FOOD = {
  'apple':4,'baked_potato':5,'beef':3,'beetroot':1,'beetroot_soup':6,'bread':5,'carrot':3,'chicken':2,
@@ -98,6 +104,9 @@ FOOD = {
  'golden_carrot':6,'honey_bottle':6,'melon_slice':2,'mushroom_stew':6,'mutton':2,'poisonous_potato':2,
  'porkchop':3,'potato':1,'pufferfish':1,'pumpkin_pie':8,'rabbit':3,'rabbit_stew':10,'rotten_flesh':4,
  'salmon':2,'spider_eye':2,'suspicious_stew':6,'sweet_berries':2,'tropical_fish':1,
+}
+FOOD_EN = {
+ 'apple':'Apple','baked_potato':'Baked potato','beef':'Raw beef','beetroot':'Beetroot','beetroot_soup':'Beetroot soup','bread':'Bread','carrot':'Carrot','chicken':'Raw chicken','chorus_fruit':'Chorus fruit','cod':'Raw cod','cooked_beef':'Steak','cooked_chicken':'Cooked chicken','cooked_cod':'Cooked cod','cooked_mutton':'Cooked mutton','cooked_porkchop':'Cooked porkchop','cooked_rabbit':'Cooked rabbit','cooked_salmon':'Cooked salmon','cookie':'Cookie','dried_kelp':'Dried kelp','glow_berries':'Glow berries','golden_carrot':'Golden carrot','honey_bottle':'Honey bottle','melon_slice':'Melon slice','mushroom_stew':'Mushroom stew','mutton':'Raw mutton','poisonous_potato':'Poisonous potato','porkchop':'Raw porkchop','potato':'Potato','pufferfish':'Pufferfish','pumpkin_pie':'Pumpkin pie','rabbit':'Raw rabbit','rabbit_stew':'Rabbit stew','rotten_flesh':'Rotten flesh','salmon':'Raw salmon','spider_eye':'Spider eye','suspicious_stew':'Suspicious stew','sweet_berries':'Sweet berries','tropical_fish':'Tropical fish',
 }
 FOOD_RU = {
  'apple':'Яблоко','baked_potato':'Печёный картофель','beef':'Сырая говядина','beetroot':'Свёкла','beetroot_soup':'Свекольный суп',
@@ -111,10 +120,13 @@ FOOD_RU = {
  'suspicious_stew':'Подозрительное рагу','sweet_berries':'Сладкие ягоды','tropical_fish':'Тропическая рыба',
 }
 
+LANG_RU, LANG_EN = {}, {}
 def result(key, name, icon, count):
+    tkey = "item.slbridge." + key.lower()
+    LANG_RU[tkey] = name; LANG_EN[tkey] = NAMES_EN[key]
     return {"id": "minecraft:paper", "count": count, "components": {
         "minecraft:custom_data": {"slItem": key},
-        "minecraft:item_name": name,
+        "minecraft:item_name": {"translate": tkey, "fallback": NAMES_EN[key]},
         "minecraft:item_model": "minecraft:" + icon,
         "minecraft:enchantment_glint_override": True,
         "minecraft:rarity": "rare"}}
@@ -220,54 +232,71 @@ for p, o in out.items():
     json.dump(o, open(fp, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
 print(len(out), 'рецептов записано')
 
+# ── языковые файлы мода ──
+for code, d in (('ru_ru', LANG_RU), ('en_us', LANG_EN)):
+    fp = os.path.join(RES, 'assets', 'slbridge', 'lang', code + '.json'); os.makedirs(os.path.dirname(fp), exist_ok=True)
+    json.dump(d, open(fp, 'w', encoding='utf-8'), ensure_ascii=False, indent=1, sort_keys=True)
+
 # ── таблица для лаунчера (C#) ──
+APPLES = {'minecraft:golden_apple': ('Золотое яблоко', 'Golden apple'), 'minecraft:enchanted_golden_apple': ('Зачарованное золотое яблоко', 'Enchanted golden apple')}
 def cs(s): return '"' + s.replace('\\', '\\\\').replace('"', '\\"') + '"'
 L = ['// Сгенерировано tools/gen_recipes.py — не править руками.', 'namespace SlBridge.Launcher', '{',
      '    internal static class RecipeData', '    {',
-     '        public sealed record Ing(string Label, string Color);',
-     '        public sealed record Rec(string Group, string Name, bool Shaped, string[] Grid, string Note);',
+     '        public sealed record Ing(string Ru, string En, string Color);',
+     '        public sealed record Rec(string GroupRu, string GroupEn, string Ru, string En, bool Shaped, string[] Grid, string NoteRu, string NoteEn);',
      '        public static readonly System.Collections.Generic.Dictionary<char, Ing> Legend = new()', '        {']
-for c, (i, lab, col) in LEG.items(): L.append(f"            [{repr(c)}] = new({cs(lab)}, {cs(col)}),")
+for c, (i, lab, col) in LEG.items(): L.append(f"            [{repr(c)}] = new({cs(lab)}, {cs(LEG_EN[c])}, {cs(col)}),")
 L += ['        };', '        public static readonly Rec[] All =', '        {']
 for t in table:
     grid = t['grid'] if t['shaped'] else [''.join(c if len(c) == 1 else '?' for c in t['items'])]
-    note = ''
-    if not t['shaped'] and any(len(c) > 1 for c in t['items']):
-        note = {'Adrenaline': 'Золотое яблоко', 'SCP500': 'Зачарованное золотое яблоко'}.get(t['key'], '')
-    L.append(f"            new({cs(t['group'])}, {cs(t['name'])}, {'true' if t['shaped'] else 'false'}, new[] {{ {', '.join(cs(r) for r in grid)} }}, {cs(note)}),")
-L += ['        };', '        public static readonly (string Food, int Hunger, int Need, int Out)[] Medkits =', '        {']
-for food, n, k, o in medkits: L.append(f"            ({cs(FOOD_RU[food])}, {n}, {k}, {o}),")
+    nr = ne = ''
+    if not t['shaped']:
+        for c in t['items']:
+            if c in APPLES: nr, ne = APPLES[c]
+    L.append(f"            new({cs(t['group'])}, {cs(GROUPS_EN[t['group']])}, {cs(t['name'])}, {cs(NAMES_EN[t['key']])}, {'true' if t['shaped'] else 'false'}, new[] {{ {', '.join(cs(r) for r in grid)} }}, {cs(nr)}, {cs(ne)}),")
+L += ['        };', '        public static readonly (string Ru, string En, int Hunger, int Need, int Out)[] Medkits =', '        {']
+for food, n, k, o in medkits: L.append(f"            ({cs(FOOD_RU[food])}, {cs(FOOD_EN[food])}, {n}, {k}, {o}),")
 L += ['        };', '    }', '}']
 open(os.path.join(LAUNCHER, 'RecipeData.g.cs'), 'w', encoding='utf-8').write('\n'.join(L) + '\n')
 
-# ── фрагмент README ──
-R = []
-def grid_md(rows):
-    rows = [r.ljust(3) for r in rows] + ['   '] * (3 - len(rows))
-    sym = lambda c: '·' if c == ' ' else c
-    return '\n'.join('    ' + ' '.join(sym(c) for c in r) for r in rows)
-groups = []
-for t in table:
-    if t['group'] not in groups: groups.append(t['group'])
-R.append('Все предметы SL крафтятся на верстаке Minecraft (или через быстрый крафт в меню Server-specific). Готовый предмет сразу становится настоящим предметом SCP:SL в инвентаре; патроны добавляются по 80 штук. Форму можно отражать по горизонтали, а маленькие формы ставить в любое место сетки. Ванильные железная и алмазная кирасы заменены лёгкой и боевой бронёй SL (в мосте броня Minecraft всё равно берётся из брони SL). Рисунки есть и в лаунчере, вкладка «⚒ Крафты».\n')
-R.append('Обозначения: ' + ', '.join(f'`{c}` — {lab}' for c, (i, lab, col) in LEG.items() if any(c in ''.join(t.get("grid", t.get("items", []))) for t in table)) + ', `·` — пусто.\n')
+# ── фрагменты README (ru и en) ──
+TXT = {
+ 'ru': dict(intro='Все предметы SL крафтятся на верстаке Minecraft (или через быстрый крафт в меню Server-specific). Готовый предмет сразу становится настоящим предметом SCP:SL в инвентаре; патроны добавляются по 80 штук. Форму можно отражать по горизонтали, а маленькие формы ставить в любое место сетки. Ванильные железная и алмазная кирасы заменены лёгкой и боевой бронёй SL (в мосте броня Minecraft всё равно берётся из брони SL). В темноте Minecraft темно по-настоящему — скрафти лампу и держи её включённой в руке (фонарик тоже светит, но слабее). Рисунки есть и в лаунчере, вкладка «⚒ Крафты».\n',
+            legend='Обозначения', empty='пусто', anyorder='в любом порядке', medkits='Аптечки из еды',
+            medtext='10 единиц голода = 1 аптечка. Кладёшь в сетку несколько одинаковых продуктов в любом порядке:\n',
+            head='| Еда | Голод | Сколько положить | Аптечек |'),
+ 'en': dict(intro='Every SL item is crafted on a Minecraft crafting table (or with quick crafting in the Server-specific menu). The result immediately becomes a real SCP:SL item in your inventory; ammo is added 80 at a time. Shapes can be mirrored horizontally, and small shapes can go anywhere in the grid. The vanilla iron and diamond chestplates are replaced by SL light and combat armor (in the bridge, Minecraft armor comes from your SL armor anyway). Darkness in Minecraft is real — craft a lantern and hold it lit in your hand (a flashlight works too, but is dimmer). The drawings are also in the launcher, “⚒ Crafting” tab.\n',
+            legend='Legend', empty='empty', anyorder='in any order', medkits='Medkits from food',
+            medtext='10 hunger points = 1 medkit. Put several identical food items into the grid in any order:\n',
+            head='| Food | Hunger | How many | Medkits |'),
+}
 def rows3(rows):
     rows = [r.ljust(3) for r in rows] + ['   '] * (3 - len(rows))
     return [' '.join('·' if c == ' ' else c for c in r) for r in rows]
-for g in groups:
-    R.append(f'\n#### {g}\n')
-    shaped = [x for x in table if x['group'] == g and x['shaped']]
-    for i in range(0, len(shaped), 3):
-        chunk = shaped[i:i + 3]
-        w = max(len(t['name']) for t in chunk) + 4
-        lines = [''.join(t['name'].ljust(w) for t in chunk).rstrip()]
-        grids = [rows3(t['grid']) for t in chunk]
-        for y in range(3): lines.append(''.join(gr[y].ljust(w) for gr in grids).rstrip())
-        R.append('```\n' + '\n'.join(lines) + '\n```')
-    for t in [x for x in table if x['group'] == g and not x['shaped']]:
-        parts = [LEG[c][1] if len(c) == 1 else {'minecraft:golden_apple': 'Золотое яблоко', 'minecraft:enchanted_golden_apple': 'Зачарованное золотое яблоко'}[c] for c in t['items']]
-        R.append(f"- **{t['name']}** — в любом порядке: {' + '.join(parts)}")
-R.append('\n#### Аптечки из еды\n\n10 единиц голода = 1 аптечка. Кладёшь в сетку несколько одинаковых продуктов в любом порядке:\n')
-R.append('| Еда | Голод | Сколько положить | Аптечек |\n|---|---|---|---|')
-for food, n, k, o in medkits: R.append(f'| {FOOD_RU[food]} | {n} | {k} | {o} |')
-open(README, 'w', encoding='utf-8').write('\n'.join(R) + '\n')
+groups = []
+for t in table:
+    if t['group'] not in groups: groups.append(t['group'])
+used_chars = set(''.join(''.join(t.get('grid', [])) + ''.join(c for c in t.get('items', []) if len(c) == 1) for t in table))
+for lang, X in TXT.items():
+    en = lang == 'en'
+    nm = (lambda t: NAMES_EN[t['key']]) if en else (lambda t: t['name'])
+    lab = (lambda c: LEG_EN[c]) if en else (lambda c: LEG[c][1])
+    R = [X['intro']]
+    R.append(X['legend'] + ': ' + ', '.join(f'`{c}` — {lab(c)}' for c in LEG if c in used_chars) + f", `·` — {X['empty']}.\n")
+    for g in groups:
+        R.append(f"\n### {GROUPS_EN[g] if en else g}\n")
+        shaped = [x for x in table if x['group'] == g and x['shaped']]
+        for i in range(0, len(shaped), 3):
+            chunk = shaped[i:i + 3]
+            w = max(len(nm(t)) for t in chunk) + 4
+            lines = [''.join(nm(t).ljust(w) for t in chunk).rstrip()]
+            grids = [rows3(t['grid']) for t in chunk]
+            for y in range(3): lines.append(''.join(gr[y].ljust(w) for gr in grids).rstrip())
+            R.append('```\n' + '\n'.join(lines) + '\n```')
+        for t in [x for x in table if x['group'] == g and not x['shaped']]:
+            parts = [lab(c) if len(c) == 1 else APPLES[c][1 if en else 0] for c in t['items']]
+            R.append(f"- **{nm(t)}** — {X['anyorder']}: {' + '.join(parts)}")
+    R.append(f"\n### {X['medkits']}\n\n{X['medtext']}")
+    R.append(X['head'] + '\n|---|---|---|---|')
+    for food, n, k, o in medkits: R.append(f'| {(FOOD_EN if en else FOOD_RU)[food]} | {n} | {k} | {o} |')
+    open(f'{README}.{lang}.md', 'w', encoding='utf-8').write('\n'.join(R) + '\n')

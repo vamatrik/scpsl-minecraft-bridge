@@ -6,6 +6,9 @@ namespace SlBridge
 {
     public sealed class Config
     {
+        [Description("Язык / language: auto (как выбрано в лаунчере), ru или en.")]
+        public string Language { get; set; } = "auto";
+
         [Description("Адрес и порт мода Minecraft (config/slbridge.properties → port).")]
         public string MinecraftHost { get; set; } = "127.0.0.1";
         public int MinecraftPort { get; set; } = 25599;
@@ -55,6 +58,11 @@ namespace SlBridge
         public float BackdropHalfSize { get; set; } = 2.5f;
         [Description("Высота центра комнаты над точкой игрока (примерно уровень глаз).")]
         public float BackdropCenterHeight { get; set; } = 0.6f;
+
+        [Description("Яркость света в Minecraft от лампы (Lantern) в руке, 0–15. Без лампы в темноте темно.")]
+        public int LanternLight { get; set; } = 14;
+        [Description("Яркость света в Minecraft от включённого фонарика в руке, 0–15.")]
+        public int FlashlightLight { get; set; } = 11;
 
         [Description("Свет над игроком, чтобы оружие в руках не было чёрным.")]
         public float LightIntensity { get; set; } = 1.5f;

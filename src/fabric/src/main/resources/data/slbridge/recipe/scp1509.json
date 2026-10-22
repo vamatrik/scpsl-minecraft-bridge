@@ -17,7 +17,10 @@
    "minecraft:custom_data": {
     "slItem": "SCP1509"
    },
-   "minecraft:item_name": "Мачете (SCP-1509)",
+   "minecraft:item_name": {
+    "translate": "item.slbridge.scp1509",
+    "fallback": "Machete (SCP-1509)"
+   },
    "minecraft:item_model": "minecraft:iron_sword",
    "minecraft:enchantment_glint_override": true,
    "minecraft:rarity": "rare"

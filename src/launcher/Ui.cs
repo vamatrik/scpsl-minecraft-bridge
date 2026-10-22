@@ -5,6 +5,13 @@ using System.Windows.Forms;
 
 namespace SlBridge.Launcher
 {
+    /// <summary>Перевод: L.T("по-русски", "in English").</summary>
+    internal static class L
+    {
+        public static bool En;
+        public static string T(string ru, string en) => En ? en : ru;
+    }
+
     /// <summary>Тёмная тема и мелкие элементы интерфейса.</summary>
     internal static class Ui
     {

@@ -15,7 +15,7 @@ namespace SlBridge
         public const int KeyUse = 9001, Status = 9002, KeyInv = 9003;
         public const int CraftDrop = 9010, CraftAmt = 9011, CraftBtn = 9012, RefreshBtn = 9013;
         public const int SmeltDrop = 9020, SmeltAmt = 9021, SmeltBtn = 9022;
-        private static readonly string[] Amounts = { "×1", "×4", "×16", "Максимум" };
+        private readonly string[] Amounts = { "×1", "×4", "×16", L.T("Максимум", "Max") };
 
         public readonly SSKeybindSetting Use, InvKey;
         public readonly SSTextArea StatusText;
@@ -31,27 +31,27 @@ namespace SlBridge
 
         public McMenu()
         {
-            Use = new SSKeybindSetting(KeyUse, "Взаимодействие Minecraft", KeyCode.E, true, false,
-                "Поставить блок из руки, нажать дверь/рычаг, съесть еду, использовать предмет (огниво, ведро, око Эндера), открыть верстак, печь, сундук — откроется окно Minecraft.");
-            InvKey = new SSKeybindSetting(KeyInv, "Инвентарь Minecraft (крафт 2×2)", KeyCode.I, true, false,
-                "Открыть инвентарь Minecraft с твоими предметами: перекладывать, крафтить 2×2. Закрыть — E или Esc.");
-            StatusText = new SSTextArea(Status, "Подойди к верстаку или печке и нажми E — здесь появятся рецепты.", SSTextArea.FoldoutMode.NotCollapsable);
-            CraftList = new SSDropdownSetting(CraftDrop, "Рецепт", new[] { "(нажми «Обновить»)" }, 0, SSDropdownSetting.DropdownEntryType.Scrollable);
-            CraftCount = new SSDropdownSetting(CraftAmt, "Сколько раз", Amounts, 0);
-            CraftButton = new SSButton(CraftBtn, "Крафт", "Скрафтить");
-            Refresh = new SSButton(RefreshBtn, "Списки рецептов", "Обновить");
-            SmeltList = new SSDropdownSetting(SmeltDrop, "Что плавить", new[] { "(нужна печь рядом)" }, 0, SSDropdownSetting.DropdownEntryType.Scrollable);
-            SmeltCount = new SSDropdownSetting(SmeltAmt, "Сколько", Amounts, 0);
-            SmeltButton = new SSButton(SmeltBtn, "Печка", "Переплавить");
+            Use = new SSKeybindSetting(KeyUse, L.T("Взаимодействие Minecraft", "Minecraft interact"), KeyCode.E, true, false,
+                L.T("Поставить блок из руки, нажать дверь/рычаг, съесть еду, использовать предмет (огниво, ведро, око Эндера), открыть верстак, печь, сундук — откроется окно Minecraft.", "Place the held block, press a door/lever, eat food, use an item (flint and steel, bucket, eye of ender), open a crafting table, furnace or chest — a Minecraft window opens."));
+            InvKey = new SSKeybindSetting(KeyInv, L.T("Инвентарь Minecraft (крафт 2×2)", "Minecraft inventory (2×2 crafting)"), KeyCode.I, true, false,
+                L.T("Открыть инвентарь Minecraft с твоими предметами: перекладывать, крафтить 2×2. Закрыть — E или Esc.", "Open the Minecraft inventory with your items: move them around, craft 2×2. Close with E or Esc."));
+            StatusText = new SSTextArea(Status, L.T("Подойди к верстаку или печке и нажми E — здесь появятся рецепты.", "Walk up to a crafting table or furnace and press E — recipes will appear here."), SSTextArea.FoldoutMode.NotCollapsable);
+            CraftList = new SSDropdownSetting(CraftDrop, L.T("Рецепт", "Recipe"), new[] { L.T("(нажми «Обновить»)", "(press “Refresh”)") }, 0, SSDropdownSetting.DropdownEntryType.Scrollable);
+            CraftCount = new SSDropdownSetting(CraftAmt, L.T("Сколько раз", "How many times"), Amounts, 0);
+            CraftButton = new SSButton(CraftBtn, L.T("Крафт", "Craft"), L.T("Скрафтить", "Craft it"));
+            Refresh = new SSButton(RefreshBtn, L.T("Списки рецептов", "Recipe lists"), L.T("Обновить", "Refresh"));
+            SmeltList = new SSDropdownSetting(SmeltDrop, L.T("Что плавить", "What to smelt"), new[] { L.T("(нужна печь рядом)", "(you need a furnace nearby)") }, 0, SSDropdownSetting.DropdownEntryType.Scrollable);
+            SmeltCount = new SSDropdownSetting(SmeltAmt, L.T("Сколько", "How many"), Amounts, 0);
+            SmeltButton = new SSButton(SmeltBtn, L.T("Печка", "Furnace"), L.T("Переплавить", "Smelt"));
             All = new ServerSpecificSettingBase[]
             {
                 new SSGroupHeader("Minecraft"),
                 Use,
                 InvKey,
                 StatusText,
-                new SSGroupHeader("Быстрый крафт (без окна)"),
+                new SSGroupHeader(L.T("Быстрый крафт (без окна)", "Quick crafting (no window)")),
                 CraftList, CraftCount, CraftButton, Refresh,
-                new SSGroupHeader("Быстрая плавка (без окна)"),
+                new SSGroupHeader(L.T("Быстрая плавка (без окна)", "Quick smelting (no window)")),
                 SmeltList, SmeltCount, SmeltButton,
             };
         }
@@ -80,14 +80,14 @@ namespace SlBridge
         {
             CraftIds = ids;
             CraftMax = max;
-            CraftList.SendDropdownUpdate(labels.Count > 0 ? labels.ToArray() : new[] { "(нечего крафтить из того, что есть)" }, true, h => h == hub);
+            CraftList.SendDropdownUpdate(labels.Count > 0 ? labels.ToArray() : new[] { L.T("(нечего крафтить из того, что есть)", "(nothing to craft from what you have)") }, true, h => h == hub);
         }
 
         public void SetSmelt(ReferenceHub hub, List<string> labels, List<string> ids, List<int> max, bool furnace)
         {
             SmeltIds = ids;
             SmeltMax = max;
-            string empty = furnace ? "(нечего плавить или нет топлива)" : "(нужна печь рядом)";
+            string empty = furnace ? L.T("(нечего плавить или нет топлива)", "(nothing to smelt or no fuel)") : L.T("(нужна печь рядом)", "(you need a furnace nearby)");
             SmeltList.SendDropdownUpdate(labels.Count > 0 ? labels.ToArray() : new[] { empty }, true, h => h == hub);
         }
 

@@ -12,7 +12,10 @@
    "minecraft:custom_data": {
     "slItem": "GrenadeHE"
    },
-   "minecraft:item_name": "Осколочная граната",
+   "minecraft:item_name": {
+    "translate": "item.slbridge.grenadehe",
+    "fallback": "Frag Grenade"
+   },
    "minecraft:item_model": "minecraft:fire_charge",
    "minecraft:enchantment_glint_override": true,
    "minecraft:rarity": "rare"

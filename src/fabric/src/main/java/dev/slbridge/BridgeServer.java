@@ -43,19 +43,19 @@ public final class BridgeServer {
 
     private void acceptLoop() {
         try (ServerSocket server = new ServerSocket(port, 1, InetAddress.getLoopbackAddress())) {
-            SlBridgeClient.LOG.info("[SLBridge] Жду подключения SCP:SL на 127.0.0.1:{}", port);
+            SlBridgeClient.LOG.info(Lang.t("[SLBridge] Жду подключения SCP:SL на 127.0.0.1:{}", "[SLBridge] Waiting for SCP:SL on 127.0.0.1:{}"), port);
             while (true) {
                 Socket s = server.accept();
                 s.setTcpNoDelay(true);
                 closeCurrent();
                 socket = s;
                 writer = new BufferedWriter(new OutputStreamWriter(s.getOutputStream(), StandardCharsets.UTF_8));
-                SlBridgeClient.LOG.info("[SLBridge] SCP:SL подключился: {}", s.getRemoteSocketAddress());
+                SlBridgeClient.LOG.info(Lang.t("[SLBridge] SCP:SL подключился: {}", "[SLBridge] SCP:SL connected: {}"), s.getRemoteSocketAddress());
                 onConnect.run();
                 readLoop(s);
             }
         } catch (IOException e) {
-            SlBridgeClient.LOG.error("[SLBridge] Не удалось открыть порт {}", port, e);
+            SlBridgeClient.LOG.error(Lang.t("[SLBridge] Не удалось открыть порт {}", "[SLBridge] Could not open port {}"), port, e);
         }
     }
 
@@ -67,14 +67,14 @@ public final class BridgeServer {
                 try {
                     handler.accept(JsonParser.parseString(line).getAsJsonObject());
                 } catch (Exception e) {
-                    SlBridgeClient.LOG.warn("[SLBridge] Ошибка обработки сообщения: {}", line, e);
+                    SlBridgeClient.LOG.warn(Lang.t("[SLBridge] Ошибка обработки сообщения: {}", "[SLBridge] Failed to handle message: {}"), line, e);
                 }
             }
         } catch (IOException ignored) {
         } finally {
             if (socket == s) {
                 closeCurrent();
-                SlBridgeClient.LOG.info("[SLBridge] SCP:SL отключился");
+                SlBridgeClient.LOG.info(Lang.t("[SLBridge] SCP:SL отключился", "[SLBridge] SCP:SL disconnected"));
                 onDisconnect.run();
             }
         }

@@ -57,12 +57,12 @@ namespace SlBridge.Launcher
         {
             Directory.CreateDirectory(Path.GetDirectoryName(LauncherConfig.PluginTarget));
             File.Copy(_c.PluginDll, LauncherConfig.PluginTarget, true);
-            _log("Плагин моста установлен в LabAPI.");
+            _log(L.T("Плагин моста установлен в LabAPI.", "Bridge plugin installed into LabAPI."));
         }
 
         public void InstallMod()
         {
-            if (string.IsNullOrEmpty(ModsDir)) throw new Exception("Сначала выбери сборку Prism или папку игры.");
+            if (string.IsNullOrEmpty(ModsDir)) throw new Exception(L.T("Сначала выбери сборку Prism или папку игры.", "Pick a Prism instance or a game folder first."));
             Directory.CreateDirectory(ModsDir);
             // старые версии мода — убрать, чтобы не было двух
             foreach (var old in Directory.GetFiles(ModsDir, "slbridge-fabric*.jar"))
@@ -70,7 +70,7 @@ namespace SlBridge.Launcher
             File.Copy(_c.ModJar, Path.Combine(ModsDir, Path.GetFileName(_c.ModJar)), true);
             if (!Directory.GetFiles(ModsDir, "fabric-api*.jar").Any() && _c.FabricApiJar != null)
                 File.Copy(_c.FabricApiJar, Path.Combine(ModsDir, Path.GetFileName(_c.FabricApiJar)), true);
-            _log("Мод моста и Fabric API установлены в " + ModsDir);
+            _log(L.T("Мод моста и Fabric API установлены в ", "Bridge mod and Fabric API installed into ") + ModsDir);
         }
 
         public void FirstServerRun()
@@ -78,10 +78,10 @@ namespace SlBridge.Launcher
             InstallPluginIfNeeded();
             Process.Start(new ProcessStartInfo(Path.Combine(_c.SlServerDir, "LocalAdmin.exe"), _c.SlServerPort.ToString())
             { WorkingDirectory = _c.SlServerDir, UseShellExecute = true });
-            _log("Открыт сервер SL. Ответь на его вопросы (порт, согласие), дождись «Waiting for players» и закрой окно.");
+            _log(L.T("Открыт сервер SL. Ответь на его вопросы (порт, согласие), дождись «Waiting for players» и закрой окно.", "The SL server is open. Answer its questions (port, consent), wait for “Waiting for players” and close the window."));
         }
 
-        private void InstallPluginIfNeeded() { try { if (!PluginInstalled) InstallPlugin(); } catch (Exception e) { _log("Плагин: " + e.Message); } }
+        private void InstallPluginIfNeeded() { try { if (!PluginInstalled) InstallPlugin(); } catch (Exception e) { _log(L.T("Плагин: ", "Plugin: ") + e.Message); } }
 
         private static bool SameFile(string a, string b)
         {
@@ -158,7 +158,7 @@ namespace SlBridge.Launcher
             {
                 if (!ServerRunning) return false;
                 string t = ServerLogTail();
-                return t.Contains("Waiting for players") || t.Contains("[SlBridge] Включён");
+                return t.Contains("Waiting for players") || t.Contains("[SlBridge] Включён") || t.Contains("[SlBridge] Enabled");
             }
         }
 
@@ -169,8 +169,8 @@ namespace SlBridge.Launcher
             {
                 if (!ServerRunning || MinecraftProcess == null) return false;
                 string t = ServerLogTail();
-                int on = t.LastIndexOf("Подключено к Minecraft", StringComparison.Ordinal);
-                int off = t.LastIndexOf("Minecraft недоступен", StringComparison.Ordinal);
+                int on = Math.Max(t.LastIndexOf("Подключено к Minecraft", StringComparison.Ordinal), t.LastIndexOf("Connected to Minecraft", StringComparison.Ordinal));
+                int off = Math.Max(t.LastIndexOf("Minecraft недоступен", StringComparison.Ordinal), t.LastIndexOf("Minecraft is not reachable", StringComparison.Ordinal));
                 return on >= 0 && on > off;
             }
         }
@@ -204,59 +204,59 @@ namespace SlBridge.Launcher
         {
             _startedAt = DateTime.Now;
             ManualInWorld = false;
-            if (!SlServerFound) { _log("Не найден SCP:SL Dedicated Server — см. «Подготовку»."); return; }
+            if (!SlServerFound) { _log(L.T("Не найден SCP:SL Dedicated Server — см. «Подготовку».", "SCP:SL Dedicated Server not found — see “Setup”.")); return; }
             InstallPluginIfNeeded();
-            if (ModsDir != "" && !ModInstalled && _c.ModJar != null) { try { InstallMod(); } catch (Exception e) { _log("Мод: " + e.Message); } }
+            if (ModsDir != "" && !ModInstalled && _c.ModJar != null) { try { InstallMod(); } catch (Exception e) { _log(L.T("Мод: ", "Mod: ") + e.Message); } }
 
             if (!ServerRunning)
             {
-                _log("Запускаю сервер SCP:SL…");
+                _log(L.T("Запускаю сервер SCP:SL…", "Starting the SCP:SL server…"));
                 Process.Start(new ProcessStartInfo(Path.Combine(_c.SlServerDir, "LocalAdmin.exe"), _c.SlServerPort.ToString())
                 { WorkingDirectory = _c.SlServerDir, UseShellExecute = true, WindowStyle = ProcessWindowStyle.Minimized });
             }
-            if (!await WaitFor(() => ServerReady, 180, "сервер SL", ct)) return;
-            _log("Сервер SL готов.");
+            if (!await WaitFor(() => ServerReady, 180, L.T("сервер SL", "SL server"), ct)) return;
+            _log(L.T("Сервер SL готов.", "SL server is ready."));
 
             if (MinecraftProcess == null)
             {
                 if (world != null && !string.IsNullOrEmpty(_c.GameDirEffective))
                 {
                     WriteLaunchRequest(world);
-                    _log(world.Create ? $"Minecraft создаст мир «{world.Name}» и зайдёт в него сам." : $"Minecraft сам откроет мир «{world.Folder}».");
+                    _log(world.Create ? L.T($"Minecraft создаст мир «{world.Name}» и зайдёт в него сам.", $"Minecraft will create the world “{world.Name}” and join it by itself.") : L.T($"Minecraft сам откроет мир «{world.Folder}».", $"Minecraft will open the world “{world.Folder}” by itself."));
                 }
                 if (_c.McMode == "prism")
                 {
-                    if (!PrismFound) { _log("Не найден Prism Launcher — см. «Подготовку»."); return; }
-                    _log($"Запускаю Minecraft (Prism, сборка «{_c.PrismInstance}»)…");
+                    if (!PrismFound) { _log(L.T("Не найден Prism Launcher — см. «Подготовку».", "Prism Launcher not found — see “Setup”.")); return; }
+                    _log(L.T($"Запускаю Minecraft (Prism, сборка «{_c.PrismInstance}»)…", $"Starting Minecraft (Prism, instance “{_c.PrismInstance}”)…"));
                     Process.Start(new ProcessStartInfo(_c.PrismExe, $"-l \"{_c.PrismInstance}\"") { UseShellExecute = true });
                 }
                 else
                 {
-                    _log("Запусти Minecraft 26.3 с Fabric в своём лаунчере. Мир откроется сам; если нет — зайди в мир и нажми «Я зашёл в мир».");
+                    _log(L.T("Запусти Minecraft 26.3 с Fabric в своём лаунчере. Мир откроется сам; если нет — зайди в мир и нажми «Я зашёл в мир».", "Start Minecraft 26.3 with Fabric in your launcher. The world opens by itself; if not, join a world and press “I'm in the world”."));
                 }
             }
-            else _log("Minecraft уже запущен — зайди в мир, если ещё не в нём.");
+            else _log(L.T("Minecraft уже запущен — зайди в мир, если ещё не в нём.", "Minecraft is already running — join a world if you aren't in one yet."));
 
-            if (!await WaitFor(() => InWorld, 900, "вход в мир Minecraft", ct)) return;
-            _log("Minecraft в мире.");
-            if (!await WaitFor(() => BridgeConnected, 60, "подключение моста", ct)) return;
-            _log("Мост SCP:SL ↔ Minecraft подключён.");
+            if (!await WaitFor(() => InWorld, 900, L.T("вход в мир Minecraft", "joining the Minecraft world"), ct)) return;
+            _log(L.T("Minecraft в мире.", "Minecraft is in the world."));
+            if (!await WaitFor(() => BridgeConnected, 60, L.T("подключение моста", "bridge connection"), ct)) return;
+            _log(L.T("Мост SCP:SL ↔ Minecraft подключён.", "SCP:SL ↔ Minecraft bridge connected."));
 
             if (!CompositorRunning)
             {
                 if (File.Exists(_c.CompositorExe))
                 {
-                    _log("Запускаю оверлей…");
+                    _log(L.T("Запускаю оверлей…", "Starting the overlay…"));
                     Process.Start(new ProcessStartInfo(_c.CompositorExe) { WorkingDirectory = Path.GetDirectoryName(_c.CompositorExe), UseShellExecute = true });
                 }
-                else _log("Не найден оверлей: " + _c.CompositorExe);
+                else _log(L.T("Не найден оверлей: ", "Overlay not found: ") + _c.CompositorExe);
             }
             if (!SlClientRunning)
             {
-                _log("Запускаю SCP:SL через Steam…");
+                _log(L.T("Запускаю SCP:SL через Steam…", "Starting SCP:SL via Steam…"));
                 Process.Start(new ProcessStartInfo($"steam://run/700330//{_c.SlClientArgs}/") { UseShellExecute = true });
             }
-            _log($"Готово! В SL: Play → Direct connect → 127.0.0.1:{_c.SlServerPort} (адрес в буфере обмена — Ctrl+V).");
+            _log(L.T($"Готово! В SL: Play → Direct connect → 127.0.0.1:{_c.SlServerPort} (адрес в буфере обмена — Ctrl+V).", $"Done! In SL: Play → Direct connect → 127.0.0.1:{_c.SlServerPort} (the address is in your clipboard — Ctrl+V)."));
         }
 
         private async Task<bool> WaitFor(Func<bool> cond, int seconds, string what, CancellationToken ct)
@@ -264,13 +264,13 @@ namespace SlBridge.Launcher
             var sw = Stopwatch.StartNew();
             while (sw.Elapsed.TotalSeconds < seconds)
             {
-                if (ct.IsCancellationRequested) { _log("Запуск отменён."); return false; }
+                if (ct.IsCancellationRequested) { _log(L.T("Запуск отменён.", "Launch cancelled.")); return false; }
                 bool ok;
                 try { ok = await Task.Run(cond); } catch { ok = false; }
                 if (ok) return true;
                 await Task.Delay(1000);
             }
-            _log($"Не дождался: {what} ({seconds} с). Посмотри окно этой части или «Справку».");
+            _log(L.T($"Не дождался: {what} ({seconds} с). Посмотри окно этой части или «Справку».", $"Timed out: {what} ({seconds} s). Check that part's window or the “Help” tab."));
             return false;
         }
 
@@ -278,13 +278,13 @@ namespace SlBridge.Launcher
 
         public async Task StopAll()
         {
-            _log("Останавливаю всё…");
+            _log(L.T("Останавливаю всё…", "Stopping everything…"));
             foreach (var p in Process.GetProcessesByName("SCPSL").Where(HasWindow)) { try { p.CloseMainWindow(); } catch { } }
             foreach (var p in Process.GetProcessesByName("SlBridgeCompositor")) { try { p.Kill(); } catch { } }
             var mc = MinecraftProcess;
             if (mc != null)
             {
-                _log("Minecraft сохраняет мир и закрывается…");
+                _log(L.T("Minecraft сохраняет мир и закрывается…", "Minecraft is saving the world and closing…"));
                 try { mc.CloseMainWindow(); } catch { }
                 for (int i = 0; i < 30 && !mc.HasExited; i++) await Task.Delay(1000);
                 if (!mc.HasExited) { try { mc.Kill(true); } catch { } }
@@ -292,7 +292,7 @@ namespace SlBridge.Launcher
             foreach (var p in Process.GetProcessesByName("LocalAdmin")) { try { p.Kill(true); } catch { } }
             await Task.Delay(1500);
             foreach (var p in Process.GetProcessesByName("SCPSL").Where(HasWindow)) { try { if (!p.HasExited) p.Kill(); } catch { } }
-            _log("Всё остановлено.");
+            _log(L.T("Всё остановлено.", "Everything stopped."));
         }
     }
 }

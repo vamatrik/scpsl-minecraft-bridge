@@ -58,7 +58,7 @@ namespace SlBridge
                     var stream = _tcp.GetStream();
                     var reader = new StreamReader(stream, new UTF8Encoding(false));
                     _writer = new StreamWriter(stream, new UTF8Encoding(false)) { AutoFlush = false, NewLine = "\n" };
-                    Logger.Info($"[SlBridge] Подключено к Minecraft {_host}:{_port}");
+                    Logger.Info(L.T($"[SlBridge] Подключено к Minecraft {_host}:{_port}", $"[SlBridge] Connected to Minecraft {_host}:{_port}"));
                     warned = false;
                     _connectedFlag = true;
                     string line;
@@ -72,7 +72,7 @@ namespace SlBridge
                         }
                         catch (Exception e)
                         {
-                            Logger.Warn($"[SlBridge] Плохое сообщение от Minecraft: {e.Message}");
+                            Logger.Warn(L.T($"[SlBridge] Плохое сообщение от Minecraft: {e.Message}", $"[SlBridge] Bad message from Minecraft: {e.Message}"));
                         }
                     }
                 }
@@ -80,7 +80,7 @@ namespace SlBridge
                 {
                     if (!warned)
                     {
-                        Logger.Warn($"[SlBridge] Minecraft недоступен ({e.Message}). Жду, пока запустится мир с модом…");
+                        Logger.Warn(L.T($"[SlBridge] Minecraft недоступен ({e.Message}). Жду, пока запустится мир с модом…", $"[SlBridge] Minecraft is not reachable ({e.Message}). Waiting for a world with the mod…"));
                         warned = true;
                     }
                 }
@@ -110,7 +110,7 @@ namespace SlBridge
             while (n++ < 2000 && _inbox.TryDequeue(out var m))
             {
                 try { handler(m); }
-                catch (Exception e) { Logger.Error($"[SlBridge] Ошибка обработки: {e}"); }
+                catch (Exception e) { Logger.Error(L.T($"[SlBridge] Ошибка обработки: {e}", $"[SlBridge] Handler error: {e}")); }
             }
         }
 

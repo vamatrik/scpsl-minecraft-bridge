@@ -11,7 +11,10 @@
    "minecraft:custom_data": {
     "slItem": "SCP500"
    },
-   "minecraft:item_name": "SCP-500 (панацея)",
+   "minecraft:item_name": {
+    "translate": "item.slbridge.scp500",
+    "fallback": "SCP-500 (panacea)"
+   },
    "minecraft:item_model": "minecraft:redstone",
    "minecraft:enchantment_glint_override": true,
    "minecraft:rarity": "rare"

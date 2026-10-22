@@ -21,6 +21,8 @@ namespace SlBridge.Launcher
         /// <summary>Для «другого лаунчера»: папка игры (где mods, saves, config).</summary>
         public string GameDir { get; set; } = "";
         public string LastWorld { get; set; } = "";
+        /// <summary>Язык лаунчера и всего мода: "ru" или "en" (пусто — по языку Windows).</summary>
+        public string Language { get; set; } = "";
         public string SlClientArgs { get; set; } = "-screen-fullscreen 0 -window-mode borderless";
 
         public static string BaseDir => AppContext.BaseDirectory;
@@ -55,9 +57,37 @@ namespace SlBridge.Launcher
             LauncherConfig c = null;
             try { if (File.Exists(File_)) c = JsonSerializer.Deserialize<LauncherConfig>(File.ReadAllText(File_)); } catch { }
             c ??= new LauncherConfig();
+            if (c.Language != "ru" && c.Language != "en")
+                c.Language = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "ru" ? "ru" : "en";
             c.AutoDetect();
             c.Save();
             return c;
+        }
+
+        /// <summary>Общий файл языка: его читают плагин SL и мод Minecraft.</summary>
+        public static string LanguageFile => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "SlBridge", "language.txt");
+
+        public void WriteLanguageFile()
+        {
+            try { Directory.CreateDirectory(Path.GetDirectoryName(LanguageFile)); File.WriteAllText(LanguageFile, Language); } catch { }
+        }
+
+        /// <summary>Язык самого Minecraft (options.txt), чтобы названия предметов совпадали с языком мода.</summary>
+        public bool WriteMinecraftLanguage()
+        {
+            try
+            {
+                string dir = GameDirEffective;
+                if (string.IsNullOrEmpty(dir)) return false;
+                string f = Path.Combine(dir, "options.txt");
+                string code = Language == "en" ? "en_us" : "ru_ru";
+                var lines = File.Exists(f) ? File.ReadAllLines(f).ToList() : new System.Collections.Generic.List<string>();
+                int i = lines.FindIndex(l => l.StartsWith("lang:"));
+                if (i >= 0) lines[i] = "lang:" + code; else lines.Add("lang:" + code);
+                File.WriteAllLines(f, lines);
+                return true;
+            }
+            catch { return false; }
         }
 
         public void Save()

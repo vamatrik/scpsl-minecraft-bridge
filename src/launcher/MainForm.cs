@@ -40,6 +40,8 @@ namespace SlBridge.Launcher
         public MainForm()
         {
             _cfg = LauncherConfig.Load();
+            L.En = _cfg.Language == "en";
+            _cfg.WriteLanguageFile();
             _orc = new Orchestrator(_cfg, Log);
 
             Text = "SCP:SL × Minecraft";
@@ -55,11 +57,22 @@ namespace SlBridge.Launcher
             var logo = Ui.Label("SCP:SL\n× Minecraft", 16f, Ui.Text, FontStyle.Bold);
             logo.Location = new Point(18, 18);
             side.Controls.Add(logo);
-            _nav = new[] { NavButton("1  Подготовка", 0), NavButton("2  Играть", 1), NavButton("⚒  Крафты", 2), NavButton("?  Справка", 3) };
+            _nav = new[] { NavButton(L.T("1  Подготовка", "1  Setup"), 0), NavButton(L.T("2  Играть", "2  Play"), 1), NavButton(L.T("⚒  Крафты", "⚒  Crafting"), 2), NavButton(L.T("?  Справка", "?  Help"), 3) };
             for (int i = 0; i < _nav.Length; i++) { _nav[i].Location = new Point(10, 100 + i * 46); side.Controls.Add(_nav[i]); }
-            var ver = Ui.Label("мост 0.4.0\nClaude x Vamatrik", 8.5f, Ui.Muted);
+            var ver = Ui.Label(L.T("мост 0.4.0\nClaude x Vamatrik", "bridge 0.4.0\nClaude x Vamatrik"), 8.5f, Ui.Muted);
             ver.Location = new Point(18, 626);
             side.Controls.Add(ver);
+
+            // язык всего мода: лаунчер, плагин SL, мод Minecraft
+            var langLbl = Ui.Label("Язык / Language", 8.5f, Ui.Muted);
+            langLbl.Location = new Point(18, 560);
+            side.Controls.Add(langLbl);
+            var lang = Ui.Combo(160);
+            lang.Items.AddRange(new object[] { "Русский", "English" });
+            lang.SelectedIndex = L.En ? 1 : 0;
+            lang.Location = new Point(18, 582);
+            lang.SelectedIndexChanged += (_, _) => SetLanguage(lang.SelectedIndex == 1 ? "en" : "ru");
+            side.Controls.Add(lang);
 
             _prep = BuildPrep();
             _play = BuildPlay();
@@ -106,66 +119,66 @@ namespace SlBridge.Launcher
             var page = new Panel { Dock = DockStyle.Fill, AutoScroll = true, BackColor = Ui.Bg, Padding = new Padding(24, 20, 24, 20) };
             var flow = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoSize = true, BackColor = Ui.Bg, Location = new Point(24, 20) };
             int w = 680;
-            var h = Ui.Label("Подготовка (один раз)", 18f, Ui.Text, FontStyle.Bold);
+            var h = Ui.Label(L.T("Подготовка (один раз)", "Setup (once)"), 18f, Ui.Text, FontStyle.Bold);
             flow.Controls.Add(h);
-            var hint = Ui.Wrap("Пройди шаги сверху вниз. Лаунчер сам ищет игры; если не нашёл — укажи папку. Зелёная галочка — шаг готов.", w);
+            var hint = Ui.Wrap(L.T("Пройди шаги сверху вниз. Лаунчер сам ищет игры; если не нашёл — укажи папку. Зелёная галочка — шаг готов.", "Go through the steps top to bottom. The launcher finds the games by itself; if it doesn't, point it to the folder. A green check means the step is done."), w);
             hint.Margin = new Padding(0, 4, 0, 14);
             flow.Controls.Add(hint);
 
-            _stSl = new StepCard(1, "SCP: Secret Laboratory", "Установи игру в Steam и обнови до последней версии.", w);
-            _stSl.Buttons.Controls.Add(Btn("Открыть в Steam", () => Open("steam://install/700330")));
-            _stSl.Buttons.Controls.Add(Btn("Указать папку…", () => PickDir("Папка игры SCP: Secret Laboratory (где SCPSL.exe)", d => _cfg.SlClientDir = d)));
+            _stSl = new StepCard(1, "SCP: Secret Laboratory", L.T("Установи игру в Steam и обнови до последней версии.", "Install the game in Steam and update it to the latest version."), w);
+            _stSl.Buttons.Controls.Add(Btn(L.T("Открыть в Steam", "Open in Steam"), () => Open("steam://install/700330")));
+            _stSl.Buttons.Controls.Add(Btn(L.T("Указать папку…", "Choose folder…"), () => PickDir(L.T("Папка игры SCP: Secret Laboratory (где SCPSL.exe)", "SCP: Secret Laboratory game folder (with SCPSL.exe)"), d => _cfg.SlClientDir = d)));
             flow.Controls.Add(_stSl);
 
             _stDs = new StepCard(2, "SCP:SL Dedicated Server",
-                "Steam → Библиотека → «Инструменты» → SCP: Secret Laboratory Dedicated Server. Обнови до той же версии, что и игра. " +
-                "Потом нажми «Первый запуск сервера», ответь на вопросы в его окне (порт 7777, согласие) и закрой окно, когда появится «Waiting for players».", w);
-            _stDs.Buttons.Controls.Add(Btn("Установить в Steam", () => Open("steam://install/996560")));
-            _stDs.Buttons.Controls.Add(Btn("Указать папку…", () => PickDir("Папка SCP: Secret Laboratory Dedicated Server (где LocalAdmin.exe)", d => _cfg.SlServerDir = d)));
-            _stDs.Buttons.Controls.Add(Btn("Первый запуск сервера", () => Try(_orc.FirstServerRun)));
+                L.T("Steam → Библиотека → «Инструменты» → SCP: Secret Laboratory Dedicated Server. Обнови до той же версии, что и игра. ", "Steam → Library → “Tools” → SCP: Secret Laboratory Dedicated Server. Update it to the same version as the game. ") +
+                L.T("Потом нажми «Первый запуск сервера», ответь на вопросы в его окне (порт 7777, согласие) и закрой окно, когда появится «Waiting for players».", "Then press “First server run”, answer the questions in its window (port 7777, consent) and close the window once “Waiting for players” appears."), w);
+            _stDs.Buttons.Controls.Add(Btn(L.T("Установить в Steam", "Install in Steam"), () => Open("steam://install/996560")));
+            _stDs.Buttons.Controls.Add(Btn(L.T("Указать папку…", "Choose folder…"), () => PickDir(L.T("Папка SCP: Secret Laboratory Dedicated Server (где LocalAdmin.exe)", "SCP: Secret Laboratory Dedicated Server folder (with LocalAdmin.exe)"), d => _cfg.SlServerDir = d)));
+            _stDs.Buttons.Controls.Add(Btn(L.T("Первый запуск сервера", "First server run"), () => Try(_orc.FirstServerRun)));
             flow.Controls.Add(_stDs);
 
-            _stPlugin = new StepCard(3, "Плагин моста для сервера", "Ставится в LabAPI автоматически (и обновляется при каждом запуске).", w);
-            _stPlugin.Buttons.Controls.Add(Btn("Установить сейчас", () => Try(_orc.InstallPlugin)));
+            _stPlugin = new StepCard(3, L.T("Плагин моста для сервера", "Bridge plugin for the server"), L.T("Ставится в LabAPI автоматически (и обновляется при каждом запуске).", "Installed into LabAPI automatically (and updated on every launch)."), w);
+            _stPlugin.Buttons.Controls.Add(Btn(L.T("Установить сейчас", "Install now"), () => Try(_orc.InstallPlugin)));
             flow.Controls.Add(_stPlugin);
 
             _stMc = new StepCard(4, "Minecraft 26.3 + Fabric",
-                "Нужна версия Minecraft 26.3 с загрузчиком Fabric.\n" +
-                "• Prism Launcher (удобнее — лаунчер всё запустит сам): «Добавить сборку» → версия 26.3 → загрузчик Fabric → ОК.\n" +
-                "• Другой лаунчер: установи Fabric Loader для 26.3 (fabricmc.net/use) и укажи папку игры — ту, где лежат mods и saves.", w);
+                L.T("Нужна версия Minecraft 26.3 с загрузчиком Fabric.\n", "You need Minecraft 26.3 with the Fabric loader.\n") +
+                L.T("• Prism Launcher (удобнее — лаунчер всё запустит сам): «Добавить сборку» → версия 26.3 → загрузчик Fabric → ОК.\n", "• Prism Launcher (easier — this launcher starts everything itself): “Add Instance” → version 26.3 → Fabric loader → OK.\n") +
+                L.T("• Другой лаунчер: установи Fabric Loader для 26.3 (fabricmc.net/use) и укажи папку игры — ту, где лежат mods и saves.", "• Another launcher: install Fabric Loader for 26.3 (fabricmc.net/use) and choose the game folder — the one with mods and saves."), w);
             _modePrism = new RadioButton { Text = "Prism Launcher", AutoSize = true, ForeColor = Ui.Text, Checked = _cfg.McMode == "prism" };
-            _modeOther = new RadioButton { Text = "Другой лаунчер (запускаю Minecraft сам)", AutoSize = true, ForeColor = Ui.Text, Checked = _cfg.McMode != "prism" };
+            _modeOther = new RadioButton { Text = L.T("Другой лаунчер (запускаю Minecraft сам)", "Another launcher (I start Minecraft myself)"), AutoSize = true, ForeColor = Ui.Text, Checked = _cfg.McMode != "prism" };
             _modePrism.CheckedChanged += (_, _) => { _cfg.McMode = _modePrism.Checked ? "prism" : "other"; _cfg.Save(); RefreshPrep(); };
             var modeRow = new FlowLayoutPanel { AutoSize = true, BackColor = Color.Transparent };
             modeRow.Controls.Add(_modePrism);
             modeRow.Controls.Add(_modeOther);
             _stMc.Extra.Controls.Add(modeRow);
             var instRow = new FlowLayoutPanel { AutoSize = true, BackColor = Color.Transparent, Margin = new Padding(0, 6, 0, 0) };
-            instRow.Controls.Add(Ui.Label("Сборка Prism:", 10f, Ui.Muted));
+            instRow.Controls.Add(Ui.Label(L.T("Сборка Prism:", "Prism instance:"), 10f, Ui.Muted));
             _instance = Ui.Combo(300);
             _instance.SelectedIndexChanged += (_, _) => { _cfg.PrismInstance = _instance.SelectedItem as string ?? ""; _cfg.Save(); RefreshPrep(false); };
             instRow.Controls.Add(_instance);
             _stMc.Extra.Controls.Add(instRow);
             _gameDirLbl = Ui.Wrap("", w - 40, 9f);
             _stMc.Extra.Controls.Add(_gameDirLbl);
-            _stMc.Buttons.Controls.Add(Btn("Скачать Prism", () => Open("https://prismlauncher.org/download/")));
-            _stMc.Buttons.Controls.Add(Btn("Указать Prism…", () => PickFile("prismlauncher.exe", f => _cfg.PrismExe = f)));
-            _stMc.Buttons.Controls.Add(Btn("Указать папку игры…", () => PickDir("Папка игры Minecraft (где mods и saves)", d => { _cfg.GameDir = d; _cfg.McMode = "other"; })));
-            _stMc.Buttons.Controls.Add(Btn("Скачать Fabric", () => Open("https://fabricmc.net/use/installer/")));
-            _stMc.Buttons.Controls.Add(Btn("Обновить", () => { _cfg.AutoDetect(); RefreshPrep(); }));
+            _stMc.Buttons.Controls.Add(Btn(L.T("Скачать Prism", "Download Prism"), () => Open("https://prismlauncher.org/download/")));
+            _stMc.Buttons.Controls.Add(Btn(L.T("Указать Prism…", "Locate Prism…"), () => PickFile("prismlauncher.exe", f => _cfg.PrismExe = f)));
+            _stMc.Buttons.Controls.Add(Btn(L.T("Указать папку игры…", "Choose game folder…"), () => PickDir(L.T("Папка игры Minecraft (где mods и saves)", "Minecraft game folder (with mods and saves)"), d => { _cfg.GameDir = d; _cfg.McMode = "other"; })));
+            _stMc.Buttons.Controls.Add(Btn(L.T("Скачать Fabric", "Download Fabric"), () => Open("https://fabricmc.net/use/installer/")));
+            _stMc.Buttons.Controls.Add(Btn(L.T("Обновить", "Refresh"), () => { _cfg.AutoDetect(); RefreshPrep(); }));
             flow.Controls.Add(_stMc);
 
-            _stMod = new StepCard(5, "Мод моста + Fabric API", "Копирует мод моста и Fabric API в папку mods выбранной сборки/игры.", w);
-            _stMod.Buttons.Controls.Add(Btn("Установить мод", () => Try(_orc.InstallMod), Ui.Accent));
-            _stMod.Buttons.Controls.Add(Btn("Открыть папку mods", () => { if (Directory.Exists(_orc.ModsDir)) Open(_orc.ModsDir); }));
+            _stMod = new StepCard(5, L.T("Мод моста + Fabric API", "Bridge mod + Fabric API"), L.T("Копирует мод моста и Fabric API в папку mods выбранной сборки/игры.", "Copies the bridge mod and Fabric API into the mods folder of the chosen instance/game."), w);
+            _stMod.Buttons.Controls.Add(Btn(L.T("Установить мод", "Install mod"), () => Try(_orc.InstallMod), Ui.Accent));
+            _stMod.Buttons.Controls.Add(Btn(L.T("Открыть папку mods", "Open mods folder"), () => { if (Directory.Exists(_orc.ModsDir)) Open(_orc.ModsDir); }));
             flow.Controls.Add(_stMod);
 
-            var tip = new StepCard(6, "Если оверлей что-то перекрывает",
-                "Ctrl+Shift+F12 — выключить/включить оверлей (картинку Minecraft поверх SL).\nCtrl+Shift+F11 — показать маску: белым — где подставляется Minecraft.", w);
-            tip.SetStatus(null, "на заметку");
+            var tip = new StepCard(6, L.T("Если оверлей что-то перекрывает", "If the overlay covers something"),
+                L.T("Ctrl+Shift+F12 — выключить/включить оверлей (картинку Minecraft поверх SL).\nCtrl+Shift+F11 — показать маску: белым — где подставляется Minecraft.", "Ctrl+Shift+F12 — turn the overlay (Minecraft picture over SL) off/on.\nCtrl+Shift+F11 — show the mask: white is where Minecraft is drawn."), w);
+            tip.SetStatus(null, L.T("на заметку", "good to know"));
             flow.Controls.Add(tip);
 
-            var go = Btn("Всё готово → Играть", () => Show(1), Ui.Accent);
+            var go = Btn(L.T("Всё готово → Играть", "All set → Play"), () => Show(1), Ui.Accent);
             go.Margin = new Padding(0, 6, 0, 0);
             flow.Controls.Add(go);
 
@@ -175,10 +188,10 @@ namespace SlBridge.Launcher
 
         private void RefreshPrep(bool reloadInstances = true)
         {
-            _stSl.SetStatus(_orc.SlClientFound, _orc.SlClientFound ? "найдена" : "не найдена");
+            _stSl.SetStatus(_orc.SlClientFound, _orc.SlClientFound ? L.T("найдена", "found") : L.T("не найдена", "not found"));
             _stDs.SetStatus(_orc.SlServerFound ? (_orc.ServerConfigured ? true : (bool?)null) : false,
-                !_orc.SlServerFound ? "не найден" : _orc.ServerConfigured ? "найден, настроен" : "найден — сделай первый запуск");
-            _stPlugin.SetStatus(_orc.PluginInstalled, _orc.PluginInstalled ? "установлен" : "не установлен (поставится сам)");
+                !_orc.SlServerFound ? L.T("не найден", "not found") : _orc.ServerConfigured ? L.T("найден, настроен", "found, configured") : L.T("найден — сделай первый запуск", "found — do the first run"));
+            _stPlugin.SetStatus(_orc.PluginInstalled, _orc.PluginInstalled ? L.T("установлен", "installed") : L.T("не установлен (поставится сам)", "not installed (will install itself)"));
 
             if (reloadInstances)
             {
@@ -193,11 +206,11 @@ namespace SlBridge.Launcher
             _instance.Enabled = prism;
             bool mcOk = prism ? (_orc.PrismFound && !string.IsNullOrEmpty(_cfg.PrismInstance)) : Directory.Exists(_cfg.GameDir ?? "");
             string mcText = prism
-                ? (!_orc.PrismFound ? "Prism не найден" : _instance.Items.Count == 0 ? "нет сборки 26.3 + Fabric" : "сборка «" + _cfg.PrismInstance + "»")
-                : (Directory.Exists(_cfg.GameDir ?? "") ? "папка игры выбрана" : "укажи папку игры");
+                ? (!_orc.PrismFound ? L.T("Prism не найден", "Prism not found") : _instance.Items.Count == 0 ? L.T("нет сборки 26.3 + Fabric", "no 26.3 + Fabric instance") : L.T("сборка «", "instance “") + _cfg.PrismInstance + L.T("»", "”"))
+                : (Directory.Exists(_cfg.GameDir ?? "") ? L.T("папка игры выбрана", "game folder chosen") : L.T("укажи папку игры", "choose the game folder"));
             _stMc.SetStatus(mcOk, mcText);
-            _gameDirLbl.Text = "Папка игры: " + (string.IsNullOrEmpty(_cfg.GameDirEffective) ? "—" : _cfg.GameDirEffective);
-            _stMod.SetStatus(_orc.ModInstalled, _orc.ModInstalled ? "установлены" : "не установлены");
+            _gameDirLbl.Text = L.T("Папка игры: ", "Game folder: ") + (string.IsNullOrEmpty(_cfg.GameDirEffective) ? "—" : _cfg.GameDirEffective);
+            _stMod.SetStatus(_orc.ModInstalled, _orc.ModInstalled ? L.T("установлены", "installed") : L.T("не установлены", "not installed"));
         }
 
         // ═════════════ ИГРАТЬ ═════════════
@@ -205,33 +218,33 @@ namespace SlBridge.Launcher
         private Panel BuildPlay()
         {
             var page = new Panel { Dock = DockStyle.Fill, BackColor = Ui.Bg };
-            var h = Ui.Label("Играть", 18f, Ui.Text, FontStyle.Bold);
+            var h = Ui.Label(L.T("Играть", "Play"), 18f, Ui.Text, FontStyle.Bold);
             h.Location = new Point(24, 20);
             page.Controls.Add(h);
 
             // мир
             var worldCard = new Panel { BackColor = Ui.Card, Location = new Point(24, 70), Size = new Size(330, 520) };
-            var wt = Ui.Label("Мир Minecraft", 12f, Ui.Text, FontStyle.Bold);
+            var wt = Ui.Label(L.T("Мир Minecraft", "Minecraft world"), 12f, Ui.Text, FontStyle.Bold);
             wt.Location = new Point(14, 12);
-            _wOpen = new RadioButton { Text = "Открыть мир", AutoSize = true, ForeColor = Ui.Text, Location = new Point(16, 44), Checked = true };
-            _wCreate = new RadioButton { Text = "Создать новый", AutoSize = true, ForeColor = Ui.Text, Location = new Point(150, 44) };
+            _wOpen = new RadioButton { Text = L.T("Открыть мир", "Open world"), AutoSize = true, ForeColor = Ui.Text, Location = new Point(16, 44), Checked = true };
+            _wCreate = new RadioButton { Text = L.T("Создать новый", "Create new"), AutoSize = true, ForeColor = Ui.Text, Location = new Point(150, 44) };
             _wOpen.CheckedChanged += (_, _) => { _worlds.Visible = _wOpen.Checked; _createPanel.Visible = !_wOpen.Checked; };
             _worlds = new ListBox { Location = new Point(14, 76), Size = new Size(302, 430), BackColor = Ui.Input, ForeColor = Ui.Text, BorderStyle = BorderStyle.None, Font = Ui.F(10.5f), IntegralHeight = false };
 
             _createPanel = new Panel { Location = new Point(14, 76), Size = new Size(302, 430), BackColor = Ui.Card, Visible = false };
             int y = 0;
             Control Row(string label, Control c) { var l = Ui.Label(label, 9.5f, Ui.Muted); l.Location = new Point(0, y); c.Location = new Point(0, y + 20); _createPanel.Controls.Add(l); _createPanel.Controls.Add(c); y += 58; return c; }
-            _newName = Ui.Box(300); _newName.Text = "Мир SCP";
-            Row("Название", _newName);
-            _gm = Ui.Combo(300); _gm.Items.AddRange(new object[] { "Выживание", "Творческий", "Хардкор" }); _gm.SelectedIndex = 0;
-            Row("Режим", _gm);
-            _diff = Ui.Combo(300); _diff.Items.AddRange(new object[] { "Мирная", "Лёгкая", "Нормальная", "Сложная" }); _diff.SelectedIndex = 2;
-            Row("Сложность", _diff);
-            _type = Ui.Combo(300); _type.Items.AddRange(new object[] { "Обычный", "Плоский", "Большие биомы", "Усиленный" }); _type.SelectedIndex = 0;
-            Row("Тип мира", _type);
+            _newName = Ui.Box(300); _newName.Text = L.T("Мир SCP", "SCP World");
+            Row(L.T("Название", "Name"), _newName);
+            _gm = Ui.Combo(300); _gm.Items.AddRange(new object[] { L.T("Выживание", "Survival"), L.T("Творческий", "Creative"), L.T("Хардкор", "Hardcore") }); _gm.SelectedIndex = 0;
+            Row(L.T("Режим", "Mode"), _gm);
+            _diff = Ui.Combo(300); _diff.Items.AddRange(new object[] { L.T("Мирная", "Peaceful"), L.T("Лёгкая", "Easy"), L.T("Нормальная", "Normal"), L.T("Сложная", "Hard") }); _diff.SelectedIndex = 2;
+            Row(L.T("Сложность", "Difficulty"), _diff);
+            _type = Ui.Combo(300); _type.Items.AddRange(new object[] { L.T("Обычный", "Default"), L.T("Плоский", "Flat"), L.T("Большие биомы", "Large biomes"), L.T("Усиленный", "Amplified") }); _type.SelectedIndex = 0;
+            Row(L.T("Тип мира", "World type"), _type);
             _seed = Ui.Box(300);
-            Row("Сид (необязательно)", _seed);
-            _cheats = new CheckBox { Text = "Читы (команды .mc …)", AutoSize = true, ForeColor = Ui.Text, Checked = true, Location = new Point(0, y + 4) };
+            Row(L.T("Сид (необязательно)", "Seed (optional)"), _seed);
+            _cheats = new CheckBox { Text = L.T("Читы (команды .mc …)", "Cheats (.mc … commands)"), AutoSize = true, ForeColor = Ui.Text, Checked = true, Location = new Point(0, y + 4) };
             _createPanel.Controls.Add(_cheats);
 
             worldCard.Controls.AddRange(new Control[] { wt, _wOpen, _wCreate, _worlds, _createPanel });
@@ -239,18 +252,18 @@ namespace SlBridge.Launcher
 
             // состояние + кнопки
             var st = new Panel { BackColor = Ui.Card, Location = new Point(370, 70), Size = new Size(340, 176) };
-            var stt = Ui.Label("Состояние", 12f, Ui.Text, FontStyle.Bold);
+            var stt = Ui.Label(L.T("Состояние", "Status"), 12f, Ui.Text, FontStyle.Bold);
             stt.Location = new Point(14, 10);
             st.Controls.Add(stt);
-            _rows = new[] { new StatusRow("Сервер SL"), new StatusRow("Minecraft"), new StatusRow("Мост"), new StatusRow("Оверлей"), new StatusRow("Клиент SL") };
+            _rows = new[] { new StatusRow(L.T("Сервер SL", "SL server")), new StatusRow("Minecraft"), new StatusRow(L.T("Мост", "Bridge")), new StatusRow(L.T("Оверлей", "Overlay")), new StatusRow(L.T("Клиент SL", "SL client")) };
             for (int i = 0; i < _rows.Length; i++) { _rows[i].SetBounds(14, 38 + i * 27, 316, 26); st.Controls.Add(_rows[i]); }
             page.Controls.Add(st);
 
-            _btnPlay = Btn("▶  Играть", async () => await Play(), Ui.Accent);
+            _btnPlay = Btn(L.T("▶  Играть", "▶  Play"), async () => await Play(), Ui.Accent);
             _btnPlay.AutoSize = false; _btnPlay.SetBounds(370, 256, 200, 46); _btnPlay.Font = Ui.F(12f, FontStyle.Bold);
-            _btnStop = Btn("■  Стоп", async () => await Stop(), Ui.Bad);
+            _btnStop = Btn(L.T("■  Стоп", "■  Stop"), async () => await Stop(), Ui.Bad);
             _btnStop.AutoSize = false; _btnStop.SetBounds(578, 256, 132, 46); _btnStop.Font = Ui.F(12f, FontStyle.Bold);
-            _btnInWorld = Btn("Я зашёл в мир", () => { _orc.ManualInWorld = true; Log("Ок, продолжаю."); });
+            _btnInWorld = Btn(L.T("Я зашёл в мир", "I'm in the world"), () => { _orc.ManualInWorld = true; Log(L.T("Ок, продолжаю.", "OK, continuing.")); });
             _btnInWorld.AutoSize = false; _btnInWorld.SetBounds(370, 308, 340, 32);
             page.Controls.AddRange(new Control[] { _btnPlay, _btnStop, _btnInWorld });
 
@@ -262,10 +275,10 @@ namespace SlBridge.Launcher
             page.Controls.Add(_log);
 
             var links = new FlowLayoutPanel { Location = new Point(24, 600), AutoSize = true, BackColor = Ui.Bg };
-            links.Controls.Add(Link("Папка лаунчера", () => Open(LauncherConfig.BaseDir)));
-            links.Controls.Add(Link("Логи сервера", () => Open(Path.Combine(LauncherConfig.SlAppData, "LocalAdminLogs"))));
-            links.Controls.Add(Link("Логи Minecraft", () => Open(Path.Combine(_cfg.GameDirEffective, "logs"))));
-            links.Controls.Add(Link("Настройки плагина", () => Open(Path.Combine(LauncherConfig.SlAppData, "LabAPI", "configs"))));
+            links.Controls.Add(Link(L.T("Папка лаунчера", "Launcher folder"), () => Open(LauncherConfig.BaseDir)));
+            links.Controls.Add(Link(L.T("Логи сервера", "Server logs"), () => Open(Path.Combine(LauncherConfig.SlAppData, "LocalAdminLogs"))));
+            links.Controls.Add(Link(L.T("Логи Minecraft", "Minecraft logs"), () => Open(Path.Combine(_cfg.GameDirEffective, "logs"))));
+            links.Controls.Add(Link(L.T("Настройки плагина", "Plugin settings"), () => Open(Path.Combine(LauncherConfig.SlAppData, "LabAPI", "configs"))));
             page.Controls.Add(links);
             return page;
         }
@@ -296,7 +309,7 @@ namespace SlBridge.Launcher
                 string[] types = { "normal", "flat", "large_biomes", "amplified" };
                 return new WorldChoice
                 {
-                    Create = true, Name = string.IsNullOrWhiteSpace(_newName.Text) ? "Мир SCP" : _newName.Text.Trim(),
+                    Create = true, Name = string.IsNullOrWhiteSpace(_newName.Text) ? L.T("Мир SCP", "SCP World") : _newName.Text.Trim(),
                     Mode = modes[_gm.SelectedIndex], Difficulty = diffs[_diff.SelectedIndex], Type = types[_type.SelectedIndex],
                     Cheats = _cheats.Checked, Seed = _seed.Text.Trim(),
                 };
@@ -318,15 +331,15 @@ namespace SlBridge.Launcher
         {
             if (!_play.Visible) return;
             bool srv = Orchestrator.ServerRunning, srvReady = srv && _orc.ServerReady;
-            _rows[0].Set(srvReady ? Ui.Ok : srv ? Ui.Warn : Ui.Off, srvReady ? "готов (127.0.0.1:" + _cfg.SlServerPort + ")" : srv ? "запускается…" : "выключен");
+            _rows[0].Set(srvReady ? Ui.Ok : srv ? Ui.Warn : Ui.Off, srvReady ? L.T("готов (127.0.0.1:", "ready (127.0.0.1:") + _cfg.SlServerPort + ")" : srv ? L.T("запускается…", "starting…") : L.T("выключен", "off"));
             bool mc = Orchestrator.MinecraftProcess != null, inWorld = mc && _orc.InWorld;
-            _rows[1].Set(inWorld ? Ui.Ok : mc ? Ui.Warn : Ui.Off, inWorld ? "в мире" : mc ? "загружается / в меню" : "выключен");
+            _rows[1].Set(inWorld ? Ui.Ok : mc ? Ui.Warn : Ui.Off, inWorld ? L.T("в мире", "in the world") : mc ? L.T("загружается / в меню", "loading / in menu") : L.T("выключен", "off"));
             bool bridge = _orc.BridgeConnected;
-            _rows[2].Set(bridge ? Ui.Ok : Ui.Off, bridge ? "SCP:SL ↔ Minecraft" : "нет связи");
+            _rows[2].Set(bridge ? Ui.Ok : Ui.Off, bridge ? "SCP:SL ↔ Minecraft" : L.T("нет связи", "not connected"));
             bool comp = Orchestrator.CompositorRunning;
-            _rows[3].Set(comp ? Ui.Ok : Ui.Off, comp ? "работает (Ctrl+Shift+F12)" : "выключен");
+            _rows[3].Set(comp ? Ui.Ok : Ui.Off, comp ? L.T("работает (Ctrl+Shift+F12)", "running (Ctrl+Shift+F12)") : L.T("выключен", "off"));
             bool cl = Orchestrator.SlClientRunning;
-            _rows[4].Set(cl ? Ui.Ok : Ui.Off, cl ? "запущен" : "выключен");
+            _rows[4].Set(cl ? Ui.Ok : Ui.Off, cl ? L.T("запущен", "running") : L.T("выключен", "off"));
             _btnPlay.Enabled = !_busy;
         }
 
@@ -334,13 +347,13 @@ namespace SlBridge.Launcher
         {
             if (_busy) return;
             var world = CurrentWorld();
-            if (world == null && Orchestrator.MinecraftProcess == null) { Log("Выбери мир или «Создать новый»."); return; }
-            if (!_orc.SlServerFound || (_cfg.McMode == "prism" && !_orc.PrismFound)) { Log("Не всё готово — открой «Подготовку»."); Show(0); return; }
+            if (world == null && Orchestrator.MinecraftProcess == null) { Log(L.T("Выбери мир или «Создать новый».", "Pick a world or “Create new”.")); return; }
+            if (!_orc.SlServerFound || (_cfg.McMode == "prism" && !_orc.PrismFound)) { Log(L.T("Не всё готово — открой «Подготовку».", "Not everything is ready — open “Setup”.")); Show(0); return; }
             _busy = true;
             _cts = new CancellationTokenSource();
             try { Clipboard.SetText("127.0.0.1:" + _cfg.SlServerPort); } catch { }
             try { await _orc.StartAll(world, _cts.Token); }
-            catch (Exception e) { Log("Ошибка: " + e.Message); }
+            catch (Exception e) { Log(L.T("Ошибка: ", "Error: ") + e.Message); }
             finally { _busy = false; _cts = null; LoadWorlds(); }
         }
 
@@ -348,7 +361,7 @@ namespace SlBridge.Launcher
         {
             _cts?.Cancel();
             try { await _orc.StopAll(); }
-            catch (Exception e) { Log("Ошибка: " + e.Message); }
+            catch (Exception e) { Log(L.T("Ошибка: ", "Error: ") + e.Message); }
         }
 
         // ═════════════ СПРАВКА ═════════════
@@ -363,31 +376,49 @@ namespace SlBridge.Launcher
             };
             void H(string s) { box.SelectionFont = Ui.F(14f, FontStyle.Bold); box.SelectionColor = Ui.Text; box.AppendText(s + "\n"); }
             void P(string s) { box.SelectionFont = Ui.F(10.5f); box.SelectionColor = Ui.Muted; box.AppendText(s + "\n\n"); }
-            H("Что это");
-            P("Две игры работают вместе: Minecraft рисует мир, блоки и мобов, а SCP: Secret Laboratory — твоего персонажа, оружие и интерфейс. " +
-              "Мост связывает их: ты ходишь по блокам Minecraft с физикой SL, стреляешь — ломаешь блоки и ранишь мобов.");
-            H("Управление");
-            P("Ходьба, бег, прыжок, оружие, инвентарь (Tab), админ-панель (M) — как в SCP:SL.\n" +
-              "Стрельба по блоку — ломает его (камень — несколько попаданий). По мобу — урон.\n" +
-              "Зажать E на предмете на земле — подобрать. Q — выбросить стак.\n" +
-              "E (взаимодействие Minecraft) — поставить блок из руки, открыть дверь, нажать рычаг, съесть еду, использовать огниво/ведро/око Эндера, открыть верстак/печь/сундук.\n" +
-              "Оружие, патроны, броню, аптечки и SCP-предметы можно скрафтить — рисунки рецептов во вкладке «⚒ Крафты».\n" +
-              "I — инвентарь Minecraft с крафтом 2×2. В окнах Minecraft предметы таскаются мышкой; закрыть — E или Esc.\n" +
-              "Клавиши E и I меняются в SL: Esc → Настройки → Server-specific.\n" +
-              "Консоль SL (~): .mc <команда Minecraft>, например .mc time set day. В админ-панели (M) — просто mc time set day.");
-            H("Оверлей");
-            P("Ctrl+Shift+F12 — выключить/включить оверлей (если что-то перекрывает или нужно увидеть «голый» SL).\n" +
-              "Ctrl+Shift+F11 — показать маску (белое — где подставляется Minecraft).\n" +
-              "SL должен быть в оконном режиме или «без рамки», не в эксклюзивном полноэкранном.");
-            H("Если что-то не так");
-            P("• Сервер не стартует — сделай «Первый запуск сервера» в «Подготовке» и ответь на его вопросы.\n" +
-              "• Minecraft не заходит в мир сам — зайди вручную и нажми «Я зашёл в мир».\n" +
-              "• Нет связи моста — проверь, что мод лежит в mods той же сборки, что запущена, и что в Minecraft открыт мир.\n" +
-              "• Версии SCP:SL и Dedicated Server должны совпадать — обнови обе в Steam.\n" +
-              "• Тормозит — уменьши дальность прорисовки в Minecraft (8–10 чанков).\n" +
-              "• Логи: ссылки внизу вкладки «Играть». Их можно отправить автору моста.");
+            H(L.T("Что это", "What is this"));
+            P(L.T("Две игры работают вместе: Minecraft рисует мир, блоки и мобов, а SCP: Secret Laboratory — твоего персонажа, оружие и интерфейс. ", "Two games run together: Minecraft draws the world, blocks and mobs, and SCP: Secret Laboratory draws your character, weapons and interface. ") +
+              L.T("Мост связывает их: ты ходишь по блокам Minecraft с физикой SL, стреляешь — ломаешь блоки и ранишь мобов.", "The bridge connects them: you walk on Minecraft blocks with SL physics, and your shots break blocks and hurt mobs."));
+            H(L.T("Управление", "Controls"));
+            P(L.T("Ходьба, бег, прыжок, оружие, инвентарь (Tab), админ-панель (M) — как в SCP:SL.\n", "Walking, sprinting, jumping, weapons, inventory (Tab), admin panel (M) — just like in SCP:SL.\n") +
+              L.T("Стрельба по блоку — ломает его (камень — несколько попаданий). По мобу — урон.\n", "Shooting a block breaks it (stone takes several hits). Shooting a mob damages it.\n") +
+              L.T("Зажать E на предмете на земле — подобрать. Q — выбросить стак.\n", "Hold E on an item on the ground to pick it up. Q drops a stack.\n") +
+              L.T("E (взаимодействие Minecraft) — поставить блок из руки, открыть дверь, нажать рычаг, съесть еду, использовать огниво/ведро/око Эндера, открыть верстак/печь/сундук.\n", "E (Minecraft interact) places the held block, opens doors, presses levers, eats food, uses flint and steel/buckets/eyes of ender, opens crafting tables/furnaces/chests.\n") +
+              L.T("Оружие, патроны, броню, аптечки и SCP-предметы можно скрафтить — рисунки рецептов во вкладке «⚒ Крафты».\n", "Weapons, ammo, armor, medkits and SCP items can be crafted — recipe drawings are on the “⚒ Crafting” tab.\n") +
+              L.T("I — инвентарь Minecraft с крафтом 2×2. В окнах Minecraft предметы таскаются мышкой; закрыть — E или Esc.\n", "I opens the Minecraft inventory with 2×2 crafting. In Minecraft windows you drag items with the mouse; close with E or Esc.\n") +
+              L.T("Клавиши E и I меняются в SL: Esc → Настройки → Server-specific.\n", "E and I can be rebound in SL: Esc → Settings → Server-specific.\n") +
+              L.T("Консоль SL (~): .mc <команда Minecraft>, например .mc time set day. В админ-панели (M) — просто mc time set day.", "SL console (~): .mc <Minecraft command>, e.g. .mc time set day. In the admin panel (M) — just mc time set day."));
+            H(L.T("Оверлей", "Overlay"));
+            P(L.T("Ctrl+Shift+F12 — выключить/включить оверлей (если что-то перекрывает или нужно увидеть «голый» SL).\n", "Ctrl+Shift+F12 — turn the overlay off/on (if something is covered or you want to see “bare” SL).\n") +
+              L.T("Ctrl+Shift+F11 — показать маску (белое — где подставляется Minecraft).\n", "Ctrl+Shift+F11 — show the mask (white is where Minecraft is drawn).\n") +
+              L.T("SL должен быть в оконном режиме или «без рамки», не в эксклюзивном полноэкранном.", "SL must run windowed or borderless, not in exclusive fullscreen."));
+            H(L.T("Если что-то не так", "Troubleshooting"));
+            P(L.T("• Сервер не стартует — сделай «Первый запуск сервера» в «Подготовке» и ответь на его вопросы.\n", "• The server doesn't start — do “First server run” in “Setup” and answer its questions.\n") +
+              L.T("• Minecraft не заходит в мир сам — зайди вручную и нажми «Я зашёл в мир».\n", "• Minecraft doesn't join the world by itself — join manually and press “I'm in the world”.\n") +
+              L.T("• Нет связи моста — проверь, что мод лежит в mods той же сборки, что запущена, и что в Minecraft открыт мир.\n", "• No bridge connection — check that the mod is in the mods folder of the instance you started and that a world is open in Minecraft.\n") +
+              L.T("• Версии SCP:SL и Dedicated Server должны совпадать — обнови обе в Steam.\n", "• SCP:SL and the Dedicated Server must be the same version — update both in Steam.\n") +
+              L.T("• Тормозит — уменьши дальность прорисовки в Minecraft (8–10 чанков).\n", "• Lagging — lower the render distance in Minecraft (8–10 chunks).\n") +
+              L.T("• Логи: ссылки внизу вкладки «Играть». Их можно отправить автору моста.", "• Logs: links at the bottom of the “Play” tab. You can send them to the bridge author."));
             page.Controls.Add(box);
             return page;
+        }
+
+        private void SetLanguage(string code)
+        {
+            if (_cfg.Language == code) return;
+            _cfg.Language = code;
+            _cfg.Save();
+            _cfg.WriteLanguageFile();
+            bool mcRunning = Orchestrator.MinecraftProcess != null;
+            if (!mcRunning) _cfg.WriteMinecraftLanguage();
+            L.En = code == "en";
+            MessageBox.Show(this,
+                L.T("Язык сменится после перезапуска лаунчера. Плагин SL подхватит его при следующем запуске сервера, мод Minecraft — сразу.",
+                    "The language changes after the launcher restarts. The SL plugin picks it up on the next server start, the Minecraft mod right away.")
+                + (mcRunning ? "\n\n" + L.T("Minecraft сейчас запущен — язык самой игры поменяй в её настройках.", "Minecraft is running now — change the game's own language in its settings.") : ""),
+                "SCP:SL × Minecraft", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            Application.Restart();
+            Environment.Exit(0);
         }
 
         // ═════════════ мелочи ═════════════
@@ -408,7 +439,7 @@ namespace SlBridge.Launcher
 
         private void Try(Action a)
         {
-            try { a(); } catch (Exception e) { Log("Ошибка: " + e.Message); MessageBox.Show(this, e.Message, "SCP:SL × Minecraft", MessageBoxButtons.OK, MessageBoxIcon.Warning); }
+            try { a(); } catch (Exception e) { Log(L.T("Ошибка: ", "Error: ") + e.Message); MessageBox.Show(this, e.Message, "SCP:SL × Minecraft", MessageBoxButtons.OK, MessageBoxIcon.Warning); }
             RefreshPrep(false);
         }
 
@@ -423,7 +454,7 @@ namespace SlBridge.Launcher
 
         private void PickFile(string name, Action<string> set)
         {
-            using var d = new OpenFileDialog { Filter = name + "|" + name, Title = "Укажи " + name };
+            using var d = new OpenFileDialog { Filter = name + "|" + name, Title = L.T("Укажи ", "Locate ") + name };
             if (d.ShowDialog(this) != DialogResult.OK) return;
             set(d.FileName);
             _cfg.Save();
@@ -460,8 +491,8 @@ namespace SlBridge.Launcher
         {
             // Никаких всплывающих окон с ошибками: всё неожиданное — в launcher.log.
             Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
-            Application.ThreadException += (_, e) => FileLog("Ошибка: " + e.Exception);
-            AppDomain.CurrentDomain.UnhandledException += (_, e) => FileLog("Ошибка: " + e.ExceptionObject);
+            Application.ThreadException += (_, e) => FileLog(L.T("Ошибка: ", "Error: ") + e.Exception);
+            AppDomain.CurrentDomain.UnhandledException += (_, e) => FileLog(L.T("Ошибка: ", "Error: ") + e.ExceptionObject);
             System.Threading.Tasks.TaskScheduler.UnobservedTaskException += (_, e) => { FileLog("Ошибка задачи: " + e.Exception); e.SetObserved(); };
             Application.EnableVisualStyles();
             Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);

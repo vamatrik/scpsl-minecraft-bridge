@@ -17,7 +17,10 @@
    "minecraft:custom_data": {
     "slItem": "MicroHID"
    },
-   "minecraft:item_name": "Micro H.I.D.",
+   "minecraft:item_name": {
+    "translate": "item.slbridge.microhid",
+    "fallback": "Micro H.I.D."
+   },
    "minecraft:item_model": "minecraft:lightning_rod",
    "minecraft:enchantment_glint_override": true,
    "minecraft:rarity": "rare"

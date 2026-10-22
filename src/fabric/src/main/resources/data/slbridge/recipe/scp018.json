@@ -13,7 +13,10 @@
    "minecraft:custom_data": {
     "slItem": "SCP018"
    },
-   "minecraft:item_name": "SCP-018 (мяч)",
+   "minecraft:item_name": {
+    "translate": "item.slbridge.scp018",
+    "fallback": "SCP-018 (ball)"
+   },
    "minecraft:item_model": "minecraft:slime_ball",
    "minecraft:enchantment_glint_override": true,
    "minecraft:rarity": "rare"

@@ -12,7 +12,10 @@
    "minecraft:custom_data": {
     "slItem": "SCP244a"
    },
-   "minecraft:item_name": "SCP-244-A (ваза)",
+   "minecraft:item_name": {
+    "translate": "item.slbridge.scp244a",
+    "fallback": "SCP-244-A (vase)"
+   },
    "minecraft:item_model": "minecraft:flower_pot",
    "minecraft:enchantment_glint_override": true,
    "minecraft:rarity": "rare"

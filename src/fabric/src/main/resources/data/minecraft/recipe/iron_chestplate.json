@@ -16,7 +16,10 @@
    "minecraft:custom_data": {
     "slItem": "ArmorLight"
    },
-   "minecraft:item_name": "Лёгкая броня",
+   "minecraft:item_name": {
+    "translate": "item.slbridge.armorlight",
+    "fallback": "Light Armor"
+   },
    "minecraft:item_model": "minecraft:iron_chestplate",
    "minecraft:enchantment_glint_override": true,
    "minecraft:rarity": "rare"

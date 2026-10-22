@@ -16,7 +16,10 @@
    "minecraft:custom_data": {
     "slItem": "GunFRMG0"
    },
-   "minecraft:item_name": "FR-MG-0",
+   "minecraft:item_name": {
+    "translate": "item.slbridge.gunfrmg0",
+    "fallback": "FR-MG-0"
+   },
    "minecraft:item_model": "minecraft:crossbow",
    "minecraft:enchantment_glint_override": true,
    "minecraft:rarity": "rare"

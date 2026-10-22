@@ -14,7 +14,10 @@
    "minecraft:custom_data": {
     "slItem": "SCP330"
    },
-   "minecraft:item_name": "SCP-330 (конфеты)",
+   "minecraft:item_name": {
+    "translate": "item.slbridge.scp330",
+    "fallback": "SCP-330 (candy)"
+   },
    "minecraft:item_model": "minecraft:bowl",
    "minecraft:enchantment_glint_override": true,
    "minecraft:rarity": "rare"

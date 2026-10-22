@@ -13,7 +13,10 @@
    "minecraft:custom_data": {
     "slItem": "GrenadeFlash"
    },
-   "minecraft:item_name": "Светошумовая граната",
+   "minecraft:item_name": {
+    "translate": "item.slbridge.grenadeflash",
+    "fallback": "Flashbang"
+   },
    "minecraft:item_model": "minecraft:glowstone_dust",
    "minecraft:enchantment_glint_override": true,
    "minecraft:rarity": "rare"

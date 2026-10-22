@@ -17,7 +17,10 @@
    "minecraft:custom_data": {
     "slItem": "Radio"
    },
-   "minecraft:item_name": "Рация",
+   "minecraft:item_name": {
+    "translate": "item.slbridge.radio",
+    "fallback": "Radio"
+   },
    "minecraft:item_model": "minecraft:compass",
    "minecraft:enchantment_glint_override": true,
    "minecraft:rarity": "rare"

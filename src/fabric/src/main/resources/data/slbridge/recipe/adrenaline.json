@@ -11,7 +11,10 @@
    "minecraft:custom_data": {
     "slItem": "Adrenaline"
    },
-   "minecraft:item_name": "Адреналин",
+   "minecraft:item_name": {
+    "translate": "item.slbridge.adrenaline",
+    "fallback": "Adrenaline"
+   },
    "minecraft:item_model": "minecraft:experience_bottle",
    "minecraft:enchantment_glint_override": true,
    "minecraft:rarity": "rare"

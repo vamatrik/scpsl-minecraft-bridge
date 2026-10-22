@@ -15,7 +15,10 @@
    "minecraft:custom_data": {
     "slItem": "SCP1344"
    },
-   "minecraft:item_name": "SCP-1344 (очки)",
+   "minecraft:item_name": {
+    "translate": "item.slbridge.scp1344",
+    "fallback": "SCP-1344 (goggles)"
+   },
    "minecraft:item_model": "minecraft:spyglass",
    "minecraft:enchantment_glint_override": true,
    "minecraft:rarity": "rare"

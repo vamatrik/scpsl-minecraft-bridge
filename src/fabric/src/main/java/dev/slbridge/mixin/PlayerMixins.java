@@ -35,6 +35,8 @@ public final class PlayerMixins {
     public abstract static class BlockChanged {
         @Inject(method = "sendBlockUpdated", at = @At("HEAD"))
         private void slbridge$changed(BlockPos pos, BlockState oldState, BlockState newState, int flags, CallbackInfo ci) {
+            // невидимый свет лампы на коллизии не влияет
+            if (oldState.is(net.minecraft.world.level.block.Blocks.LIGHT) || newState.is(net.minecraft.world.level.block.Blocks.LIGHT)) return;
             CollisionStreamer.markDirty(pos);
         }
     }

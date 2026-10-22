@@ -1,0 +1,29 @@
+{
+ "type": "minecraft:crafting_shaped",
+ "category": "equipment",
+ "pattern": [
+  "JJJ",
+  "SSS",
+  "JJJ"
+ ],
+ "key": {
+  "J": "minecraft:coal",
+  "S": "minecraft:stick"
+ },
+ "result": {
+  "id": "minecraft:paper",
+  "count": 1,
+  "components": {
+   "minecraft:custom_data": {
+    "slItem": "Lantern"
+   },
+   "minecraft:item_name": {
+    "translate": "item.slbridge.lantern",
+    "fallback": "Lantern"
+   },
+   "minecraft:item_model": "minecraft:lantern",
+   "minecraft:enchantment_glint_override": true,
+   "minecraft:rarity": "rare"
+  }
+ }
+}

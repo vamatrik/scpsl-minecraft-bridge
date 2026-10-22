@@ -15,7 +15,10 @@
    "minecraft:custom_data": {
     "slItem": "GunCom45"
    },
-   "minecraft:item_name": "COM-45",
+   "minecraft:item_name": {
+    "translate": "item.slbridge.guncom45",
+    "fallback": "COM-45"
+   },
    "minecraft:item_model": "minecraft:crossbow",
    "minecraft:enchantment_glint_override": true,
    "minecraft:rarity": "rare"

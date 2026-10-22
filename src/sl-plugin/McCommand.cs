@@ -15,16 +15,16 @@ namespace SlBridge
     {
         public string Command => "mc";
         public string[] Aliases => new[] { "minecraft" };
-        public string Description => "Выполнить команду Minecraft (например: mc time set day, mc give @s diamond 5).";
+        public string Description => L.T("Выполнить команду Minecraft (например: mc time set day, mc give @s diamond 5).", "Run a Minecraft command (e.g. mc time set day, mc give @s diamond 5).");
 
         public bool Execute(ArraySegment<string> arguments, ICommandSender sender, out string response)
         {
             var plugin = SlBridgePlugin.Instance;
-            if (plugin == null) { response = "Мост не запущен."; return false; }
-            if (arguments.Count == 0) { response = "Использование: mc <команда Minecraft>"; return false; }
+            if (plugin == null) { response = L.T("Мост не запущен.", "The bridge is not running."); return false; }
+            if (arguments.Count == 0) { response = L.T("Использование: mc <команда Minecraft>", "Usage: mc <Minecraft command>"); return false; }
             string text = string.Join(" ", arguments);
             Player.TryGet(sender, out var player);
-            if (!plugin.SendMinecraftCommand(text, player)) { response = "Minecraft не подключён."; return false; }
+            if (!plugin.SendMinecraftCommand(text, player)) { response = L.T("Minecraft не подключён.", "Minecraft is not connected."); return false; }
             response = "→ Minecraft: /" + text.TrimStart('/');
             return true;
         }

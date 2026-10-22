@@ -16,7 +16,10 @@
    "minecraft:custom_data": {
     "slItem": "GunLogicer"
    },
-   "minecraft:item_name": "Logicer",
+   "minecraft:item_name": {
+    "translate": "item.slbridge.gunlogicer",
+    "fallback": "Logicer"
+   },
    "minecraft:item_model": "minecraft:crossbow",
    "minecraft:enchantment_glint_override": true,
    "minecraft:rarity": "rare"

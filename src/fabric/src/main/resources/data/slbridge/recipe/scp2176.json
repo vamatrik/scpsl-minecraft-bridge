@@ -13,7 +13,10 @@
    "minecraft:custom_data": {
     "slItem": "SCP2176"
    },
-   "minecraft:item_name": "SCP-2176 (лампа)",
+   "minecraft:item_name": {
+    "translate": "item.slbridge.scp2176",
+    "fallback": "SCP-2176 (bulb)"
+   },
    "minecraft:item_model": "minecraft:end_crystal",
    "minecraft:enchantment_glint_override": true,
    "minecraft:rarity": "rare"

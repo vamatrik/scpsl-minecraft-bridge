@@ -132,7 +132,7 @@ public final class Crafting {
         boolean table = near(sp, level, Blocks.CRAFTING_TABLE);
         for (RecipeHolder<?> h : level.getServer().getRecipeManager().getRecipes()) {
             if (!rid(h).equals(id) || !(h.value() instanceof CraftingRecipe cr)) continue;
-            if (needsTable(cr) && !table) { r.addProperty("ok", false); r.addProperty("msg", "Нужен верстак рядом"); return r; }
+            if (needsTable(cr) && !table) { r.addProperty("ok", false); r.addProperty("msg", Lang.t("Нужен верстак рядом", "You need a crafting table nearby")); return r; }
             Map<Item, Integer> c = counts(inv);
             Map<Item, Integer> total = new HashMap<>();
             int done = 0;
@@ -141,7 +141,7 @@ public final class Crafting {
                 if (u == null) break;
                 u.forEach((k, v) -> total.merge(k, v, Integer::sum));
             }
-            if (done == 0) { r.addProperty("ok", false); r.addProperty("msg", "Не хватает предметов"); return r; }
+            if (done == 0) { r.addProperty("ok", false); r.addProperty("msg", Lang.t("Не хватает предметов", "Not enough items")); return r; }
             ItemStack res = result(h, level);
             List<ItemStack> give = new ArrayList<>();
             int n = res.getCount() * done;
@@ -159,7 +159,7 @@ public final class Crafting {
             return r;
         }
         r.addProperty("ok", false);
-        r.addProperty("msg", "Рецепт не найден");
+        r.addProperty("msg", Lang.t("Рецепт не найден", "Recipe not found"));
         return r;
     }
 
@@ -229,7 +229,7 @@ public final class Crafting {
         JsonObject r = new JsonObject();
         r.addProperty("t", "crafted");
         r.addProperty("rid", key);
-        if (!near(sp, level, Blocks.FURNACE, Blocks.BLAST_FURNACE, Blocks.SMOKER)) { r.addProperty("ok", false); r.addProperty("msg", "Нужна печь рядом"); return r; }
+        if (!near(sp, level, Blocks.FURNACE, Blocks.BLAST_FURNACE, Blocks.SMOKER)) { r.addProperty("ok", false); r.addProperty("msg", Lang.t("Нужна печь рядом", "You need a furnace nearby")); return r; }
         String[] parts = key.split("\\|");
         Item input = ItemJson.item(parts.length > 1 ? parts[1] : "");
         for (RecipeHolder<?> h : level.getServer().getRecipeManager().getRecipes()) {
@@ -251,7 +251,7 @@ public final class Crafting {
                 need -= k * u;
             }
             if (need > 0) n -= (int) Math.ceil(need);
-            if (n <= 0) { r.addProperty("ok", false); r.addProperty("msg", "Нет топлива"); return r; }
+            if (n <= 0) { r.addProperty("ok", false); r.addProperty("msg", Lang.t("Нет топлива", "No fuel")); return r; }
             consume.merge(input, n, Integer::sum);
             ItemStack res = result(h, level);
             List<ItemStack> give = new ArrayList<>();
@@ -269,7 +269,7 @@ public final class Crafting {
             return r;
         }
         r.addProperty("ok", false);
-        r.addProperty("msg", "Рецепт не найден");
+        r.addProperty("msg", Lang.t("Рецепт не найден", "Recipe not found"));
         return r;
     }
 }

@@ -12,6 +12,8 @@ public final class Pose {
     public static volatile int minSeq;
     /** Номер последней принятой позы. */
     public static volatile int lastSeq;
+    /** Свет от лампы/фонарика в руке SL (0 — нет, иначе уровень 1..15). */
+    public static volatile int lamp;
 
     public static void set(double nx, double ny, double nz, float nyaw, float npitch, int seq, double nfeet) {
         if (seq < minSeq) return;

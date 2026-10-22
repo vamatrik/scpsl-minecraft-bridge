@@ -17,7 +17,10 @@
    "minecraft:custom_data": {
     "slItem": "Flashlight"
    },
-   "minecraft:item_name": "Фонарик",
+   "minecraft:item_name": {
+    "translate": "item.slbridge.flashlight",
+    "fallback": "Flashlight"
+   },
    "minecraft:item_model": "minecraft:lantern",
    "minecraft:enchantment_glint_override": true,
    "minecraft:rarity": "rare"

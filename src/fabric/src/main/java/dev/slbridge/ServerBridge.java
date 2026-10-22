@@ -1,5 +1,6 @@
 package dev.slbridge;
 
+import net.minecraft.world.level.block.LightBlock;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import net.minecraft.commands.CommandSource;
@@ -79,6 +80,44 @@ public final class ServerBridge {
         lastMobsSig = "";
     }
 
+    // ───────────── лампа ─────────────
+
+    private BlockPos lampPos;
+    private ServerLevel lampLevel;
+    private int lampValue;
+
+    private static boolean lampFits(ServerLevel level, BlockPos p) {
+        var st = level.getBlockState(p);
+        return st.isAir() || st.is(Blocks.LIGHT);
+    }
+
+    private void updateLamp(ServerLevel level) {
+        int want = Math.max(0, Math.min(15, Pose.lamp));
+        BlockPos target = null;
+        if (want > 0) {
+            BlockPos eye = BlockPos.containing(Pose.x, Pose.y, Pose.z);
+            for (BlockPos c : new BlockPos[]{eye, eye.below(), eye.above()})
+                if (lampFits(level, c)) { target = c; break; }
+        }
+        if (target != null && target.equals(lampPos) && level == lampLevel && want == lampValue) return;
+        clearLamp();
+        if (target == null) return;
+        level.setBlock(target, Blocks.LIGHT.defaultBlockState().setValue(LightBlock.LEVEL, want), 3);
+        lampPos = target.immutable();
+        lampLevel = level;
+        lampValue = want;
+    }
+
+    /** Убрать блок света лампы (только наш). Вызывать в потоке сервера. */
+    public void clearLamp() {
+        if (lampPos == null) return;
+        if (lampLevel != null && lampLevel.getBlockState(lampPos).is(Blocks.LIGHT))
+            lampLevel.setBlock(lampPos, Blocks.AIR.defaultBlockState(), 3);
+        lampPos = null;
+        lampLevel = null;
+        lampValue = 0;
+    }
+
     // ───────────── каждый тик сервера ─────────────
 
     public void tick(MinecraftServer server) {
@@ -119,6 +158,9 @@ public final class ServerBridge {
 
         // 3) Урон от падения по правилам Minecraft (вода, сено, слизь уменьшают/отменяют).
         fall(sp, level, feetY);
+
+        // 3б) Лампа/фонарик в руке SL светят и в Minecraft: невидимый блок света у головы, едет за игроком.
+        updateLamp(level);
 
         // 4) Предметы на земле рядом — в SL (там их подбирают на E).
         if (tickNo % 4 == 0) streamItems(sp, level);
@@ -245,7 +287,7 @@ public final class ServerBridge {
         m.addProperty("seq", teleportSeq);
         m.addProperty("dim", sp.level().dimension().identifier().toString());
         bridge.send(m);
-        SlBridgeClient.LOG.info("[SLBridge] Телепорт Minecraft → {} {}", m.get("dim"), p);
+        SlBridgeClient.LOG.info(Lang.t("[SLBridge] Телепорт Minecraft → {} {}", "[SLBridge] Minecraft teleport → {} {}"), m.get("dim"), p);
     }
 
     private int stuckTicks;
@@ -265,7 +307,7 @@ public final class ServerBridge {
                     && level.getBlockState(p.above()).getCollisionShape(level, p.above()).isEmpty()
                     && !level.getBlockState(below).getCollisionShape(level, below).isEmpty()) {
                 sp.snapTo(sp.getX(), p.getY() + 0.05, sp.getZ(), sp.getYRot(), sp.getXRot());
-                SlBridgeClient.LOG.info("[SLBridge] Игрок застрял в блоках — поднимаю на {}", p.getY());
+                SlBridgeClient.LOG.info(Lang.t("[SLBridge] Игрок застрял в блоках — поднимаю на {}", "[SLBridge] Player stuck in blocks — lifting to {}"), p.getY());
                 sendTeleport(sp);
                 return true;
             }
@@ -454,7 +496,7 @@ public final class ServerBridge {
         try {
             server.getCommands().performPrefixedCommand(src, cmd);
         } catch (Exception e) {
-            lines.add("Ошибка: " + e.getMessage());
+            lines.add(Lang.t("Ошибка: ", "Error: ") + e.getMessage());
         }
         JsonObject r = new JsonObject();
         r.addProperty("t", "cmdOut");
