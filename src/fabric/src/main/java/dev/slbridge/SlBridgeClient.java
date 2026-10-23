@@ -164,6 +164,12 @@ public final class SlBridgeClient implements ClientModInitializer {
                     if (sp != null) serverBridge.explode(sp, ex, ey, ez, power);
                 });
             }
+            case "crafts" -> mc.execute(() -> { // книга крафтов SL (кнопка в SL)
+                if (mc.gui.screen() instanceof CraftsScreen) { mc.gui.setScreen(null); return; }
+                if (mc.gui.screen() != null) return;
+                optionsSession = true;
+                mc.gui.setScreen(new CraftsScreen());
+            });
             case "options" -> mc.execute(() -> { // настройки Minecraft (кнопка в SL)
                 if (mc.gui.screen() != null) return;
                 optionsSession = true;

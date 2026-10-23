@@ -281,16 +281,43 @@ for code, d in (('ru_ru', LANG_RU), ('en_us', LANG_EN)):
     fp = os.path.join(RES, 'assets', 'slbridge', 'lang', code + '.json'); os.makedirs(os.path.dirname(fp), exist_ok=True)
     json.dump(d, open(fp, 'w', encoding='utf-8'), ensure_ascii=False, indent=1, sort_keys=True)
 
+# ── клетки с id предметов (для иконок в лаунчере и экрана крафтов в Minecraft) ──
+ICON_OF = {key: icon for key, name, icon, *_ in SHAPED + SHAPELESS}
+ICON_OF['Medkit'] = 'red_dye'
+MATS = ['wooden', 'stone', 'copper', 'iron', 'golden', 'diamond', 'netherite']
+def cell_ids(c, t):
+    if c is None or c == ' ': return []
+    if len(c) > 1: return [c]
+    if c == '*': return ['minecraft:' + ICON_OF[t['key']]]
+    if c == 'w': return [f'minecraft:{m}_sword' for m in MATS]
+    if c == 'p': return [f'minecraft:{m}_pickaxe' for m in MATS]
+    return [LEG[c][0]]
+for t in table:
+    if t['shaped']:
+        rows = [r.ljust(3) for r in t['grid']] + ['   '] * (3 - len(t['grid']))
+        cells = [cell_ids(rows[y][x], t) for y in range(3) for x in range(3)]
+        multi = False
+    else:
+        cells = [cell_ids(c, t) for c in t['items']] + [[]] * (9 - len(t['items']))
+        multi = t['items'] == ['w', 'p']
+    t['cells'] = cells
+    t['result'] = [f'minecraft:{m}_sword' for m in MATS] if multi else ['minecraft:' + ICON_OF[t['key']]]
+crafts = [dict(groupRu=t['group'], groupEn=GROUPS_EN[t['group']], ru=t['name'], en=t.get('name_en') or NAMES_EN[t['key']],
+               shaped=t['shaped'], cells=t['cells'], result=t['result'], count=t['count']) for t in table]
+fp = os.path.join(RES, 'assets', 'slbridge', 'crafts.json'); os.makedirs(os.path.dirname(fp), exist_ok=True)
+json.dump({"crafts": crafts, "medkits": [dict(food='minecraft:' + f, hunger=n, need=k, out=o) for f, n, k, o in medkits]},
+          open(fp, 'w', encoding='utf-8'), ensure_ascii=False)
+
 # ── таблица для лаунчера (C#) ──
 APPLES = {'minecraft:golden_apple': ('Золотое яблоко', 'Golden apple'), 'minecraft:enchanted_golden_apple': ('Зачарованное золотое яблоко', 'Enchanted golden apple'),
           'minecraft:glistering_melon_slice': ('Сверкающий ломтик арбуза', 'Glistering melon slice')}
 def cs(s): return '"' + s.replace('\\', '\\\\').replace('"', '\\"') + '"'
 L = ['// Сгенерировано tools/gen_recipes.py — не править руками.', 'namespace SlBridge.Launcher', '{',
      '    internal static class RecipeData', '    {',
-     '        public sealed record Ing(string Ru, string En, string Color);',
-     '        public sealed record Rec(string GroupRu, string GroupEn, string Ru, string En, bool Shaped, string[] Grid, string NoteRu, string NoteEn);',
+     '        public sealed record Ing(string Ru, string En, string Color, string Id);',
+     '        public sealed record Rec(string GroupRu, string GroupEn, string Ru, string En, bool Shaped, string[] Grid, string NoteRu, string NoteEn, string[] Cells, string[] Result, int Count);',
      '        public static readonly System.Collections.Generic.Dictionary<char, Ing> Legend = new()', '        {']
-for c, (i, lab, col) in LEG.items(): L.append(f"            [{repr(c)}] = new({cs(lab)}, {cs(LEG_EN[c])}, {cs(col)}),")
+for c, (i, lab, col) in LEG.items(): L.append(f"            [{repr(c)}] = new({cs(lab)}, {cs(LEG_EN[c])}, {cs(col)}, {cs(i or ('minecraft:iron_sword' if c == 'w' else 'minecraft:iron_pickaxe' if c == 'p' else ''))}),")
 L += ['        };', '        public static readonly Rec[] All =', '        {']
 for t in table:
     grid = t['grid'] if t['shaped'] else [''.join(c if len(c) == 1 else '?' for c in t['items'])]
@@ -298,9 +325,10 @@ for t in table:
     if not t['shaped']:
         for c in t['items']:
             if c in APPLES: nr, ne = APPLES[c]
-    L.append(f"            new({cs(t['group'])}, {cs(GROUPS_EN[t['group']])}, {cs(t['name'])}, {cs(t.get('name_en') or NAMES_EN[t['key']])}, {'true' if t['shaped'] else 'false'}, new[] {{ {', '.join(cs(r) for r in grid)} }}, {cs(nr)}, {cs(ne)}),")
-L += ['        };', '        public static readonly (string Ru, string En, int Hunger, int Need, int Out)[] Medkits =', '        {']
-for food, n, k, o in medkits: L.append(f"            ({cs(FOOD_RU[food])}, {cs(FOOD_EN[food])}, {n}, {k}, {o}),")
+    cells = ', '.join(cs('|'.join(c)) for c in t['cells'])
+    L.append(f"            new({cs(t['group'])}, {cs(GROUPS_EN[t['group']])}, {cs(t['name'])}, {cs(t.get('name_en') or NAMES_EN[t['key']])}, {'true' if t['shaped'] else 'false'}, new[] {{ {', '.join(cs(r) for r in grid)} }}, {cs(nr)}, {cs(ne)}, new[] {{ {cells} }}, new[] {{ {', '.join(cs(x) for x in t['result'])} }}, {t['count']}),")
+L += ['        };', '        public static readonly (string Ru, string En, int Hunger, int Need, int Out, string Id)[] Medkits =', '        {']
+for food, n, k, o in medkits: L.append(f"            ({cs(FOOD_RU[food])}, {cs(FOOD_EN[food])}, {n}, {k}, {o}, {cs('minecraft:' + food)}),")
 L += ['        };', '    }', '}']
 open(os.path.join(LAUNCHER, 'RecipeData.g.cs'), 'w', encoding='utf-8').write('\n'.join(L) + '\n')
 

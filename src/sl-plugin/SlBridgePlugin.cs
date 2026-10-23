@@ -684,6 +684,9 @@ namespace SlBridge
                 case SSKeybindSetting k when k.SettingId == McMenu.KeyUse && k.SyncIsPressed:
                     DoUse();
                     break;
+                case SSKeybindSetting k when k.SettingId == McMenu.KeyCrafts && k.SyncIsPressed:
+                    if (_mc != null && _mc.Connected && !_uiOpen) _mc.Send("{\"t\":\"crafts\"}");
+                    break;
                 case SSKeybindSetting k when k.SettingId == McMenu.KeyOptions && k.SyncIsPressed:
                     if (_mc != null && _mc.Connected && !_uiOpen) _mc.Send("{\"t\":\"options\"}");
                     break;

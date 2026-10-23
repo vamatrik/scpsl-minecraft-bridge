@@ -12,9 +12,9 @@ namespace SlBridge
     public sealed class McMenu
     {
         public const int KeyUse = 9001, Status = 9002, KeyInv = 9003, QuitBtn = 9030;
-        public const int KeyDebug = 9004, KeyHitboxes = 9005, KeyChunks = 9006, KeyOptions = 9007;
+        public const int KeyDebug = 9004, KeyHitboxes = 9005, KeyChunks = 9006, KeyOptions = 9007, KeyCrafts = 9008;
 
-        public readonly SSKeybindSetting Use, InvKey, DebugKey, HitboxKey, ChunkKey, OptionsKey;
+        public readonly SSKeybindSetting Use, InvKey, DebugKey, HitboxKey, ChunkKey, OptionsKey, CraftsKey;
         public readonly SSTextArea StatusText;
         public readonly SSButton Quit;
         public readonly ServerSpecificSettingBase[] All;
@@ -27,6 +27,9 @@ namespace SlBridge
             InvKey = new SSKeybindSetting(KeyInv, L.T("Инвентарь Minecraft (крафт 2×2)", "Minecraft inventory (2×2 crafting)"), KeyCode.I, true, false,
                 L.T("Открыть инвентарь Minecraft с твоими предметами: перекладывать, крафтить 2×2. Закрыть — E или Esc.",
                     "Open the Minecraft inventory with your items: move them around, craft 2×2. Close with E or Esc."));
+            CraftsKey = new SSKeybindSetting(KeyCrafts, L.T("Книга крафтов SL", "SL crafting book"), KeyCode.K, true, false,
+                L.T("Открыть/закрыть рецепты предметов SCP:SL — в стиле окон Minecraft, с настоящими предметами.",
+                    "Open/close the SCP:SL item recipes — in Minecraft style, with real items."));
             OptionsKey = new SSKeybindSetting(KeyOptions, L.T("Настройки Minecraft", "Minecraft settings"), KeyCode.O, true, false,
                 L.T("Открыть настройки Minecraft (графика, звук, управление…). Закрыть — Esc или «Готово».",
                     "Open the Minecraft settings (video, sound, controls…). Close with Esc or “Done”."));
@@ -48,6 +51,7 @@ namespace SlBridge
                 new SSGroupHeader("Minecraft"),
                 Use,
                 InvKey,
+                CraftsKey,
                 OptionsKey,
                 DebugKey,
                 HitboxKey,

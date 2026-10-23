@@ -51,9 +51,9 @@ namespace SlBridge.Launcher
             mh.Margin = new Padding(0, 14, 0, 6);
             flow.Controls.Add(Break(mh));
             flow.Controls.Add(Break(Ui.Wrap(L.T("10 единиц голода = 1 аптечка. Положи в сетку столько одинаковых продуктов, сколько указано (в любом порядке). " +
-                                            "Золотое яблоко → адреналин, зачарованное золотое яблоко → SCP-500.",
+                                            "Наведи мышь на ячейку рецепта — увидишь название предмета.",
                                             "10 hunger points = 1 medkit. Put as many identical food items into the grid as listed (any order). " +
-                                            "Golden apple → adrenaline, enchanted golden apple → SCP-500."), full)));
+                                            "Hover a recipe cell to see the item name."), full)));
             var grid = new DataGridView
             {
                 Width = full, ReadOnly = true, AllowUserToAddRows = false, AllowUserToResizeRows = false, RowHeadersVisible = false,
@@ -62,11 +62,18 @@ namespace SlBridge.Launcher
                 DefaultCellStyle = { BackColor = Ui.Card, ForeColor = Ui.Text, SelectionBackColor = Ui.Input, SelectionForeColor = Ui.Text },
                 AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill, ScrollBars = ScrollBars.None, SelectionMode = DataGridViewSelectionMode.FullRowSelect,
             };
+            grid.Columns.Add(new DataGridViewImageColumn { Name = "i", HeaderText = "", Width = 40, FillWeight = 12, ImageLayout = DataGridViewImageCellLayout.Normal });
             grid.Columns.Add("f", L.T("Еда", "Food"));
             grid.Columns.Add("h", L.T("Голод", "Hunger"));
             grid.Columns.Add("n", L.T("Сколько положить", "How many"));
             grid.Columns.Add("o", L.T("Аптечек", "Medkits"));
-            foreach (var m in RecipeData.Medkits) grid.Rows.Add(L.T(m.Ru, m.En), m.Hunger, m.Need, m.Out);
+            grid.RowTemplate.Height = 34;
+            foreach (var m in RecipeData.Medkits)
+            {
+                Bitmap icon = new Bitmap(32, 32);
+                using (var ig = Graphics.FromImage(icon)) McIcons.Draw(ig, m.Id, new Rectangle(0, 0, 32, 32));
+                grid.Rows.Add(icon, L.T(m.Ru, m.En), m.Hunger, m.Need, m.Out);
+            }
             grid.Height = grid.ColumnHeadersHeight + grid.Rows.Cast<DataGridViewRow>().Sum(x => x.Height) + 2;
             flow.Controls.Add(Break(grid));
 
@@ -115,57 +122,126 @@ namespace SlBridge.Launcher
         }
     }
 
+    /// <summary>Рецепт в стиле окна верстака Minecraft: серая панель, ячейки-слоты с иконками предметов, стрелка и результат.</summary>
     internal sealed class RecipeCard : Panel
     {
+        internal static readonly Color McPanel = Color.FromArgb(198, 198, 198), McSlot = Color.FromArgb(139, 139, 139),
+                                       McDark = Color.FromArgb(55, 55, 55), McText = Color.FromArgb(64, 64, 64);
         private static string Note(RecipeData.Rec r) => L.T(r.NoteRu, r.NoteEn);
-        private const int CellSize = 34;
+        private const int Slot = 38;
         private readonly RecipeData.Rec _r;
-        private readonly ToolTip _tip = new ToolTip();
+        private readonly ToolTip _tip = new ToolTip { InitialDelay = 150, ReshowDelay = 50 };
+        private string _lastTip;
 
         public RecipeCard(RecipeData.Rec r)
         {
             _r = r;
             DoubleBuffered = true;
-            BackColor = Ui.Card;
-            Size = new Size(210, 44 + 3 * CellSize + 26);
+            BackColor = Ui.Bg;
+            Size = new Size(12 + 3 * Slot + 34 + Slot + 22, 30 + 3 * Slot + 24);
             Margin = new Padding(0, 0, 10, 10);
-            var tip = r.Shaped
-                ? string.Join("\n", r.Grid.SelectMany(x => x).Distinct().Where(c => c != ' ').Select(c => RecipeData.Legend.TryGetValue(c, out var i) ? $"{CraftsPage.Cell(c, Note(r)).text} — {L.T(i.Ru, i.En)}" : ""))
-                : L.T("В любом порядке: ", "In any order: ") + string.Join(" + ", r.Grid[0].Select(c => c == '?' ? Note(r) : L.T(RecipeData.Legend[c].Ru, RecipeData.Legend[c].En)));
-            _tip.SetToolTip(this, tip);
         }
 
-        protected override void OnPaint(PaintEventArgs e)
+        internal static void DrawSlot(Graphics g, Rectangle r)
         {
-            var g = e.Graphics;
-            g.SmoothingMode = SmoothingMode.AntiAlias;
-            using var title = Ui.F(10f, FontStyle.Bold);
-            using var small = Ui.F(7.5f, FontStyle.Bold);
-            using var note = Ui.F(8.5f);
-            TextRenderer.DrawText(g, L.T(_r.Ru, _r.En), title, new Rectangle(10, 8, Width - 20, 22), Ui.Text, TextFormatFlags.EndEllipsis);
-            int x0 = 12, y0 = 38;
+            using (var b = new SolidBrush(McSlot)) g.FillRectangle(b, r);
+            using (var d = new Pen(McDark)) { g.DrawLine(d, r.Left, r.Top, r.Right - 1, r.Top); g.DrawLine(d, r.Left, r.Top, r.Left, r.Bottom - 1); }
+            using (var w = new Pen(Color.White)) { g.DrawLine(w, r.Left + 1, r.Bottom - 1, r.Right - 1, r.Bottom - 1); g.DrawLine(w, r.Right - 1, r.Top + 1, r.Right - 1, r.Bottom - 1); }
+        }
+
+        /// <summary>Иконка предмета в слоте; если Minecraft не найден — цветной квадрат с подписью.</summary>
+        internal static void DrawItem(Graphics g, Rectangle slot, string ids, char c, string note, Font f, int count = 1)
+        {
+            DrawSlot(g, slot);
+            string id = (ids ?? "").Split('|')[0];
+            var inner = Rectangle.Inflate(slot, -3, -3);
+            if (id.Length > 0 && McIcons.Draw(g, id, inner)) { }
+            else if (c != ' ' && c != '\0')
+            {
+                var (back, text) = CraftsPage.Cell(c, note);
+                using (var b = new SolidBrush(back)) g.FillRectangle(b, inner);
+                TextRenderer.DrawText(g, text, f, inner, CraftsPage.Contrast(back), TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+            }
+            else return;
+            if (count > 1)
+            {
+                using var cf = Ui.F(9f, FontStyle.Bold);
+                var tr = new Rectangle(slot.Left, slot.Bottom - 18, slot.Width - 2, 17);
+                TextRenderer.DrawText(g, count.ToString(), cf, new Rectangle(tr.X + 1, tr.Y + 1, tr.Width, tr.Height), Color.FromArgb(63, 63, 63), TextFormatFlags.Right | TextFormatFlags.Bottom);
+                TextRenderer.DrawText(g, count.ToString(), cf, tr, Color.White, TextFormatFlags.Right | TextFormatFlags.Bottom);
+            }
+        }
+
+        private char CharAt(int i)
+        {
             if (_r.Shaped)
             {
                 var rows = _r.Grid.Select(s => s.PadRight(3)).ToList();
                 while (rows.Count < 3) rows.Add("   ");
-                for (int y = 0; y < 3; y++)
-                    for (int x = 0; x < 3; x++)
-                        CraftsPage.DrawCell(g, new Rectangle(x0 + x * CellSize, y0 + y * CellSize, CellSize, CellSize), rows[y][x], Note(_r), small);
+                return rows[i / 3][i % 3];
             }
+            var items = _r.Grid[0];
+            return i < items.Length ? items[i] : ' ';
+        }
+
+        private string NameAt(int i)
+        {
+            char c = CharAt(i);
+            if (c == ' ') return null;
+            if (c == '?') return Note(_r);
+            if (c == '*') return L.T(_r.Ru, _r.En);
+            return RecipeData.Legend.TryGetValue(c, out var ing) ? L.T(ing.Ru, ing.En) : null;
+        }
+
+        private Rectangle CellRect(int i) => new Rectangle(8 + i % 3 * Slot, 28 + i / 3 * Slot, Slot, Slot);
+        private Rectangle ResultRect => new Rectangle(8 + 3 * Slot + 34, 28 + Slot - 4, Slot + 8, Slot + 8);
+
+        protected override void OnMouseMove(MouseEventArgs e)
+        {
+            base.OnMouseMove(e);
+            string t = null;
+            for (int i = 0; i < 9; i++) if (CellRect(i).Contains(e.Location)) t = NameAt(i);
+            if (ResultRect.Contains(e.Location)) t = L.T(_r.Ru, _r.En);
+            if (t == _lastTip) return;
+            _lastTip = t;
+            if (t == null) _tip.Hide(this); else _tip.Show(t, this, e.X + 14, e.Y + 18, 4000);
+        }
+
+        protected override void OnMouseLeave(EventArgs e) { base.OnMouseLeave(e); _lastTip = null; _tip.Hide(this); }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            var g = e.Graphics;
+            var rc = new Rectangle(0, 0, Width - 1, Height - 1);
+            using (var b = new SolidBrush(McPanel)) g.FillRectangle(b, rc);
+            using (var w = new Pen(Color.White, 2)) { g.DrawLine(w, 1, 1, Width - 2, 1); g.DrawLine(w, 1, 1, 1, Height - 2); }
+            using (var d = new Pen(Color.FromArgb(85, 85, 85), 2)) { g.DrawLine(d, 2, Height - 2, Width - 1, Height - 2); g.DrawLine(d, Width - 2, 2, Width - 2, Height - 1); }
+            using (var o = new Pen(Color.Black)) g.DrawRectangle(o, rc);
+            using var title = Ui.F(10f, FontStyle.Bold);
+            using var small = Ui.F(7.5f, FontStyle.Bold);
+            using var note = Ui.F(8.5f);
+            TextRenderer.DrawText(g, L.T(_r.Ru, _r.En), title, new Rectangle(8, 6, Width - 16, 20), McText, TextFormatFlags.EndEllipsis);
+            for (int i = 0; i < 9; i++)
+                DrawItem(g, CellRect(i), i < (_r.Cells?.Length ?? 0) ? _r.Cells[i] : "", CharAt(i), Note(_r), small);
+            // стрелка, как в верстаке
+            int ax = 8 + 3 * Slot + 6, ay = 28 + 3 * Slot / 2;
+            using (var b = new SolidBrush(McSlot))
+            {
+                g.FillRectangle(b, ax, ay - 4, 14, 8);
+                g.FillPolygon(b, new[] { new Point(ax + 14, ay - 10), new Point(ax + 24, ay), new Point(ax + 14, ay + 10) });
+            }
+            var res = ResultRect;
+            using (var b = new SolidBrush(McSlot)) g.FillRectangle(b, Rectangle.Inflate(res, 2, 2));
+            string rid = _r.Result != null && _r.Result.Length > 0 ? _r.Result[0] : "";
+            if (McIcons.Get(rid) != null) DrawItem(g, res, rid, ' ', "", small, _r.Count);
             else
             {
-                // бесформенный рецепт: ингредиенты в сетке по порядку
-                var items = _r.Grid[0];
-                for (int i = 0; i < 9; i++)
-                    CraftsPage.DrawCell(g, new Rectangle(x0 + i % 3 * CellSize, y0 + i / 3 * CellSize, CellSize, CellSize), i < items.Length ? items[i] : ' ', Note(_r), small);
+                DrawSlot(g, res);
+                using (var b = new SolidBrush(Ui.Accent)) g.FillRectangle(b, Rectangle.Inflate(res, -4, -4));
+                TextRenderer.DrawText(g, _r.Count > 1 ? "SL ×" + _r.Count : "SL", title, res, Color.White, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
             }
-            // стрелка и результат
-            int ax = x0 + 3 * CellSize + 10, ay = y0 + 3 * CellSize / 2;
-            using (var p = new Pen(Ui.Muted, 3) { EndCap = LineCap.ArrowAnchor }) g.DrawLine(p, ax, ay, ax + 22, ay);
-            var res = new Rectangle(ax + 30, ay - 20, 40, 40);
-            using (var b = new SolidBrush(Ui.Accent)) g.FillRectangle(b, res);
-            TextRenderer.DrawText(g, "SL", title, res, Color.White, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
-            TextRenderer.DrawText(g, _r.Shaped ? L.T("форма", "shaped") : L.T("в любом порядке", "any order"), note, new Rectangle(10, y0 + 3 * CellSize + 4, Width - 20, 18), Ui.Muted, TextFormatFlags.Left);
+            TextRenderer.DrawText(g, _r.Shaped ? L.T("форма", "shaped") : L.T("в любом порядке", "any order"), note,
+                new Rectangle(8, 28 + 3 * Slot + 3, Width - 16, 18), Color.FromArgb(90, 90, 90), TextFormatFlags.Left);
         }
     }
 
@@ -187,7 +263,7 @@ namespace SlBridge.Launcher
                 {
                     using var f = Ui.F(7.5f, FontStyle.Bold);
                     using var f2 = Ui.F(8.5f);
-                    CraftsPage.DrawCell(e.Graphics, new Rectangle(0, 0, 26, 26), c, "", f);
+                    RecipeCard.DrawItem(e.Graphics, new Rectangle(0, 0, 26, 26), kv.Value.Id, c, "", f);
                     TextRenderer.DrawText(e.Graphics, L.T(kv.Value.Ru, kv.Value.En), f2, new Rectangle(30, 0, 130, 26), Ui.Muted, TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
                 };
                 Controls.Add(p);

@@ -67,7 +67,7 @@ namespace SlBridge.Launcher
             side.Controls.Add(logo);
             _nav = new[] { NavButton(L.T("1  Подготовка", "1  Setup"), 0), NavButton(L.T("2  Играть", "2  Play"), 1), NavButton(L.T("⚒  Крафты", "⚒  Crafting"), 2), NavButton(L.T("?  Справка", "?  Help"), 3) };
             for (int i = 0; i < _nav.Length; i++) { _nav[i].Location = new Point(10, 100 + i * 46); side.Controls.Add(_nav[i]); }
-            var ver = Ui.Label(L.T("мост 1.1.0\nClaude x Vamatrik", "bridge 1.1.0\nClaude x Vamatrik"), 8.5f, Ui.Muted);
+            var ver = Ui.Label(L.T("мост 1.1.1\nClaude x Vamatrik", "bridge 1.1.1\nClaude x Vamatrik"), 8.5f, Ui.Muted);
             ver.Location = new Point(18, 626);
             side.Controls.Add(ver);
 
@@ -84,6 +84,7 @@ namespace SlBridge.Launcher
 
             _prep = BuildPrep();
             _play = BuildPlay();
+            McIcons.Config = _cfg;
             _crafts = CraftsPage.Build();
             _help = BuildHelp();
             _content.Controls.AddRange(new Control[] { _prep, _play, _crafts, _help });
@@ -506,7 +507,7 @@ namespace SlBridge.Launcher
               L.T("Оружие, патроны, броню, аптечки и SCP-предметы можно скрафтить — рисунки рецептов во вкладке «⚒ Крафты».\n", "Weapons, ammo, armor, medkits and SCP items can be crafted — recipe drawings are on the “⚒ Crafting” tab.\n") +
               L.T("I — инвентарь Minecraft с крафтом 2×2. В окнах Minecraft предметы таскаются мышкой; закрыть — E или Esc.\n", "I opens the Minecraft inventory with 2×2 crafting. In Minecraft windows you drag items with the mouse; close with E or Esc.\n") +
               L.T("В воде и лаве всплываешь сам; присесть или идти медленно — нырнуть. У берега плыви на него — выберешься.\n", "In water and lava you float up by yourself; crouch or walk slowly to dive. Swim into the shore to climb out.\n") +
-              L.T("O — настройки Minecraft (графика, звук…).\n", "O — Minecraft settings (video, sound…).\n") +
+              L.T("O — настройки Minecraft (графика, звук…). K — книга крафтов SL прямо в игре.\n", "O — Minecraft settings (video, sound…). K — the SL crafting book right in the game.\n") +
               L.T("Мультитул: меч + кирка одного материала на верстаке → мачете SL этого уровня. Чем лучше материал, тем больнее бьёт и быстрее копает (золото копает быстрее всех, но бьёт слабо). На старте — деревянный.\n", "Multitool: a sword + a pickaxe of the same material on a crafting table → an SL machete of that tier. Better material hits harder and digs faster (gold digs fastest but hits weakly). You start with a wooden one.\n") +
               L.T("Лестница и лианы: смотришь вверх — лезешь, вниз — спускаешься, прямо или присел — висишь.\n", "Ladders and vines: look up to climb, look down to go down, look straight or crouch to hang.\n") +
               L.T("Кровать (E): ночью — сон до утра, в любое время — точка возрождения. Отойдёшь — проснёшься.\n", "Bed (E): at night you sleep until morning, any time it sets your respawn point. Walk away to wake up.\n") +
