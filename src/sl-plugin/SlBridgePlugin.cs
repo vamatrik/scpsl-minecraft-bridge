@@ -365,14 +365,9 @@ namespace SlBridge
             }
             // Предмет SL выпадает предметом Minecraft (его иконка из рецептов, иначе мешок) с меткой «что это».
             // Обычный «пикап» SL летел бы криво и проваливался сквозь коллизии. Подобрал на E — снова предмет SL.
-            var type = ev.Item.Type;
-            if (ev.Item is FirearmItem fa)
-            {
-                // патроны из магазина — обратно в запас, чтобы не пропали
-                try { int a = fa.StoredAmmo + fa.ChamberedAmmo; if (a > 0) _player.SetAmmo(fa.AmmoType, (ushort)Math.Min(ushort.MaxValue, _player.GetAmmo(fa.AmmoType) + a)); } catch { }
-            }
+            var stack = McStack.ForSl(ev.Item); // с состоянием: обвесы, магазин, заряд
             _player.RemoveItem(ev.Item);
-            DropToMinecraft(McStack.ForSl(type), true);
+            DropToMinecraft(stack, true);
         }
 
         private void OnDroppingAmmo(PlayerDroppingAmmoEventArgs ev)
@@ -404,11 +399,7 @@ namespace SlBridge
             foreach (var it in _player.Items.ToList())
             {
                 if (_inv.IsStack(it)) continue;
-                if (it is FirearmItem fa)
-                {
-                    try { int a = fa.StoredAmmo + fa.ChamberedAmmo; if (a > 0) ammo[fa.AmmoType] = (ammo.TryGetValue(fa.AmmoType, out var x) ? x : 0) + a; } catch { }
-                }
-                DropToMinecraft(McStack.ForSl(it.Type), false);
+                DropToMinecraft(McStack.ForSl(it), false); // с состоянием: обвесы, магазин, заряд
             }
             foreach (ItemType t in Enum.GetValues(typeof(ItemType)))
             {
@@ -460,14 +451,21 @@ namespace SlBridge
 
         // ───────────── действия ─────────────
 
-        /// <summary>Инвентарь SL (стаки Minecraft) по слотам + какой слот в руке.</summary>
+        /// <summary>
+        /// Весь инвентарь SL по слотам для Minecraft: стаки Minecraft как есть, предметы SL — бумагой-заглушкой
+        /// с меткой и состоянием (их видно в окнах Minecraft и можно класть в верстак, например на перезарядку).
+        /// </summary>
         private string InvForMinecraft(out int heldSlot)
         {
-            var ordered = _inv.Ordered(_player);
-            _useSerials = ordered.Select(k => k.Key).ToList();
+            var items = _player.Items.ToList();
+            _useSerials = items.Select(i => i.Serial).ToList();
+            _slSentSerials = items.Where(i => !_inv.IsStack(i)).Select(i => i.Serial).ToList();
             heldSlot = _player.CurrentItem != null ? _useSerials.IndexOf(_player.CurrentItem.Serial) : -1;
-            return "[" + string.Join(",", ordered.Select(k => k.Value.ToJson())) + "]";
+            return "[" + string.Join(",", items.Select(i => (_inv.IsStack(i) ? _inv.Get(i) : McStack.ForSl(i)).ToJson())) + "]";
         }
+
+        /// <summary>Предметы SL, отправленные в Minecraft вместе с инвентарём (при закрытии окна вернутся оттуда).</summary>
+        private List<ushort> _slSentSerials = new List<ushort>();
 
         private void DoUse()
         {
@@ -540,7 +538,9 @@ namespace SlBridge
             int given = 0;
             for (int i = 0; i < s.Count; i++)
             {
-                if (_player.Items.Count() >= 8 || _player.AddItem(type, InventorySystem.Items.ItemAddReason.AdminCommand) == null)
+                Item added = _player.Items.Count() >= 8 ? null : _player.AddItem(type, InventorySystem.Items.ItemAddReason.AdminCommand);
+                if (added != null) SlItemState.Apply(added, s.State); // заряд, магазин, обвесы — как были
+                if (added == null)
                 {
                     var rest = s.Clone();
                     rest.Count = s.Count - i;
@@ -996,7 +996,15 @@ namespace SlBridge
             if (m.Bool("ui") || _uiOpen)
             {
                 _uiOpen = false;
-                _inv.TakeAll(_player); // на всякий случай
+                // Окно Minecraft закрыто: инвентарь Minecraft — теперь главный. Предметы SL, отданные в окно, убираем
+                // и выдаём заново из того, что вернул Minecraft (с их состоянием; перезаряженные — новыми).
+                foreach (var serial in _slSentSerials)
+                {
+                    var it = _player.Items.FirstOrDefault(x => x.Serial == serial);
+                    if (it != null && !_inv.IsStack(it)) _player.RemoveItem(it);
+                }
+                _slSentSerials.Clear();
+                _inv.TakeAll(_player);
                 foreach (var o in slots) if (o is Dictionary<string, object> d) GiveBack(McStack.FromMsg(d));
                 return;
             }
@@ -1007,6 +1015,7 @@ namespace SlBridge
                 if (i < _useSerials.Count)
                 {
                     var serial = _useSerials[i];
+                    if (_slSentSerials.Contains(serial)) continue; // предмет SL — «использовать» его не меняет
                     var item = _player.Items.FirstOrDefault(x => x.Serial == serial);
                     var was = _inv.Get(item);
                     if (was == null) { if (now != null) GiveBack(now); continue; }

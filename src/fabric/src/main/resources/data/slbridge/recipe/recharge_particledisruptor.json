@@ -1,0 +1,38 @@
+{
+ "type": "minecraft:crafting_shaped",
+ "category": "equipment",
+ "pattern": [
+  "rrr",
+  "r*r",
+  "rrr"
+ ],
+ "key": {
+  "r": "minecraft:redstone_block",
+  "*": {
+   "fabric:type": "fabric:custom_data",
+   "base": [
+    "minecraft:barrier",
+    "minecraft:paper"
+   ],
+   "nbt": {
+    "slItem": "ParticleDisruptor"
+   }
+  }
+ },
+ "result": {
+  "id": "minecraft:barrier",
+  "count": 1,
+  "components": {
+   "minecraft:custom_data": {
+    "slItem": "ParticleDisruptor"
+   },
+   "minecraft:item_name": {
+    "translate": "item.slbridge.particledisruptor",
+    "fallback": "Particle Disruptor"
+   },
+   "minecraft:item_model": "minecraft:trident",
+   "minecraft:enchantment_glint_override": true,
+   "minecraft:rarity": "rare"
+  }
+ }
+}

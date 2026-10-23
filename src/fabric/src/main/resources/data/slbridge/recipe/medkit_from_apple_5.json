@@ -10,7 +10,7 @@
   "minecraft:apple"
  ],
  "result": {
-  "id": "minecraft:paper",
+  "id": "minecraft:barrier",
   "count": 2,
   "components": {
    "minecraft:custom_data": {

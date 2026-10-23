@@ -11,7 +11,7 @@
   "G": "minecraft:gunpowder"
  },
  "result": {
-  "id": "minecraft:paper",
+  "id": "minecraft:barrier",
   "count": 1,
   "components": {
    "minecraft:custom_data": {

@@ -34,6 +34,8 @@ namespace SlBridge.Launcher
             ['A'] = new("Стекло", "Glass", "#DDF0F5"),
             ['Z'] = new("Медный слиток", "Copper ingot", "#C87850"),
             ['J'] = new("Уголь", "Coal", "#2B2B2B"),
+            ['r'] = new("Блок редстоуна", "Redstone block", "#A01414"),
+            ['*'] = new("Этот же предмет (разряженный)", "The same item (used)", "#3FA34D"),
         };
         public static readonly Rec[] All =
         {
@@ -81,6 +83,9 @@ namespace SlBridge.Launcher
             new("SCP", "SCP", "SCP-2176 (лампа)", "SCP-2176 (bulb)", false, new[] { "ARL" }, "", ""),
             new("SCP", "SCP", "SCP-330 (конфеты)", "SCP-330 (candy)", false, new[] { "WUUU" }, "", ""),
             new("SCP", "SCP", "SCP-1576 (граммофон)", "SCP-1576 (gramophone)", false, new[] { "KP" }, "", ""),
+            new("Перезарядка", "Recharge", "Micro H.I.D. — зарядка", "Micro H.I.D. — recharge", true, new[] { "rrr", "r*r", "rrr" }, "", ""),
+            new("Перезарядка", "Recharge", "Дубинка — починка", "Jailbird — repair", true, new[] { "rrr", "r*r", "rrr" }, "", ""),
+            new("Перезарядка", "Recharge", "Молекулярный разрушитель — зарядка", "Particle Disruptor — recharge", true, new[] { "rrr", "r*r", "rrr" }, "", ""),
         };
         public static readonly (string Ru, string En, int Hunger, int Need, int Out)[] Medkits =
         {

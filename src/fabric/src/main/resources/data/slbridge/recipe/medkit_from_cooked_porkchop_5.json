@@ -10,7 +10,7 @@
   "minecraft:cooked_porkchop"
  ],
  "result": {
-  "id": "minecraft:paper",
+  "id": "minecraft:barrier",
   "count": 4,
   "components": {
    "minecraft:custom_data": {

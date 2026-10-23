@@ -10,7 +10,7 @@
   "minecraft:honey_bottle"
  ],
  "result": {
-  "id": "minecraft:paper",
+  "id": "minecraft:barrier",
   "count": 3,
   "components": {
    "minecraft:custom_data": {

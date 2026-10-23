@@ -55,9 +55,9 @@ You start with a machete (to break blocks and fight) and one medkit — everythi
 
 ## Crafting
 
-Every SL item is crafted on a Minecraft crafting table (E on the table). The result immediately becomes a real SCP:SL item in your inventory; ammo is added 80 at a time. Shapes can be mirrored horizontally, and small shapes can go anywhere in the grid. The vanilla iron and diamond chestplates are replaced by SL light and combat armor (in the bridge, Minecraft armor comes from your SL armor anyway). Darkness in Minecraft is real — craft a lantern and hold it lit in your hand (or a flashlight — it shines a narrow beam where you look). The drawings are also in the launcher, “⚒ Crafting” tab.
+Every SL item is crafted on a Minecraft crafting table (E on the table). The result immediately becomes a real SCP:SL item in your inventory; ammo is added 80 at a time. Shapes can be mirrored horizontally, and small shapes can go anywhere in the grid. The vanilla iron and diamond chestplates are replaced by SL light and combat armor (in the bridge, Minecraft armor comes from your SL armor anyway). Darkness in Minecraft is real — craft a lantern and hold it lit in your hand (or a flashlight — it shines a narrow beam where you look). Your SL items show up in Minecraft windows too — the Micro H.I.D., Jailbird and Particle Disruptor can be recharged on a crafting table. The drawings are also in the launcher, “⚒ Crafting” tab.
 
-Legend: `#` — Iron ingot, `B` — Iron block, `D` — Diamond, `N` — Netherite ingot, `G` — Gunpowder, `S` — Stick, `R` — Redstone, `T` — Torch, `X` — TNT, `L` — Glowstone dust, `U` — Sugar, `O` — Glass bottle, `C` — Cocoa beans, `E` — Spider eye, `M` — Slimeball, `H` — Leather cap, `P` — Ender pearl, `F` — Flower pot, `I` — Packed ice, `Y` — Blue ice, `W` — Bowl, `K` — Note block, `V` — Eye of ender, `Q` — Glass pane, `A` — Glass, `J` — Coal, `·` — empty.
+Legend: `#` — Iron ingot, `B` — Iron block, `D` — Diamond, `N` — Netherite ingot, `G` — Gunpowder, `S` — Stick, `R` — Redstone, `T` — Torch, `X` — TNT, `L` — Glowstone dust, `U` — Sugar, `O` — Glass bottle, `C` — Cocoa beans, `E` — Spider eye, `M` — Slimeball, `H` — Leather cap, `P` — Ender pearl, `F` — Flower pot, `I` — Packed ice, `Y` — Blue ice, `W` — Bowl, `K` — Note block, `V` — Eye of ender, `Q` — Glass pane, `A` — Glass, `J` — Coal, `r` — Redstone block, `*` — The same item (used), `·` — empty.
 
 
 ### Weapons
@@ -161,6 +161,15 @@ Q V Q
 - **Painkillers** — in any order: Sugar + Sugar + Glass bottle
 - **Adrenaline** — in any order: Golden apple
 - **SCP-500 (panacea)** — in any order: Enchanted golden apple
+
+### Recharge
+
+```
+Micro H.I.D. — recharge          Jailbird — repair                Particle Disruptor — recharge
+r r r                            r r r                            r r r
+r * r                            r * r                            r * r
+r r r                            r r r                            r r r
+```
 
 ### Medkits from food
 

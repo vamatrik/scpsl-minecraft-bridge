@@ -10,7 +10,7 @@
   "minecraft:cooked_salmon"
  ],
  "result": {
-  "id": "minecraft:paper",
+  "id": "minecraft:barrier",
   "count": 3,
   "components": {
    "minecraft:custom_data": {

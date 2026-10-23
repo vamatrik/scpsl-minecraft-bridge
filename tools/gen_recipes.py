@@ -35,8 +35,10 @@ LEG = {
     'A': ('minecraft:glass',       'Стекло',          '#DDF0F5'),
     'Z': ('minecraft:copper_ingot','Медный слиток',   '#C87850'),
     'J': ('minecraft:coal',        'Уголь',           '#2B2B2B'),
+    'r': ('minecraft:redstone_block', 'Блок редстоуна', '#A01414'),
+    '*': ('',                      'Этот же предмет (разряженный)', '#3FA34D'),
 }
-LEG_EN = {'#': 'Iron ingot', 'B': 'Iron block', 'D': 'Diamond', 'N': 'Netherite ingot', 'G': 'Gunpowder', 'S': 'Stick', 'R': 'Redstone', 'T': 'Torch', 'X': 'TNT', 'L': 'Glowstone dust', 'U': 'Sugar', 'O': 'Glass bottle', 'C': 'Cocoa beans', 'E': 'Spider eye', 'M': 'Slimeball', 'H': 'Leather cap', 'P': 'Ender pearl', 'F': 'Flower pot', 'I': 'Packed ice', 'Y': 'Blue ice', 'W': 'Bowl', 'K': 'Note block', 'V': 'Eye of ender', 'Q': 'Glass pane', 'A': 'Glass', 'Z': 'Copper ingot', 'J': 'Coal'}
+LEG_EN = {'#': 'Iron ingot', 'B': 'Iron block', 'D': 'Diamond', 'N': 'Netherite ingot', 'G': 'Gunpowder', 'S': 'Stick', 'R': 'Redstone', 'T': 'Torch', 'X': 'TNT', 'L': 'Glowstone dust', 'U': 'Sugar', 'O': 'Glass bottle', 'C': 'Cocoa beans', 'E': 'Spider eye', 'M': 'Slimeball', 'H': 'Leather cap', 'P': 'Ender pearl', 'F': 'Flower pot', 'I': 'Packed ice', 'Y': 'Blue ice', 'W': 'Bowl', 'K': 'Note block', 'V': 'Eye of ender', 'Q': 'Glass pane', 'A': 'Glass', 'Z': 'Copper ingot', 'J': 'Coal', 'r': 'Redstone block', '*': 'The same item (used)'}
 
 # (ключ ItemType SL, имя, иконка, группа, форма|список для бесформенных, кол-во)
 SHAPED = [
@@ -94,7 +96,7 @@ SHAPELESS = [
 ]
 
 NAMES_EN = {'GunCOM15': 'COM-15', 'GunCOM18': 'COM-18', 'GunCom45': 'COM-45', 'GunRevolver': '.44 Revolver', 'GunFSP9': 'FSP-9', 'GunCrossvec': 'Crossvec', 'GunE11SR': 'MTF-E11-SR', 'GunAK': 'AK', 'GunA7': 'A7', 'GunShotgun': 'Shotgun', 'GunLogicer': 'Logicer', 'GunFRMG0': 'FR-MG-0', 'GunSCP127': 'SCP-127', 'ParticleDisruptor': 'Particle Disruptor', 'MicroHID': 'Micro H.I.D.', 'Jailbird': 'Jailbird', 'SCP1509': 'Machete (SCP-1509)', 'Ammo9x19': '9x19 ammo (80)', 'Ammo556x45': '5.56x45 ammo (80)', 'Ammo762x39': '7.62x39 ammo (80)', 'Ammo12gauge': '12 gauge ammo (80)', 'Ammo44cal': '.44 ammo (80)', 'ArmorLight': 'Light Armor', 'ArmorCombat': 'Combat Armor', 'ArmorHeavy': 'Heavy Armor', 'Radio': 'Radio', 'Flashlight': 'Flashlight', 'SCP1344': 'SCP-1344 (goggles)', 'Lantern': 'Lantern', 'GrenadeHE': 'Frag Grenade', 'GrenadeFlash': 'Flashbang', 'Painkillers': 'Painkillers', 'Adrenaline': 'Adrenaline', 'SCP500': 'SCP-500 (panacea)', 'SCP207': 'SCP-207', 'AntiSCP207': 'Anti-SCP-207', 'SCP018': 'SCP-018 (ball)', 'SCP268': 'SCP-268 (cap)', 'SCP244a': 'SCP-244-A (vase)', 'SCP244b': 'SCP-244-B (vase)', 'SCP1853': 'SCP-1853', 'SCP2176': 'SCP-2176 (bulb)', 'SCP330': 'SCP-330 (candy)', 'SCP1576': 'SCP-1576 (gramophone)', 'Medkit': 'Medkit'}
-GROUPS_EN = {'Оружие': 'Weapons', 'Особое оружие': 'Special weapons', 'Патроны': 'Ammo', 'Броня': 'Armor', 'Снаряжение': 'Equipment', 'SCP': 'SCP', 'Медицина': 'Medical'}
+GROUPS_EN = {'Перезарядка':'Recharge','Оружие': 'Weapons', 'Особое оружие': 'Special weapons', 'Патроны': 'Ammo', 'Броня': 'Armor', 'Снаряжение': 'Equipment', 'SCP': 'SCP', 'Медицина': 'Medical'}
 
 # еда -> голод (сколько единиц восстанавливает); 10 единиц = 1 аптечка
 FOOD = {
@@ -124,7 +126,7 @@ LANG_RU, LANG_EN = {}, {}
 def result(key, name, icon, count):
     tkey = "item.slbridge." + key.lower()
     LANG_RU[tkey] = name; LANG_EN[tkey] = NAMES_EN[key]
-    return {"id": "minecraft:paper", "count": count, "components": {
+    return {"id": "minecraft:barrier", "count": count, "components": {  # барьер не участвует ни в одном рецепте — заглушку нельзя случайно скрафтить во что-то
         "minecraft:custom_data": {"slItem": key},
         "minecraft:item_name": {"translate": tkey, "fallback": NAMES_EN[key]},
         "minecraft:item_model": "minecraft:" + icon,
@@ -169,6 +171,20 @@ put("data/minecraft/recipe/iron_chestplate.json", out["data/slbridge/recipe/armo
 put("data/minecraft/recipe/diamond_chestplate.json", out["data/slbridge/recipe/armorcombat.json"])
 del out["data/slbridge/recipe/armorlight.json"]; del out["data/slbridge/recipe/armorcombat.json"]
 
+# Перезарядка: предмет в центре, вокруг 8 блоков редстоуна → тот же предмет «как новый» (полный заряд/магазин, без износа).
+# Центр — ингредиент Fabric «custom_data»: подходит наша бумага-заглушка с меткой slItem (заряд не важен).
+RECHARGE = [('MicroHID', 'Micro H.I.D. — зарядка', 'Micro H.I.D. — recharge'),
+            ('Jailbird', 'Дубинка — починка', 'Jailbird — repair'),
+            ('ParticleDisruptor', 'Молекулярный разрушитель — зарядка', 'Particle Disruptor — recharge')]
+for key, ru, en in RECHARGE:
+    base = next(x for x in SHAPED if x[0] == key)
+    obj = {"type": "minecraft:crafting_shaped", "category": "equipment", "pattern": ["rrr", "r*r", "rrr"],
+           "key": {"r": "minecraft:redstone_block",
+                   "*": {"fabric:type": "fabric:custom_data", "base": ["minecraft:barrier", "minecraft:paper"], "nbt": {"slItem": key}}},
+           "result": result(key, base[1], base[2], 1)}
+    put(f"data/slbridge/recipe/recharge_{key.lower()}.json", obj)
+    table.append(dict(key=key, name=ru, name_en=en, group='Перезарядка', shaped=True, grid=["rrr", "r*r", "rrr"], legend=['r', '*'], count=1))
+
 # ── проверка конфликтов с ванильными рецептами и между собой ──
 TAGS = {}
 def tag_items(t, seen=None):
@@ -184,6 +200,7 @@ def tag_items(t, seen=None):
         r |= tag_items(v, seen) if v.startswith('#') else {v}
     return r
 def expand(v):
+    if isinstance(v, dict): return frozenset(['custom:' + json.dumps(v, sort_keys=True)])
     vs = v if isinstance(v, list) else [v]
     r = set()
     for x in vs: r |= tag_items(x) if x.startswith('#') else {x}
@@ -253,7 +270,7 @@ for t in table:
     if not t['shaped']:
         for c in t['items']:
             if c in APPLES: nr, ne = APPLES[c]
-    L.append(f"            new({cs(t['group'])}, {cs(GROUPS_EN[t['group']])}, {cs(t['name'])}, {cs(NAMES_EN[t['key']])}, {'true' if t['shaped'] else 'false'}, new[] {{ {', '.join(cs(r) for r in grid)} }}, {cs(nr)}, {cs(ne)}),")
+    L.append(f"            new({cs(t['group'])}, {cs(GROUPS_EN[t['group']])}, {cs(t['name'])}, {cs(t.get('name_en') or NAMES_EN[t['key']])}, {'true' if t['shaped'] else 'false'}, new[] {{ {', '.join(cs(r) for r in grid)} }}, {cs(nr)}, {cs(ne)}),")
 L += ['        };', '        public static readonly (string Ru, string En, int Hunger, int Need, int Out)[] Medkits =', '        {']
 for food, n, k, o in medkits: L.append(f"            ({cs(FOOD_RU[food])}, {cs(FOOD_EN[food])}, {n}, {k}, {o}),")
 L += ['        };', '    }', '}']
@@ -275,11 +292,11 @@ open(os.path.join(LAUNCHER, '..', 'sl-plugin', 'SlItemNames.g.cs'), 'w', encodin
 
 # ── фрагменты README (ru и en) ──
 TXT = {
- 'ru': dict(intro='Все предметы SL крафтятся на верстаке Minecraft (E по верстаку). Готовый предмет сразу становится настоящим предметом SCP:SL в инвентаре; патроны добавляются по 80 штук. Форму можно отражать по горизонтали, а маленькие формы ставить в любое место сетки. Ванильные железная и алмазная кирасы заменены лёгкой и боевой бронёй SL (в мосте броня Minecraft всё равно берётся из брони SL). В темноте Minecraft темно по-настоящему — скрафти лампу и держи её включённой в руке (или фонарик — он светит узким лучом туда, куда смотришь). Рисунки есть и в лаунчере, вкладка «⚒ Крафты».\n',
+ 'ru': dict(intro='Все предметы SL крафтятся на верстаке Minecraft (E по верстаку). Готовый предмет сразу становится настоящим предметом SCP:SL в инвентаре; патроны добавляются по 80 штук. Форму можно отражать по горизонтали, а маленькие формы ставить в любое место сетки. Ванильные железная и алмазная кирасы заменены лёгкой и боевой бронёй SL (в мосте броня Minecraft всё равно берётся из брони SL). В темноте Minecraft темно по-настоящему — скрафти лампу и держи её включённой в руке (или фонарик — он светит узким лучом туда, куда смотришь). В окнах Minecraft видны и твои предметы SL — Micro H.I.D., дубинку и молекулярный разрушитель можно перезарядить на верстаке. Рисунки есть и в лаунчере, вкладка «⚒ Крафты».\n',
             legend='Обозначения', empty='пусто', anyorder='в любом порядке', medkits='Аптечки из еды',
             medtext='10 единиц голода = 1 аптечка. Кладёшь в сетку несколько одинаковых продуктов в любом порядке:\n',
             head='| Еда | Голод | Сколько положить | Аптечек |'),
- 'en': dict(intro='Every SL item is crafted on a Minecraft crafting table (E on the table). The result immediately becomes a real SCP:SL item in your inventory; ammo is added 80 at a time. Shapes can be mirrored horizontally, and small shapes can go anywhere in the grid. The vanilla iron and diamond chestplates are replaced by SL light and combat armor (in the bridge, Minecraft armor comes from your SL armor anyway). Darkness in Minecraft is real — craft a lantern and hold it lit in your hand (or a flashlight — it shines a narrow beam where you look). The drawings are also in the launcher, “⚒ Crafting” tab.\n',
+ 'en': dict(intro='Every SL item is crafted on a Minecraft crafting table (E on the table). The result immediately becomes a real SCP:SL item in your inventory; ammo is added 80 at a time. Shapes can be mirrored horizontally, and small shapes can go anywhere in the grid. The vanilla iron and diamond chestplates are replaced by SL light and combat armor (in the bridge, Minecraft armor comes from your SL armor anyway). Darkness in Minecraft is real — craft a lantern and hold it lit in your hand (or a flashlight — it shines a narrow beam where you look). Your SL items show up in Minecraft windows too — the Micro H.I.D., Jailbird and Particle Disruptor can be recharged on a crafting table. The drawings are also in the launcher, “⚒ Crafting” tab.\n',
             legend='Legend', empty='empty', anyorder='in any order', medkits='Medkits from food',
             medtext='10 hunger points = 1 medkit. Put several identical food items into the grid in any order:\n',
             head='| Food | Hunger | How many | Medkits |'),
@@ -293,7 +310,7 @@ for t in table:
 used_chars = set(''.join(''.join(t.get('grid', [])) + ''.join(c for c in t.get('items', []) if len(c) == 1) for t in table))
 for lang, X in TXT.items():
     en = lang == 'en'
-    nm = (lambda t: NAMES_EN[t['key']]) if en else (lambda t: t['name'])
+    nm = (lambda t: t.get('name_en') or NAMES_EN[t['key']]) if en else (lambda t: t['name'])
     lab = (lambda c: LEG_EN[c]) if en else (lambda c: LEG[c][1])
     R = [X['intro']]
     R.append(X['legend'] + ': ' + ', '.join(f'`{c}` — {lab(c)}' for c in LEG if c in used_chars) + f", `·` — {X['empty']}.\n")

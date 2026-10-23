@@ -624,6 +624,13 @@ public final class ServerBridge {
 
     /** Возрождение после смерти в SL: точка возрождения мира (в Верхнем мире). */
     private void respawn(MinecraftServer server, ServerPlayer sp) {
+        // Игрок Minecraft сам не умирает (умирает SL) — новая жизнь без огня, эффектов и накопленного падения.
+        sp.clearFire();
+        sp.removeAllEffects();
+        sp.setAirSupply(sp.getMaxAirSupply());
+        sp.resetFallDistance();
+        fallDist = 0;
+        lastFeetY = Double.NaN;
         ServerLevel ow = server.overworld();
         BlockPos sp0 = ow.getRespawnData().pos();
         ow.getChunk(sp0.getX() >> 4, sp0.getZ() >> 4); // загрузить чанк, иначе высота посчитается как дно мира

@@ -25,11 +25,13 @@ namespace SlBridge.Launcher
                 L.T("Крафтится на верстаке Minecraft: E по верстаку открывает его окно, предметы таскаются мышкой. " +
                 "Готовый предмет сразу становится настоящим предметом SCP:SL в инвентаре, патроны добавляются по 80 штук. " +
                 "Форму можно отражать слева направо, маленькие формы — ставить в любое место сетки. Кирасы Minecraft из железа и алмазов заменены лёгкой и боевой бронёй SL. " +
-                "В темноте Minecraft по-настоящему темно — скрафти лампу и держи её включённой в руке (или фонарик — он светит узким лучом туда, куда смотришь).",
+                "В темноте Minecraft по-настоящему темно — скрафти лампу и держи её включённой в руке (или фонарик — он светит узким лучом туда, куда смотришь). " +
+                "В окнах Minecraft видны и твои предметы SL: Micro H.I.D., дубинку и молекулярный разрушитель можно перезарядить (группа «Перезарядка»).",
                 "Craft on a Minecraft crafting table: E on the table opens its window, drag items with the mouse. " +
                 "The result immediately becomes a real SCP:SL item in your inventory; ammo is added 80 at a time. " +
                 "Shapes can be mirrored left to right, small shapes can go anywhere in the grid. Minecraft iron and diamond chestplates are replaced by SL light and combat armor. " +
-                "Darkness in Minecraft is real — craft a lantern and hold it lit in your hand (or a flashlight — it shines a narrow beam where you look)."), full)));
+                "Darkness in Minecraft is real — craft a lantern and hold it lit in your hand (or a flashlight — it shines a narrow beam where you look). " +
+                "Your SL items show up in Minecraft windows too: the Micro H.I.D., Jailbird and Particle Disruptor can be recharged (the “Recharge” group)."), full)));
             flow.Controls.Add(Break(new LegendPanel(full)));
 
             string group = null;
@@ -84,6 +86,8 @@ namespace SlBridge.Launcher
         internal static (Color back, string text) Cell(char c, string note)
         {
             if (c == '?') return (Color.FromArgb(240, 200, 60), note.StartsWith("Зачар") || note.StartsWith("Enchanted") ? L.T("ЗЗЯ", "EGA") : L.T("ЗЯ", "GA"));
+            if (c == '*') return (Color.FromArgb(63, 163, 77), "★"); // сам предмет на перезарядку
+            if (c == 'r') return (Color.FromArgb(160, 20, 20), L.T("БР", "RB")); // блок редстоуна
             if (RecipeData.Legend.TryGetValue(c, out var ing)) return (ColorTranslator.FromHtml(ing.Color), Abbr(L.T(ing.Ru, ing.En)));
             return (Ui.Input, "");
         }
