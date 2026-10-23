@@ -7,7 +7,6 @@ import com.google.gson.JsonParser;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.client.input.KeyEvent;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
@@ -126,12 +125,6 @@ public final class CraftsScreen extends Screen {
         return true;
     }
 
-    @Override
-    public boolean keyPressed(KeyEvent e) {
-        // K (как кнопка в SL) или E — закрыть, как инвентарь
-        if (e.key() == 75 || e.key() == 69) { onClose(); return true; }
-        return super.keyPressed(e);
-    }
 
     @Override
     public boolean isPauseScreen() { return false; }
@@ -167,7 +160,7 @@ public final class CraftsScreen extends Screen {
         g.fill(0, 0, width, height, 0xA0101010);
         panel(g, px, py, pw, ph);
         g.text(font, title, px + 8, py + 7, 0xFF404040, false);
-        String hint = Lang.t("Esc / K — закрыть", "Esc / K — close");
+        String hint = Lang.t("Esc — закрыть", "Esc — close");
         g.text(font, hint, px + pw - 8 - font.width(hint), py + 7, 0xFF707070, false);
 
         super.extractRenderState(g, mx, my, pt); // кнопки разделов

@@ -34,6 +34,22 @@ namespace SlBridge
             }
         }
 
+        /// <summary>Цвет названия мультитула в подсказке (как материал).</summary>
+        public static string TierColor(string tier)
+        {
+            switch (tier)
+            {
+                case "wood": return "#C49A6C";
+                case "stone": return "#A8A8A8";
+                case "copper": return "#E8875E";
+                case "iron": return "#E6E6E6";
+                case "gold": return "#FFD84A";
+                case "diamond": return "#5CE6F0";
+                case "netherite": return "#B49AB0";
+                default: return "#FF6A4D";
+            }
+        }
+
         public static string TierOf(Item it) => it != null && Tier.TryGetValue(it.Serial, out var t) ? t : null;
 
         public static string Capture(Item it)

@@ -170,7 +170,8 @@ public final class SlBridgeClient implements ClientModInitializer {
                 optionsSession = true;
                 mc.gui.setScreen(new CraftsScreen());
             });
-            case "options" -> mc.execute(() -> { // настройки Minecraft (кнопка в SL)
+            case "options" -> mc.execute(() -> { // настройки Minecraft (кнопка в SL) — та же кнопка и закрывает
+                if (optionsSession && mc.gui.screen() != null && !(mc.gui.screen() instanceof CraftsScreen)) { mc.gui.setScreen(null); return; }
                 if (mc.gui.screen() != null) return;
                 optionsSession = true;
                 mc.gui.setScreen(new net.minecraft.client.gui.screens.options.OptionsScreen(null, mc.options));
@@ -262,6 +263,26 @@ public final class SlBridgeClient implements ClientModInitializer {
     }
 
     private static boolean optionsSession;
+    /** Сейчас открыты настройки Minecraft кнопкой из SL (Esc на главном экране настроек их не закрывает). */
+    public static boolean optionsSessionActive() { return optionsSession; }
+    private static boolean keysFreed;
+
+    /**
+     * Кнопки моста в SL по умолчанию — K (книга крафтов) и O (настройки). Если на них же висит что-то ванильное
+     * в Minecraft, оно перебивает наше окно — снимаем такие привязки (один раз, их можно вернуть в настройках управления).
+     */
+    private static void freeBridgeKeys(Minecraft mc) {
+        boolean changed = false;
+        for (var km : mc.options.keyMappings) {
+            String k = km.saveString();
+            if (k.equals("key.keyboard.k") || k.equals("key.keyboard.o")) {
+                LOG.info("[SLBridge] Клавиша {} занята мостом — снимаю её с «{}»", k, km.getName());
+                km.setKey(com.mojang.blaze3d.platform.InputConstants.UNKNOWN);
+                changed = true;
+            }
+        }
+        if (changed) { net.minecraft.client.KeyMapping.resetMapping(); mc.options.save(); }
+    }
     private static String rememberedWorld;
     private static Boolean savedBob;
     private static Double savedTilt;
@@ -313,6 +334,7 @@ public final class SlBridgeClient implements ClientModInitializer {
 
         // Minecraft работает в фоне под окном SCP:SL — он не должен ставить игру на паузу и снижать FPS.
         mc.options.pauseOnLostFocus = false;
+        if (!keysFreed) { keysFreed = true; freeBridgeKeys(mc); }
         // Покачивание камеры при ходьбе и наклон при уроне сдвигают картинку Minecraft относительно прицела SL —
         // на дальних дистанциях это промах на целый блок. Выключаем, пока работает мост (и возвращаем потом).
         if (savedBob == null) { savedBob = mc.options.bobView().get(); savedTilt = mc.options.damageTiltStrength().get(); }

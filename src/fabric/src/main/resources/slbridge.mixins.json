@@ -6,6 +6,7 @@
     "CameraMixin",
     "HudMixin",
     "CursorMixin",
+    "OptionsEscMixin",
     "GameRendererMixin",
     "MinecraftMixin",
     "InputMixin$Mouse",

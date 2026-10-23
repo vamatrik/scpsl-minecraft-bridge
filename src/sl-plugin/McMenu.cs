@@ -28,11 +28,11 @@ namespace SlBridge
                 L.T("Открыть инвентарь Minecraft с твоими предметами: перекладывать, крафтить 2×2. Закрыть — E или Esc.",
                     "Open the Minecraft inventory with your items: move them around, craft 2×2. Close with E or Esc."));
             CraftsKey = new SSKeybindSetting(KeyCrafts, L.T("Книга крафтов SL", "SL crafting book"), KeyCode.K, true, false,
-                L.T("Открыть/закрыть рецепты предметов SCP:SL — в стиле окон Minecraft, с настоящими предметами.",
-                    "Open/close the SCP:SL item recipes — in Minecraft style, with real items."));
+                L.T("Открыть/закрыть рецепты предметов SCP:SL — в стиле окон Minecraft, с настоящими предметами. Закрыть — этой же кнопкой или Esc.",
+                    "Open/close the SCP:SL item recipes — in Minecraft style, with real items. Close with the same key or Esc."));
             OptionsKey = new SSKeybindSetting(KeyOptions, L.T("Настройки Minecraft", "Minecraft settings"), KeyCode.O, true, false,
-                L.T("Открыть настройки Minecraft (графика, звук, управление…). Закрыть — Esc или «Готово».",
-                    "Open the Minecraft settings (video, sound, controls…). Close with Esc or “Done”."));
+                L.T("Открыть/закрыть настройки Minecraft (графика, звук, управление…). Закрыть — этой же кнопкой или «Готово».",
+                    "Open/close the Minecraft settings (video, sound, controls…). Close with the same key or “Done”."));
             DebugKey = new SSKeybindSetting(KeyDebug, L.T("Отладка Minecraft (F4)", "Minecraft debug (F4)"), KeyCode.F4, true, false,
                 L.T("Держи и нажми вторую клавишу, как в Minecraft: F4+B — хитбоксы, F4+G — границы чанков.",
                     "Hold it and press a second key, like in Minecraft: F4+B — hitboxes, F4+G — chunk borders."));

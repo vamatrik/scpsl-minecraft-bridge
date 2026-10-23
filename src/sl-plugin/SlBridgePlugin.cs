@@ -27,7 +27,7 @@ namespace SlBridge
         public static SlBridgePlugin Instance { get; private set; }
 
         public override string Name => "SlBridge";
-        public override string Description => "Мост SCP:SL ↔ Minecraft: Minecraft рисует мир, SL — персонажа и интерфейс.";
+        public override string Description => "SCP:SL ↔ Minecraft bridge: Minecraft draws the world, SL draws the character and UI. / Мост SCP:SL ↔ Minecraft.";
         public override string Author => "Claude x Vamatrik";
         public override Version Version => new Version(0, 2, 0);
         // Берём версию LabAPI, которая сейчас запущена, — плагин не придётся пересобирать ради номера версии.
@@ -148,6 +148,7 @@ namespace SlBridge
             PlayerEvents.Dying += OnDying;
             PlayerEvents.Hurting += OnHurting;
             ServerEvents.PickupCreated += OnPickupCreated;
+            PlayerEvents.ChangedItem += OnChangedItem;
             PlayerEvents.ProcessedScp1509Message += On1509;
             ServerEvents.WaitingForPlayers += OnWaiting;
             ServerEvents.RoundStarted += OnRoundStarted;
@@ -176,6 +177,7 @@ namespace SlBridge
             PlayerEvents.Dying -= OnDying;
             PlayerEvents.Hurting -= OnHurting;
             ServerEvents.PickupCreated -= OnPickupCreated;
+            PlayerEvents.ChangedItem -= OnChangedItem;
             PlayerEvents.ProcessedScp1509Message -= On1509;
             ServerEvents.WaitingForPlayers -= OnWaiting;
             ServerEvents.RoundStarted -= OnRoundStarted;
@@ -584,6 +586,19 @@ namespace SlBridge
                     ?.Invoke(mag, new object[] { mag.KillBonus });
             }
             catch (Exception e) { Logger.Warn("[SlBridge] SCP-127 патроны за убийство: " + e.Message); }
+        }
+
+        /// <summary>Взял в руку мультитул — на пару секунд его название цветом материала и характеристики (SL сам их не покажет).</summary>
+        private void OnChangedItem(PlayerChangedItemEventArgs ev)
+        {
+            if (ev.Player != _player || ev.NewItem == null || ev.NewItem.Type != ItemType.SCP1509) return;
+            string tier = SlItemState.TierOf(ev.NewItem);
+            if (tier == null) return;
+            var st = SlItemState.TierStats(tier);
+            string name = L.T(st.Ru, st.En);
+            name = char.ToUpper(name[0]) + name.Substring(1);
+            _player.SendHint($"<size=26><b><color={SlItemState.TierColor(tier)}>{name}</color></b></size>\n" +
+                             $"<size=17><color=#9A9A9A>ID: SCP-1509 · {L.T("урон", "damage")} ×{st.Dmg:0.##} · {L.T("копание", "digging")} ×{st.Mine:0.#}</color></size>", 2.5f);
         }
 
         private void OnPickupCreated(PickupCreatedEventArgs ev)
