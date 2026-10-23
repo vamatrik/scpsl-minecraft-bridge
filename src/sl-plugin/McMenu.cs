@@ -24,10 +24,10 @@ namespace SlBridge
             Use = new SSKeybindSetting(KeyUse, L.T("Взаимодействие Minecraft", "Minecraft interact"), KeyCode.E, true, false,
                 L.T("Поставить блок из руки, нажать дверь/рычаг, съесть еду, использовать предмет (огниво, ведро, око Эндера), открыть верстак, печь, сундук — откроется окно Minecraft.",
                     "Place the held block, press a door/lever, eat food, use an item (flint and steel, bucket, eye of ender), open a crafting table, furnace or chest — a Minecraft window opens."));
-            InvKey = new SSKeybindSetting(KeyInv, L.T("Инвентарь Minecraft (крафт 2×2)", "Minecraft inventory (2×2 crafting)"), KeyCode.I, true, false,
+            InvKey = new SSKeybindSetting(KeyInv, L.T("Инвентарь Minecraft (крафт 2×2)", "Minecraft inventory (2×2 crafting)"), KeyCode.K, true, false,
                 L.T("Открыть инвентарь Minecraft с твоими предметами: перекладывать, крафтить 2×2. Закрыть — E или Esc.",
                     "Open the Minecraft inventory with your items: move them around, craft 2×2. Close with E or Esc."));
-            CraftsKey = new SSKeybindSetting(KeyCrafts, L.T("Книга крафтов SL", "SL crafting book"), KeyCode.K, true, false,
+            CraftsKey = new SSKeybindSetting(KeyCrafts, L.T("Книга крафтов SL", "SL crafting book"), KeyCode.U, true, false,
                 L.T("Открыть/закрыть рецепты предметов SCP:SL — в стиле окон Minecraft, с настоящими предметами. Закрыть — этой же кнопкой или Esc.",
                     "Open/close the SCP:SL item recipes — in Minecraft style, with real items. Close with the same key or Esc."));
             OptionsKey = new SSKeybindSetting(KeyOptions, L.T("Настройки Minecraft", "Minecraft settings"), KeyCode.O, true, false,
@@ -41,8 +41,8 @@ namespace SlBridge
             ChunkKey = new SSKeybindSetting(KeyChunks, L.T("F4 + … границы чанков", "F4 + … chunk borders"), KeyCode.G, true, false,
                 L.T("Вместе с F4 — показать/скрыть границы чанков, как F4+G в Minecraft.", "Together with F4 — show/hide chunk borders, like F4+G in Minecraft."));
             StatusText = new SSTextArea(Status,
-                L.T("Крафт и плавка — в окнах Minecraft: E по верстаку или печке, I — инвентарь. Рецепты предметов SL — в лаунчере, вкладка «⚒ Крафты».\nБыстрый выход: Ctrl+Shift+F10 (работает, пока открыт лаунчер).",
-                    "Crafting and smelting happen in Minecraft windows: E on a crafting table or furnace, I for the inventory. SL item recipes are in the launcher, “⚒ Crafting” tab.\nQuick exit: Ctrl+Shift+F10 (works while the launcher is open)."),
+                L.T("Крафт и плавка — в окнах Minecraft: E по верстаку или печке, K — инвентарь. Рецепты предметов SL — U (книга крафтов) или вкладка «⚒ Крафты» в лаунчере.\nБыстрый выход: Ctrl+Shift+F10 (работает, пока открыт лаунчер).",
+                    "Crafting and smelting happen in Minecraft windows: E on a crafting table or furnace, K for the inventory. SL item recipes: U (crafting book) or the launcher “⚒ Crafting” tab.\nQuick exit: Ctrl+Shift+F10 (works while the launcher is open)."),
                 SSTextArea.FoldoutMode.NotCollapsable);
             Quit = new SSButton(QuitBtn, L.T("Выйти из игры (закроет SL, Minecraft, сервер и оверлей; лаунчер останется)", "Quit the game (closes SL, Minecraft, the server and the overlay; the launcher stays)"),
                 L.T("Выйти", "Quit"), 1f);

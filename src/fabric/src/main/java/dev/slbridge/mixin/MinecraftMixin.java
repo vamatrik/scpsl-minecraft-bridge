@@ -10,6 +10,15 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 /** Без рамки выделения блока под прицелом — прицел у SCP:SL свой. */
 @Mixin(Minecraft.class)
 public abstract class MinecraftMixin {
+    /** Пока открыто окно Minecraft для моста, заголовок окна — метка для оверлея; Minecraft сбрасывает его при смене экрана. */
+    @Inject(method = "updateTitle", at = @At("HEAD"), cancellable = true)
+    private void slbridge$keepUiTitle(CallbackInfo ci) {
+        if (SlBridgeClient.isBridgeActive() && SlBridgeClient.uiMode) {
+            ((Minecraft) (Object) this).getWindow().setTitle(SlBridgeClient.UI_TITLE);
+            ci.cancel();
+        }
+    }
+
     @Inject(method = "pick", at = @At("HEAD"), cancellable = true)
     private void slbridge$noPick(float partialTicks, CallbackInfo ci) {
         if (SlBridgeClient.isBridgeActive()) {

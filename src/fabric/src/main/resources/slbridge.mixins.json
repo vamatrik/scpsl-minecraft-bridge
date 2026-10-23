@@ -18,6 +18,7 @@
     "defaultRequire": 1
   },
   "mixins": [
-    "PlayerMixins$NoAutoPickup"
+    "PlayerMixins$NoAutoPickup",
+    "InvisibleMixin"
   ]
 }

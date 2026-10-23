@@ -67,7 +67,7 @@ namespace SlBridge.Launcher
             side.Controls.Add(logo);
             _nav = new[] { NavButton(L.T("1  Подготовка", "1  Setup"), 0), NavButton(L.T("2  Играть", "2  Play"), 1), NavButton(L.T("⚒  Крафты", "⚒  Crafting"), 2), NavButton(L.T("?  Справка", "?  Help"), 3) };
             for (int i = 0; i < _nav.Length; i++) { _nav[i].Location = new Point(10, 100 + i * 46); side.Controls.Add(_nav[i]); }
-            var ver = Ui.Label(L.T("мост 1.1.3\nClaude x Vamatrik", "bridge 1.1.3\nClaude x Vamatrik"), 8.5f, Ui.Muted);
+            var ver = Ui.Label(L.T("мост 1.1.4\nClaude x Vamatrik", "bridge 1.1.4\nClaude x Vamatrik"), 8.5f, Ui.Muted);
             ver.Location = new Point(18, 626);
             side.Controls.Add(ver);
 
@@ -426,6 +426,7 @@ namespace SlBridge.Launcher
             // язык Minecraft = язык мода (названия предметов, окна): Minecraft мог перезаписать options.txt при выходе
             _cfg.WriteLanguageFile();
             if (Orchestrator.MinecraftProcess == null) _cfg.WriteMinecraftLanguage();
+            _cfg.EnsureSlKeybinds();
             try { await _orc.StartAll(world, _cts.Token); }
             catch (Exception e) { Log(L.T("Ошибка: ", "Error: ") + e.Message); }
             finally { _busy = false; _cts = null; LoadWorlds(); }
@@ -508,9 +509,9 @@ namespace SlBridge.Launcher
               L.T("Зажать E на предмете на земле — подобрать. Q — выбросить стак.\n", "Hold E on an item on the ground to pick it up. Q drops a stack.\n") +
               L.T("E (взаимодействие Minecraft) — поставить блок из руки, открыть дверь, нажать рычаг, съесть еду, использовать огниво/ведро/око Эндера, открыть верстак/печь/сундук.\n", "E (Minecraft interact) places the held block, opens doors, presses levers, eats food, uses flint and steel/buckets/eyes of ender, opens crafting tables/furnaces/chests.\n") +
               L.T("Оружие, патроны, броню, аптечки и SCP-предметы можно скрафтить — рисунки рецептов во вкладке «⚒ Крафты».\n", "Weapons, ammo, armor, medkits and SCP items can be crafted — recipe drawings are on the “⚒ Crafting” tab.\n") +
-              L.T("I — инвентарь Minecraft с крафтом 2×2. В окнах Minecraft предметы таскаются мышкой; закрыть — E или Esc.\n", "I opens the Minecraft inventory with 2×2 crafting. In Minecraft windows you drag items with the mouse; close with E or Esc.\n") +
+              L.T("K — инвентарь Minecraft с крафтом 2×2. В окнах Minecraft предметы таскаются мышкой; закрыть — E или Esc.\n", "K opens the Minecraft inventory with 2×2 crafting. In Minecraft windows you drag items with the mouse; close with E or Esc.\n") +
               L.T("В воде и лаве всплываешь сам; присесть или идти медленно — нырнуть. У берега плыви на него — выберешься.\n", "In water and lava you float up by yourself; crouch or walk slowly to dive. Swim into the shore to climb out.\n") +
-              L.T("O — настройки Minecraft (графика, звук…). K — книга крафтов SL прямо в игре.\n", "O — Minecraft settings (video, sound…). K — the SL crafting book right in the game.\n") +
+              L.T("O — настройки Minecraft (графика, звук…). U — книга крафтов SL прямо в игре.\n", "O — Minecraft settings (video, sound…). U — the SL crafting book right in the game.\n") +
               L.T("Мультитул: меч + кирка одного материала на верстаке → мачете SL этого уровня. Чем лучше материал, тем больнее бьёт и быстрее копает (золото копает быстрее всех, но бьёт слабо). На старте — деревянный.\n", "Multitool: a sword + a pickaxe of the same material on a crafting table → an SL machete of that tier. Better material hits harder and digs faster (gold digs fastest but hits weakly). You start with a wooden one.\n") +
               L.T("Лестница и лианы: смотришь вверх — лезешь, вниз — спускаешься, прямо или присел — висишь.\n", "Ladders and vines: look up to climb, look down to go down, look straight or crouch to hang.\n") +
               L.T("Кровать (E): ночью — сон до утра, в любое время — точка возрождения. Отойдёшь — проснёшься.\n", "Bed (E): at night you sleep until morning, any time it sets your respawn point. Walk away to wake up.\n") +
@@ -518,7 +519,7 @@ namespace SlBridge.Launcher
               L.T("F4 — экран отладки Minecraft, F4+B — хитбоксы, F4+G — границы чанков (F3 в SL занят своей отладкой).\n", "F4 — Minecraft debug screen, F4+B — hitboxes, F4+G — chunk borders (F3 is SL's own debug).\n") +
               L.T("Деревянный мультитул и аптечка выдаются один раз — при первом входе в мир; ещё раз — командой .kit start в консоли (~).\n", "The wooden multitool and medkit are given once — on your first time in a world; get them again with .kit start in the console (~).\n") +
               L.T("Сохранять вещи после смерти: .mc gamerule keep_inventory true. Без этого после смерти появляешься с пустыми руками.\n", "Keep items after death: .mc gamerule keep_inventory true. Otherwise you respawn empty-handed.\n") +
-              L.T("Клавиши E, I и F4 меняются в SL: Esc → Настройки → Server-specific.\n", "E, I and F4 can be rebound in SL: Esc → Settings → Server-specific.\n") +
+              L.T("Клавиши E, K, U, O и F4 меняются в SL: Esc → Настройки → Server-specific.\n", "E, K, U, O and F4 can be rebound in SL: Esc → Settings → Server-specific.\n") +
               L.T("Консоль SL (~): .mc <команда Minecraft>, например .mc time set day. В админ-панели (M) — просто mc time set day.", "SL console (~): .mc <Minecraft command>, e.g. .mc time set day. In the admin panel (M) — just mc time set day."));
             H(L.T("Оверлей", "Overlay"));
             P(L.T("Ctrl+Shift+F12 — выключить/включить оверлей (если что-то перекрывает или нужно увидеть «голый» SL).\n", "Ctrl+Shift+F12 — turn the overlay off/on (if something is covered or you want to see “bare” SL).\n") +

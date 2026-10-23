@@ -34,6 +34,11 @@ namespace SlBridge.Compositor
         public bool DrawCursorInUi { get; set; } = false;
         /// <summary>Окно Minecraft на 1 пиксель ниже экрана — чтобы OBS («Захват экрана») снимал окна Minecraft вживую.</summary>
         public bool AvoidFullscreenFlip { get; set; } = true;
+        /// <summary>
+        /// Размер картинки Minecraft относительно окна SL (0.4…1). 0.75 — Minecraft рисует почти вдвое меньше пикселей
+        /// (заметно больше FPS), мир чуть мягче. Окна крафта всегда в полном размере.
+        /// </summary>
+        public float McRenderScale { get; set; } = 1f;
         /// <summary>Режим отладки: показывать маску ключа.</summary>
         public bool DebugShowMask { get; set; } = false;
 

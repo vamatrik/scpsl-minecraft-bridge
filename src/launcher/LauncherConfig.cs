@@ -77,6 +77,37 @@ namespace SlBridge.Launcher
             try { Directory.CreateDirectory(Path.GetDirectoryName(LanguageFile)); File.WriteAllText(LanguageFile, Language); } catch { }
         }
 
+        /// <summary>
+        /// Кнопки моста в SL (Esc → Настройки → Server-specific). SL сам их не назначает — только подсвечивает «предложенную»
+        /// клавишу, и поле остаётся пустым. Прописываем их в настройки клиента SL (registry.txt), если игрок их ещё не задал.
+        /// Только когда SL не запущен (иначе он перезапишет файл при выходе).
+        /// </summary>
+        public void EnsureSlKeybinds()
+        {
+            try
+            {
+                if (System.Diagnostics.Process.GetProcessesByName("SCPSL").Length > 0) return;
+                string f = Path.Combine(SlAppData, "registry.txt");
+                if (!File.Exists(f)) return;
+                // id настройки → Unity KeyCode: E, K (инвентарь), U (книга крафтов), O (настройки), F4, B, G
+                var want = new (int id, int key)[] { (9001, 101), (9003, 107), (9008, 117), (9007, 111), (9004, 285), (9005, 98), (9006, 103) };
+                string text = File.ReadAllText(f);
+                string nl = text.Contains("\r\n") ? "\r\n" : "\n";
+                var add = new System.Text.StringBuilder();
+                foreach (var (id, key) in want)
+                {
+                    string prefix = $"07SrvSp_127.0.0.1_1_{id}::";
+                    if (text.Contains(prefix)) continue; // игрок уже назначил (или очистил) сам — не трогаем
+                    add.Append(prefix).Append("-%(|::").Append(key).Append(nl);
+                }
+                if (add.Length == 0) return;
+                File.Copy(f, f + ".slbridge.bak", true);
+                if (text.Length > 0 && !text.EndsWith("\n")) text += nl;
+                File.WriteAllText(f, text + add, new System.Text.UTF8Encoding(false));
+            }
+            catch { }
+        }
+
         /// <summary>Язык самого Minecraft (options.txt), чтобы названия предметов совпадали с языком мода.</summary>
         public bool WriteMinecraftLanguage()
         {

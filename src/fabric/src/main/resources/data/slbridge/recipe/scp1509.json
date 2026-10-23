@@ -2,13 +2,13 @@
  "type": "minecraft:crafting_shaped",
  "category": "equipment",
  "pattern": [
-  "  D",
-  " N ",
-  "S  "
+  " D ",
+  "###",
+  " S "
  ],
  "key": {
+  "#": "minecraft:iron_ingot",
   "D": "minecraft:diamond",
-  "N": "minecraft:netherite_ingot",
   "S": "minecraft:stick"
  },
  "result": {

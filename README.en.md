@@ -44,23 +44,47 @@ You start with a machete (to break blocks and fight) and one medkit — everythi
 
 ## Controls
 
-* Everything from SCP:SL: walking, sprinting, jumping, weapons, inventory (Tab), admin panel (M).
-* Shooting a block breaks it (harder blocks take more hits); shooting a mob damages it.
-* Hold **E** on an item to pick it up; **Q** drops a stack.
-* **E** (interact) — place a block, doors/levers, food, flint and steel/bucket/eye of ender, crafting table/furnace/chest (Minecraft window).
-* **I** — Minecraft inventory with 2×2 crafting. Keys can be rebound in SL: Esc → Settings → Server-specific.
-* SL console (`~`): `.mc time set day`; in the admin panel: `mc give @s diamond 5`.
-* In water and lava you float up by yourself, crouch or walk slowly to dive; just swim into the shore to climb out.
-* **O** — Minecraft settings, **K** — the SL crafting book. **Multitool**: a sword + a pickaxe of the same material → an SL machete of that tier: better material hits harder and digs faster (gold digs fastest but hits weakly).
-* **F4** — Minecraft debug screen, **F4+B** — hitboxes, **F4+G** — chunk borders (F3 is SL's own debug).
-* The starter wooden multitool and medkit come once per world; get them again with `.kit start`. `.mc gamerule keep_inventory true` keeps items on death. Your SL inventory is saved in the world folder.
-* Jailbird and the machete hit an area like in SL; SCP-127 levels up from damage to mobs and gets XP and ammo for kills.
-* Ladders and vines: look up to climb, down to descend. Beds: sleep and set your respawn point. Grenades and SCP-018 blow up the Minecraft world too.
-* Darkness is real: hold a lit **lantern** (lights up around you) or a **flashlight** (a narrow beam where you look).
+Bridge keys live in SL: **Esc → Settings → Server-specific**. The launcher sets them up on the first run; you can change them there.
+
+| Key | What it does |
+|---|---|
+| walk, sprint, jump, crouch, Tab, M | same as in SCP:SL (SL inventory, admin panel) |
+| LMB / RMB | shoot and hit; a block breaks, a mob takes damage |
+| **E** | Minecraft interact: place the held block, door, lever, button, food, flint and steel, bucket, eye of ender, bed; open a crafting table, furnace, chest |
+| hold **E** on an item | pick up a Minecraft item from the ground |
+| **Q** | drop an item (it becomes a Minecraft item) |
+| **K** | Minecraft inventory with 2×2 crafting |
+| **U** | SL crafting book — recipes in Minecraft style (close: U or Esc) |
+| **O** | Minecraft settings (close: O or “Done”) |
+| **F4** / **F4+B** / **F4+G** | Minecraft debug screen / hitboxes / chunk borders (F3 is SL's own debug) |
+| `~` → `.mc <command>` | a Minecraft command, e.g. `.mc time set day`; in the admin panel — `mc time set day` |
+| `~` → `.kit start` | get the starter kit again |
+| Ctrl+Shift+F10 | quick exit (or the “Quit” button in Server-specific) |
+| Ctrl+Shift+F12 / F11 | turn the overlay off / show the green-screen mask |
+
+In Minecraft windows (crafting table, inventory, chest) drag items with the mouse; close with **E** or **Esc**.
+
+## Mechanics
+
+* **World.** Blocks are real obstacles for SL: you walk on them and can't pass through. Shots and hits break blocks (harder blocks take more hits) with normal Minecraft drops.
+* **Mobs.** Minecraft computes damage to them (SL damage ÷ 5); they hit back and the damage arrives in SL. Endermen dodge bullets like arrows. SL armor works as Minecraft armor.
+* **Melee like in SL.** The machete and Jailbird hit an area in front: the main target takes full damage, others — half (machete) or full (Jailbird). A Jailbird charge stops at a mob; the Jailbird wears out and explodes on its last charge when broken.
+* **Multitools.** A sword + a pickaxe of the same material → an SL machete of that tier: from wood to netherite, damage and digging speed grow (gold digs fastest but hits weakly). A hint shows the tier when you pick it up. You start with a wooden one.
+* **SCP-268 (cap)** makes you invisible to Minecraft mobs too: they lose track of you while it lasts.
+* **SCP-127** levels up from damage to mobs and gets bonus XP and ammo for kills. **Micro H.I.D.** damage and range match the game. **Grenades and SCP-018** blow up the Minecraft world too.
+* **Water and lava.** You float up by yourself; crouch or walk slowly to dive; swim into the shore to climb out. Water cancels fall damage. Lava burns; fire goes out after death.
+* **Ladders and vines.** Look up to climb, down to descend, straight to hang. No fall damage on them.
+* **Falling** follows Minecraft rules: damage = height − 3 blocks (hay, honey, beds, slime soften it).
+* **Darkness is real.** Hold a lit **lantern** (lights around you) or a **flashlight** (light a few metres ahead).
+* **Portals and teleports.** Nether, End, ender pearls, `/tp` all work: the world is built around the arrival point before you are released.
+* **Bed** — sleep through the night, and it sets your respawn point any time.
+* **Death.** Everything, SL items included, drops as Minecraft items (`.mc gamerule keep_inventory true` to keep them). You respawn at your bed or world spawn.
+* **Your SL inventory** is saved in the world folder and comes back next time; each world has its own. Item state (attachments, loaded ammo, Micro H.I.D. charge, Jailbird wear, SCP-127 and multitool tiers) is kept everywhere.
+* **No hunger** — food is crafted into medkits (see Crafting). Experience is picked up automatically.
 
 ## Crafting
 
-All recipes are also in the game: **K** opens the SL crafting book in Minecraft style — with real items and hover tooltips. The launcher’s “⚒ Crafting” tab draws them with item icons too (taken from your installed Minecraft).
+All recipes are also in the game: **U** opens the SL crafting book in Minecraft style — with real items and hover tooltips. The launcher’s “⚒ Crafting” tab draws them with item icons too (taken from your installed Minecraft).
 
 Every SL item is crafted on a Minecraft crafting table (E on the table). The result immediately becomes a real SCP:SL item in your inventory; ammo is added 80 at a time. Shapes can be mirrored horizontally, and small shapes can go anywhere in the grid. The vanilla iron and diamond chestplates are replaced by SL light and combat armor (in the bridge, Minecraft armor comes from your SL armor anyway). Darkness in Minecraft is real — craft a lantern and hold it lit in your hand (or a flashlight — it shines a narrow beam where you look). Your SL items show up in Minecraft windows too — the Micro H.I.D., Jailbird and Particle Disruptor can be recharged on a crafting table. The drawings are also in the launcher, “⚒ Crafting” tab.
 
@@ -104,9 +128,9 @@ SCP-127               Particle Disruptor    Micro H.I.D.
 ```
 ```
 Jailbird              Machete (SCP-1509)
-D · ·                 · · D
-r · ·                 · N ·
-# · ·                 S · ·
+D · ·                 · D ·
+r · ·                 # # #
+# · ·                 · S ·
 ```
 - **Multitool (SL machete): wood, stone, copper, iron, gold, diamond, netherite** — in any order: Sword (any material) + Pickaxe of the same material
 

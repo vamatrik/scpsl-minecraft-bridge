@@ -210,6 +210,10 @@ public final class ServerBridge {
         // 3а) Жидкости: SL всплывает/тонет по ним; у берега — помогаем выбраться, как в Minecraft.
         fluids(sp, level, prev, now, feetY);
 
+        // 3а') SCP-268: невидим — мобы рядом забывают игрока как цель (и обычные, и «мозговые» вроде пиглинов и хранителя)
+        if (Pose.invisible) hideFromMobs(sp, level);
+        sp.setInvisible(Pose.invisible);
+
         // 3б) Лампа/фонарик в руке SL светят и в Minecraft: невидимый блок света у головы, едет за игроком.
         updateLamp(sp, level);
 
@@ -502,6 +506,17 @@ public final class ServerBridge {
         SlBridgeClient.LOG.info(Lang.t("[SLBridge] Падение {} бл. → урон {} (в SL ×{})", "[SLBridge] Fell {} blocks → damage {} (×{} in SL)"),
                 String.format("%.1f", d), dmg, SlBridgeClient.config.damageScale);
         sp.hurtServer(level, st.is(Blocks.POINTED_DRIPSTONE) ? sp.damageSources().stalagmite() : sp.damageSources().fall(), dmg);
+    }
+
+    private void hideFromMobs(ServerPlayer sp, ServerLevel level) {
+        for (var mob : level.getEntitiesOfClass(net.minecraft.world.entity.Mob.class, sp.getBoundingBox().inflate(64.0))) {
+            if (mob.getTarget() == sp) mob.setTarget(null);
+            var brain = mob.getBrain();
+            if (brain.hasMemoryValue(net.minecraft.world.entity.ai.memory.MemoryModuleType.ATTACK_TARGET)
+                    && brain.getMemory(net.minecraft.world.entity.ai.memory.MemoryModuleType.ATTACK_TARGET).orElse(null) == sp)
+                brain.eraseMemory(net.minecraft.world.entity.ai.memory.MemoryModuleType.ATTACK_TARGET);
+            if (mob instanceof net.minecraft.world.entity.NeutralMob nm && nm.getTarget() == sp) nm.stopBeingAngry();
+        }
     }
 
     private void streamMobs(ServerPlayer sp, ServerLevel level) {

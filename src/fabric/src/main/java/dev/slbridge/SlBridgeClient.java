@@ -123,6 +123,7 @@ public final class SlBridgeClient implements ClientModInitializer {
         Pose.active = false;
         Pose.lamp = 0;
         Pose.noclip = false;
+        Pose.invisible = false;
         Pose.dim = null;
         uiMode = false;
         Pose.minSeq = 0;
@@ -184,7 +185,7 @@ public final class SlBridgeClient implements ClientModInitializer {
                 mc.debugEntries.toggleStatus(id);
             });
             case "pose" -> { Pose.lamp = m.has("lamp") ? m.get("lamp").getAsInt() : 0; Pose.beam = m.has("beam") && m.get("beam").getAsInt() != 0;
-                Pose.noclip = m.has("nc") && m.get("nc").getAsInt() != 0; Pose.set(m.get("x").getAsDouble(), m.get("y").getAsDouble(), m.get("z").getAsDouble(),
+                Pose.noclip = m.has("nc") && m.get("nc").getAsInt() != 0; Pose.invisible = m.has("inv") && m.get("inv").getAsInt() != 0; Pose.set(m.get("x").getAsDouble(), m.get("y").getAsDouble(), m.get("z").getAsDouble(),
                     m.get("yaw").getAsFloat(), m.get("pitch").getAsFloat(), m.has("seq") ? m.get("seq").getAsInt() : 0,
                     m.has("fy") ? m.get("fy").getAsDouble() : Double.NaN);
             }
@@ -268,18 +269,15 @@ public final class SlBridgeClient implements ClientModInitializer {
     private static boolean keysFreed;
 
     /**
-     * Кнопки моста в SL по умолчанию — K (книга крафтов) и O (настройки). Если на них же висит что-то ванильное
-     * в Minecraft, оно перебивает наше окно — снимаем такие привязки (один раз, их можно вернуть в настройках управления).
+     * Версия 1.1.3 снимала ванильные привязки с K и O — возвращаем их (теперь ванильные клавиши просто не срабатывают
+     * во время моста, см. clientTick).
      */
-    private static void freeBridgeKeys(Minecraft mc) {
+    private static void restoreFreedKeys(Minecraft mc) {
         boolean changed = false;
         for (var km : mc.options.keyMappings) {
-            String k = km.saveString();
-            if (k.equals("key.keyboard.k") || k.equals("key.keyboard.o")) {
-                LOG.info("[SLBridge] Клавиша {} занята мостом — снимаю её с «{}»", k, km.getName());
-                km.setKey(com.mojang.blaze3d.platform.InputConstants.UNKNOWN);
-                changed = true;
-            }
+            if (!km.isUnbound()) continue;
+            String d = km.getDefaultKey().getName();
+            if (d.equals("key.keyboard.k") || d.equals("key.keyboard.o")) { km.setKey(km.getDefaultKey()); changed = true; }
         }
         if (changed) { net.minecraft.client.KeyMapping.resetMapping(); mc.options.save(); }
     }
@@ -334,7 +332,10 @@ public final class SlBridgeClient implements ClientModInitializer {
 
         // Minecraft работает в фоне под окном SCP:SL — он не должен ставить игру на паузу и снижать FPS.
         mc.options.pauseOnLostFocus = false;
-        if (!keysFreed) { keysFreed = true; freeBridgeKeys(mc); }
+        if (!keysFreed) { keysFreed = true; restoreFreedKeys(mc); }
+        // Ванильные клавиши Minecraft (достижения на L, чат, рецепты…) во время моста не нужны: нажатия, накопленные,
+        // пока было открыто наше окно, иначе срабатывают сразу после его закрытия и открывают чужое меню.
+        for (var km : mc.options.keyMappings) while (km.consumeClick()) { }
         // Покачивание камеры при ходьбе и наклон при уроне сдвигают картинку Minecraft относительно прицела SL —
         // на дальних дистанциях это промах на целый блок. Выключаем, пока работает мост (и возвращаем потом).
         if (savedBob == null) { savedBob = mc.options.bobView().get(); savedTilt = mc.options.damageTiltStrength().get(); }

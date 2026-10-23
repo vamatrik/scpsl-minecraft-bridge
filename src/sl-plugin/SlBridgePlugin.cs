@@ -1097,6 +1097,12 @@ namespace SlBridge
 
         private string KeyBelow(int cx, int cy, int cz) => $"{cx},{cy - 1},{cz}";
 
+        /// <summary>SCP-268 (кепка) — эффект невидимости SL: в Minecraft мобы тоже теряют игрока.</summary>
+        private bool IsInvisible()
+        {
+            try { return _player.TryGetEffect<CustomPlayerEffects.Invisible>(out var e) && e.IsEnabled; } catch { return false; }
+        }
+
         private bool IsNoclip()
         {
             try { return _player.RoleBase is IFpcRole fpc && fpc.FpcModule.Noclip.IsActive; } catch { return false; }
@@ -1225,7 +1231,7 @@ namespace SlBridge
             CoordMap.DirToMcAngles(cam.forward, out float yaw, out float pitch);
             float feet = CoordMap.SlToMc(_player.Position).y - FeetOffset(_player);
             _mc.Send("{\"t\":\"pose\",\"x\":" + F(eye.x) + ",\"y\":" + F(eye.y) + ",\"z\":" + F(eye.z)
-                + ",\"fy\":" + F(feet) + ",\"yaw\":" + F(yaw) + ",\"pitch\":" + F(pitch) + ",\"seq\":" + _poseSeq + ",\"lamp\":" + LampLevel() + ",\"beam\":" + (_player.CurrentItem?.Type == ItemType.Flashlight ? 1 : 0) + ",\"nc\":" + (IsNoclip() ? 1 : 0) + "}");
+                + ",\"fy\":" + F(feet) + ",\"yaw\":" + F(yaw) + ",\"pitch\":" + F(pitch) + ",\"seq\":" + _poseSeq + ",\"lamp\":" + LampLevel() + ",\"beam\":" + (_player.CurrentItem?.Type == ItemType.Flashlight ? 1 : 0) + ",\"nc\":" + (IsNoclip() ? 1 : 0) + ",\"inv\":" + (IsInvisible() ? 1 : 0) + "}");
         }
 
         /// <summary>Лампа (Lantern) или фонарик в руке и включены — светят в Minecraft.</summary>

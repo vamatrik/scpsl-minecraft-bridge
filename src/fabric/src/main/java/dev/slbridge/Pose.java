@@ -18,6 +18,8 @@ public final class Pose {
     public static volatile boolean beam;
     /** Игрок SL в ноуклипе: летает сквозь блоки, как наблюдатель. */
     public static volatile boolean noclip;
+    /** SCP-268: игрок невидим и для мобов Minecraft. */
+    public static volatile boolean invisible;
     /** Измерение, где сейчас игрок (на сервере). Коллизии строим только из этого измерения. */
     public static volatile net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level> dim;
 

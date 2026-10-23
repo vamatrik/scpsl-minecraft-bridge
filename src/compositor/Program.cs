@@ -199,6 +199,9 @@ namespace SlBridge.Compositor
         {
             // На 1 пиксель ниже окна SL: окно ровно во весь экран Windows выводит «в обход» сборки рабочего стола
             // (independent flip) — тогда захват экрана в OBS видит застывший кадр окон Minecraft (верстак, инвентарь).
+            // Оптимизация: в игре Minecraft можно рисовать в меньшем окне — оверлей растянет картинку (окна крафта — в полном размере).
+            float sc = _mcUi ? 1f : Math.Clamp(_s.McRenderScale, 0.4f, 1f);
+            if (sc < 0.999f) { slRect.Right = slRect.Left + (int)(slRect.W * sc); slRect.Bottom = slRect.Top + (int)(slRect.H * sc); }
             if (_s.AvoidFullscreenFlip) slRect.Bottom -= 1;
             if (Native.IsZoomed(_mc.Hwnd)) Native.ShowWindow(_mc.Hwnd, 9 /*SW_RESTORE*/);
             int style = Native.GetWindowLong(_mc.Hwnd, Native.GWL_STYLE);
