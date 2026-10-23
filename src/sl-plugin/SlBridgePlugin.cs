@@ -142,6 +142,7 @@ namespace SlBridge
             PlayerEvents.ProcessedJailbirdMessage += OnJailbird;
             PlayerEvents.SearchedToy += OnSearchedToy;
             PlayerEvents.DroppingItem += OnDropping;
+            PlayerEvents.DroppingAmmo += OnDroppingAmmo;
             PlayerEvents.Dying += OnDying;
             PlayerEvents.Hurting += OnHurting;
             PlayerEvents.ProcessedScp1509Message += On1509;
@@ -166,6 +167,7 @@ namespace SlBridge
             PlayerEvents.ProcessedJailbirdMessage -= OnJailbird;
             PlayerEvents.SearchedToy -= OnSearchedToy;
             PlayerEvents.DroppingItem -= OnDropping;
+            PlayerEvents.DroppingAmmo -= OnDroppingAmmo;
             PlayerEvents.Dying -= OnDying;
             PlayerEvents.Hurting -= OnHurting;
             PlayerEvents.ProcessedScp1509Message -= On1509;
@@ -353,10 +355,35 @@ namespace SlBridge
 
         private void OnDropping(PlayerDroppingItemEventArgs ev)
         {
-            if (ev.Player != _player || !_inv.IsStack(ev.Item)) return;
+            if (ev.Player != _player || ev.Item == null) return;
             ev.IsAllowed = false;
-            var s = _inv.Take(_player, ev.Item);
-            if (s != null) DropToMinecraft(s, true);
+            if (_inv.IsStack(ev.Item))
+            {
+                var s = _inv.Take(_player, ev.Item);
+                if (s != null) DropToMinecraft(s, true);
+                return;
+            }
+            // Предмет SL выпадает предметом Minecraft (его иконка из рецептов, иначе мешок) с меткой «что это».
+            // Обычный «пикап» SL летел бы криво и проваливался сквозь коллизии. Подобрал на E — снова предмет SL.
+            var type = ev.Item.Type;
+            if (ev.Item is FirearmItem fa)
+            {
+                // патроны из магазина — обратно в запас, чтобы не пропали
+                try { int a = fa.StoredAmmo + fa.ChamberedAmmo; if (a > 0) _player.SetAmmo(fa.AmmoType, (ushort)Math.Min(ushort.MaxValue, _player.GetAmmo(fa.AmmoType) + a)); } catch { }
+            }
+            _player.RemoveItem(ev.Item);
+            DropToMinecraft(McStack.ForSl(type), true);
+        }
+
+        private void OnDroppingAmmo(PlayerDroppingAmmoEventArgs ev)
+        {
+            if (ev.Player != _player) return;
+            ev.IsAllowed = false;
+            int have = _player.GetAmmo(ev.Type);
+            int n = Math.Min(have, ev.Amount);
+            if (n <= 0) return;
+            _player.SetAmmo(ev.Type, (ushort)(have - n));
+            DropToMinecraft(McStack.ForSl(ev.Type, n), true);
         }
 
         private void DropToMinecraft(McStack s, bool thrown)

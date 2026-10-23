@@ -27,7 +27,7 @@ namespace SlBridge
         public static McStack ForSl(ItemType type, int ammo = 0)
         {
             string key = type.ToString();
-            string name = key, icon = key.StartsWith("Ammo") ? "iron_nugget" : key.StartsWith("Keycard") ? "name_tag" : key.StartsWith("Gun") ? "crossbow" : "paper";
+            string name = key, icon = key.StartsWith("Ammo") ? "iron_nugget" : key.StartsWith("Keycard") ? "name_tag" : key.StartsWith("Gun") ? "crossbow" : "bundle"; // нет рецепта — мешок с меткой предмета
             if (SlItemNames.All.TryGetValue(key, out var n)) { name = L.T(n.Ru, n.En); icon = n.Icon; }
             if (ammo > 0) name += " (" + ammo + ")";
             return new McStack { Id = "minecraft:paper", Name = name, Count = 1, Max = 64, Sl = key, Model = "minecraft:" + icon, Ammo = ammo };
