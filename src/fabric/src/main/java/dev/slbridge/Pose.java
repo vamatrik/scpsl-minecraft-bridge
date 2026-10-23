@@ -16,6 +16,8 @@ public final class Pose {
     public static volatile int lamp;
     /** true — фонарик (узкий луч), false — лампа (свет вокруг). */
     public static volatile boolean beam;
+    /** Игрок SL в ноуклипе: летает сквозь блоки, как наблюдатель. */
+    public static volatile boolean noclip;
     /** Измерение, где сейчас игрок (на сервере). Коллизии строим только из этого измерения. */
     public static volatile net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level> dim;
 

@@ -111,6 +111,16 @@ namespace SlBridge.Compositor
                     lastLayout = sw.ElapsedMilliseconds;
                     FindWindows();
                     UpdateUiMode();
+                    // Окно Minecraft закрыто (Esc/E), а фокус остался у Minecraft — Windows иногда не отдаёт фокус
+                    // с первого раза. Тогда ввод уходит в никуда и всё «зависает». Повторяем, пока фокус не вернётся в SL.
+                    if (!_mcUi && _sl != null && _mc != null && Native.GetForegroundWindow() == _mc.Hwnd)
+                    {
+                        Log("Фокус остался у Minecraft — возвращаю в SL");
+                        Native.ForceForeground(_sl.Hwnd);
+                    }
+                    // И наоборот: окно Minecraft открыто, а фокус у SL — отдаём Minecraft, иначе мышь не работает.
+                    else if (_mcUi && _sl != null && _mc != null && Native.GetForegroundWindow() == _sl.Hwnd)
+                        Native.ForceForeground(_mc.Hwnd);
                     bool ok = _enabled && _sl != null && !Native.IsIconic(_sl.Hwnd);
                     if (ok)
                     {

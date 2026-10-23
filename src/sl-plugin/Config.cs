@@ -55,12 +55,14 @@ namespace SlBridge
         [Description("Высота центра комнаты над точкой игрока (примерно уровень глаз).")]
         public float BackdropCenterHeight { get; set; } = 0.6f;
 
-        [Description("После телепорта/портала игрок висит, пока пол под ним не построен и не простоял столько секунд (чтобы коробки дошли до клиента).")]
-        public float UnfreezeDelay { get; set; } = 1f;
-        [Description("Стройка под себя: сколько секунд держать игрока на новом блоке, пока его коллизия доходит до клиента.")]
-        public float BuildUpHold { get; set; } = 0.35f;
+        [Description("После телепорта (портал, /tp) игрок стоит на месте, пока пол под ним не построен и не простоял столько секунд (чтобы коробки дошли до клиента SL).")]
+        public float UnfreezeDelay { get; set; } = 0.3f;
         [Description("Сколько секунд максимум ждать пола под ногами после телепорта (если там правда пустота — потом отпускаем).")]
         public float TeleportMaxWait { get; set; } = 10f;
+        [Description("Плавание: ускорение всплытия в воде и в лаве (м/с²), и погружения, если присесть.")]
+        public float SwimRise { get; set; } = 3.5f;
+        public float SwimSink { get; set; } = 2.5f;
+        public float LavaRise { get; set; } = 1.5f;
 
         [Description("Яркость света в Minecraft от лампы (Lantern) в руке, 0–15. Без лампы в темноте темно.")]
         public int LanternLight { get; set; } = 14;

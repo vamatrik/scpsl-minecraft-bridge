@@ -119,6 +119,7 @@ public final class SlBridgeClient implements ClientModInitializer {
         });
         Pose.active = false;
         Pose.lamp = 0;
+        Pose.noclip = false;
         Pose.dim = null;
         uiMode = false;
         Pose.minSeq = 0;
@@ -142,7 +143,14 @@ public final class SlBridgeClient implements ClientModInitializer {
                 mc.execute(collisions::reset);
                 serverBridge.resetStreams();
             }
-            case "pose" -> { Pose.lamp = m.has("lamp") ? m.get("lamp").getAsInt() : 0; Pose.beam = m.has("beam") && m.get("beam").getAsInt() != 0; Pose.set(m.get("x").getAsDouble(), m.get("y").getAsDouble(), m.get("z").getAsDouble(),
+            case "debug" -> mc.execute(() -> { // F3+B / F3+G из SL
+                String what = m.has("what") ? m.get("what").getAsString() : "";
+                var id = what.equals("chunks") ? net.minecraft.client.gui.components.debug.DebugScreenEntries.CHUNK_BORDERS
+                        : net.minecraft.client.gui.components.debug.DebugScreenEntries.ENTITY_HITBOXES;
+                mc.debugEntries.toggleStatus(id);
+            });
+            case "pose" -> { Pose.lamp = m.has("lamp") ? m.get("lamp").getAsInt() : 0; Pose.beam = m.has("beam") && m.get("beam").getAsInt() != 0;
+                Pose.noclip = m.has("nc") && m.get("nc").getAsInt() != 0; Pose.set(m.get("x").getAsDouble(), m.get("y").getAsDouble(), m.get("z").getAsDouble(),
                     m.get("yaw").getAsFloat(), m.get("pitch").getAsFloat(), m.has("seq") ? m.get("seq").getAsInt() : 0,
                     m.has("fy") ? m.get("fy").getAsDouble() : Double.NaN);
             }
@@ -157,6 +165,10 @@ public final class SlBridgeClient implements ClientModInitializer {
                     r.addProperty("y", h.y);
                     r.addProperty("z", h.z);
                     r.addProperty("yaw", p != null ? p.getYRot() : 0f);
+                }
+                if (mc.level != null) {
+                    r.addProperty("dim", mc.level.dimension().identifier().toString());
+                    Pose.dim = mc.level.dimension();
                 }
                 bridge.send(r);
             });

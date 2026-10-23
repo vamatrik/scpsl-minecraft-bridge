@@ -52,6 +52,7 @@ public final class CollisionStreamer {
             lastLevel = level;
             reset();
         }
+        String dimId = level.dimension().identifier().toString(); // SL отбрасывает ячейки чужого измерения
         int pcx = Math.floorDiv((int) Math.floor(Pose.x), C);
         int pcy = Math.floorDiv((int) Math.floor(Pose.feetY), C);
         int pcz = Math.floorDiv((int) Math.floor(Pose.z), C);
@@ -87,6 +88,7 @@ public final class CollisionStreamer {
             JsonObject m = new JsonObject();
             m.addProperty("t", "sec");
             m.addProperty("k", cx + "," + cy + "," + cz);
+            m.addProperty("d", dimId);
             JsonArray arr = new JsonArray(boxes.length);
             for (float f : boxes) arr.add(f);
             m.add("b", arr);
@@ -98,6 +100,7 @@ public final class CollisionStreamer {
             JsonObject m = new JsonObject();
             m.addProperty("t", "secDel");
             m.addProperty("k", BlockPos.getX(key) + "," + BlockPos.getY(key) + "," + BlockPos.getZ(key));
+            m.addProperty("d", dimId);
             bridge.send(m);
             return true;
         });
@@ -121,15 +124,7 @@ public final class CollisionStreamer {
                     p.set(ox + x, oy + y, oz + z);
                     BlockState s = level.getBlockState(p);
                     if (s.isAir()) continue;
-                    // Плавание: у поверхности глубокой воды/лавы — тонкий «пол» на уровне низа верхнего блока жидкости.
-                    // Голова над поверхностью, на берег (1 блок) можно запрыгнуть.
-                    var fluid = s.getFluidState();
-                    if (!fluid.isEmpty()) {
-                        if (level.getFluidState(n.set(p.getX(), p.getY() + 1, p.getZ())).isEmpty()
-                                && !level.getFluidState(n.set(p.getX(), p.getY() - 1, p.getZ())).isEmpty()) {
-                            add(out, p.getX(), p.getY() - 0.05, p.getZ(), p.getX() + 1, p.getY(), p.getZ() + 1);
-                        }
-                    }
+                    // Жидкости коллизий не дают: в них плавают (всплывание — гравитацией в SL, см. ServerBridge.fluids).
                     VoxelShape shape = s.getCollisionShape(level, p);
                     if (shape.isEmpty()) continue;
                     if (s.isCollisionShapeFullBlock(level, p)) {

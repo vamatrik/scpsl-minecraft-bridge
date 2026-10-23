@@ -64,13 +64,24 @@ namespace SlBridge
         private int _armorTier = -1;
         private float _nextHousekeeping;
         private bool _frozen;
-        private float _nudgeUntil = -1f;
+        // Жидкость у ног и у глаз (0 — нет, 1 — вода, 2 — лава), присылает Minecraft
+        private int _fluidFeet, _fluidEye;
+        private bool _f3Held;
         // отложенный телепорт из Minecraft
-        private bool _tpPending;
-        private Vector3 _tpTarget;
-        private int _tpSeq;
-        private string _tpDim;
-        private float _tpAt;
+        // ── Прибытие после телепорта Minecraft ──
+        // Игрок SL при телепорте Minecraft НЕ переносится: сдвигается привязка координат (CoordMap.Origin), так что
+        // точка прибытия в Minecraft оказывается ровно под ногами игрока SL. Игрок стоит на месте (без движения),
+        // пока коллизии нового места не построены и не дошли до клиента, — никаких дальних телепортов SL.
+        private bool _arriving;
+        private float _arriveAt;
+        private Vector3 _arriveLock;
+        private string _arriveHint;
+        private string _dim;                  // измерение Minecraft, чьи коллизии сейчас в SL
+        private bool _inFacility = true;      // игрок только что появился в комплексе SL — его надо один раз перенести в «пустоту»
+        private Vector3 _anchor;              // последнее место игрока в «пустоте», где строится мир Minecraft
+        private Vector3 _spawnMc;             // точка появления в Minecraft
+        private bool _hasSpawnMc;
+        private float _nextVoidTp;
         private float _teleportFreezeAt = -1f;
         private Vector3 _lastGoodPos;
         private Player _cmdPlayer;
@@ -132,6 +143,7 @@ namespace SlBridge
             PlayerEvents.SearchedToy += OnSearchedToy;
             PlayerEvents.DroppingItem += OnDropping;
             PlayerEvents.Dying += OnDying;
+            PlayerEvents.Hurting += OnHurting;
             PlayerEvents.ProcessedScp1509Message += On1509;
             ServerEvents.WaitingForPlayers += OnWaiting;
             ServerEvents.RoundStarted += OnRoundStarted;
@@ -155,6 +167,7 @@ namespace SlBridge
             PlayerEvents.SearchedToy -= OnSearchedToy;
             PlayerEvents.DroppingItem -= OnDropping;
             PlayerEvents.Dying -= OnDying;
+            PlayerEvents.Hurting -= OnHurting;
             PlayerEvents.ProcessedScp1509Message -= On1509;
             ServerEvents.WaitingForPlayers -= OnWaiting;
             ServerEvents.RoundStarted -= OnRoundStarted;
@@ -192,7 +205,11 @@ namespace SlBridge
         private void OnWaiting()
         {
             _deconPending = true; // новая сцена — новый контроллер обеззараживания
-            _tpPending = false;
+            _arriving = false;
+            _inFacility = true;
+            _anchor = Vector3.zero;
+            _dim = null;
+            CoordMap.Origin = new Vector3(Config.OriginX, Config.OriginY, Config.OriginZ);
             NewRoundObjects();
             _inv.Clear();
             _player = null;
@@ -238,6 +255,8 @@ namespace SlBridge
             _armorTier = -1;
             _lastGoodPos = Vector3.zero;
             _frozen = false;
+            _arriving = false;
+            _inFacility = true; // появился в комплексе SL — при следующем прибытии перенесём в «пустоту»
         }
 
         private void ApplyMovement(Player p)
@@ -375,7 +394,15 @@ namespace SlBridge
             _respawnAt = Time.time + Config.RespawnDelay;
             _needRespawn = true;
             _hasSpawn = false;
-            _tpPending = false;
+            _arriving = false;
+        }
+
+        /// <summary>Урон от падения считает Minecraft (вода, сено, слизь его гасят), собственный урон SL от падения отключаем.</summary>
+        private void OnHurting(PlayerHurtingEventArgs ev)
+        {
+            if (ev.Player != _player) return;
+            if (ev.DamageHandler is PlayerStatsSystem.UniversalDamageHandler u && u.TranslationId == PlayerStatsSystem.DeathTranslations.Falldown.Id)
+                ev.IsAllowed = false;
         }
 
         private void OnSetting(ReferenceHub hub, ServerSpecificSettingBase setting)
@@ -388,6 +415,15 @@ namespace SlBridge
                     break;
                 case SSKeybindSetting k when k.SettingId == McMenu.KeyInv && k.SyncIsPressed:
                     DoOpenInventory();
+                    break;
+                case SSKeybindSetting k when k.SettingId == McMenu.KeyDebug:
+                    _f3Held = k.SyncIsPressed;
+                    break;
+                case SSKeybindSetting k when k.SettingId == McMenu.KeyHitboxes && k.SyncIsPressed && _f3Held:
+                    _mc?.Send("{\"t\":\"debug\",\"what\":\"hitboxes\"}");
+                    break;
+                case SSKeybindSetting k when k.SettingId == McMenu.KeyChunks && k.SyncIsPressed && _f3Held:
+                    _mc?.Send("{\"t\":\"debug\",\"what\":\"chunks\"}");
                     break;
                 case SSButton b when b.SettingId == McMenu.QuitBtn:
                     RequestQuit();
@@ -530,22 +566,23 @@ namespace SlBridge
 
             Vector3 pos = _player.Position;
             _waypoints.Ensure(pos);
-            if (_tpPending) _waypoints.Ensure(_tpTarget); // точки привязки у места прибытия — заранее, чтобы клиент их уже знал
             _backdrop.Attach(_player);
 
-            // Заморозка: пока коллизии под ногами ещё не построены — не даём упасть/уйти в пустоту.
-            if (_nudgeUntil > 0f && Time.time >= _nudgeUntil)
+            // Прибытие после телепорта / заморозка над непостроенным миром / плавание.
+            bool noclip = IsNoclip();
+            if (_arriving) ArrivalTick(pos);
+            else if (_hasSpawn)
             {
-                _nudgeUntil = -1f;
-                if (!_frozen) _player.Gravity = DefaultGravity * Config.GravityScale;
+                if (!noclip) FreezeIfNotBuilt(pos); // в ноуклипе летаем где угодно, как наблюдатель в Minecraft
+                else if (_frozen) _frozen = false;
+                if (!_inFacility && !_frozen) _anchor = pos;
+                if (!_frozen) ApplySwimGravity(noclip);
             }
-            if (_tpPending) PendingTeleport(pos);
-            else if (_hasSpawn) FreezeIfNotBuilt(pos);
 
             if (Time.time >= _nextHousekeeping)
             {
                 _nextHousekeeping = Time.time + 1f;
-                if (_tpPending) _waypoints.Prune(pos, _tpTarget); else _waypoints.Prune(pos);
+                _waypoints.Prune(pos);
                 // Lightweight (прыжок как в Minecraft) — проверяем, что не слетел после возрождения/эффектов
                 if (Config.JumpBoostPercent > 0 && (!_player.TryGetEffect<Lightweight>(out var lw) || lw.Intensity != Config.JumpBoostPercent))
                     _player.EnableEffect<Lightweight>(Config.JumpBoostPercent, 0f);
@@ -554,8 +591,13 @@ namespace SlBridge
                 if (tier != _armorTier && _mc.Connected) { _armorTier = tier; _mc.Send("{\"t\":\"armor\",\"tier\":" + tier + "}"); }
             }
 
-            if (_hasSpawn && pos.y < CoordMap.Origin.y + Config.VoidY)
-                TeleportTo(_spawnSl, L.T("Ты выпал из мира — возвращаю на точку появления.", "You fell out of the world — returning you to spawn."));
+            if (_hasSpawn && !_arriving && _hasSpawnMc && pos.y < CoordMap.Origin.y + Config.VoidY && Time.time >= _nextVoidTp)
+            {
+                // выпал сквозь мир — просим Minecraft вернуть на точку появления (дальше — обычное «прибытие»)
+                _nextVoidTp = Time.time + 3f;
+                _player.SendHint(L.T("<size=22>Ты выпал из мира — возвращаю на точку появления.</size>", "<size=22>You fell out of the world — returning you to spawn.</size>"), 4f);
+                SendMinecraftCommand($"execute in minecraft:overworld run tp @s {F(_spawnMc.x)} {F(_spawnMc.y)} {F(_spawnMc.z)}", null);
+            }
 
             PollMelee();
 
@@ -582,42 +624,101 @@ namespace SlBridge
 
         private static FieldInfo _marshCooldown;
 
-        private void PendingTeleport(Vector3 pos)
+        /// <summary>
+        /// Minecraft переместил игрока (портал, жемчуг, /tp, возрождение, первый вход). Игрока SL НЕ телепортируем:
+        /// сдвигаем привязку координат (CoordMap.Origin) так, чтобы точка прибытия оказалась прямо под ним, и держим его
+        /// на месте (без движения), пока коллизии нового места не построены и не простояли UnfreezeDelay — то есть
+        /// точно есть и у клиента SL. Единственный перенос в SL — после появления роли в комплексе: один раз в «пустоту».
+        /// </summary>
+        private void BeginArrival(double x, double y, double z, string dim, int seq, string hint)
         {
-            var mc = CoordMap.SlToMc(_tpTarget);
+            if (_player == null) return;
+            Vector3 p;
+            if (_inFacility)
+            {
+                // из комплекса SL — в «пустоту»: на прошлое место или туда, где эта точка была бы при исходной привязке
+                p = _anchor != Vector3.zero ? _anchor
+                    : new Vector3(Config.OriginX - (float)x, Config.OriginY + (float)(y + 0.05), Config.OriginZ + (float)z) + Vector3.up * FeetOffset(_player);
+                _waypoints.Ensure(p);
+                _player.Position = p;
+            }
+            else p = _player.Position;
+
+            float feet = p.y - FeetOffset(_player);
+            CoordMap.Origin = new Vector3(p.x + (float)x, feet - (float)(y + 0.05), p.z - (float)z); // McToSl(x, y+0.05, z) == ноги игрока
+
+            _collision.Clear();
+            _worldItems.Clear();
+            _mobs.Clear();
+            if (!string.IsNullOrEmpty(dim)) _dim = dim;
+            if (seq >= 0) _poseSeq = seq; // позы SL сразу соответствуют точке прибытия
+            _mc.Send("{\"t\":\"resync\"}"); // Minecraft заново пришлёт все ячейки вокруг нового места
+
+            _arriving = true;
+            _arriveAt = Time.time;
+            _arriveLock = p;
+            _arriveHint = hint;
+            _hasSpawn = true;
+            _needSpawn = false;
+            _frozen = true;
+            _lastGoodPos = p;
+            _player.Gravity = Vector3.zero;
+            try { _player.EnableEffect<Ensnared>(1, 0f); } catch { } // не даём ходить, пока ждём — без рассинхрона
+            Logger.Info($"[SlBridge/TP] прибытие → {_dim} ({x:0.0}, {y:0.0}, {z:0.0}), игрок {(_inFacility ? "перенесён из комплекса" : "стоит на месте")}, ждём коллизии");
+        }
+
+        private void ArrivalTick(Vector3 pos)
+        {
+            if ((pos - _arriveLock).sqrMagnitude > 0.04f) _player.Position = _arriveLock;
+            var mc = CoordMap.SlToMc(_arriveLock);
             float feetY = mc.y - FeetOffset(_player) - 0.05f;
             int cx = Mathf.FloorToInt(mc.x / 8f), cy = Mathf.FloorToInt(feetY / 8f), cz = Mathf.FloorToInt(mc.z / 8f);
             float d = Config.UnfreezeDelay;
-            bool cellReady = _collision.HasStable($"{cx},{cy},{cz}", d, _tpAt)
-                             && (feetY - cy * 8f > 1.5f || _collision.HasStable(KeyBelow(cx, cy, cz), d, _tpAt));
-            bool ready = cellReady && _collision.HasGroundUnder(_tpTarget + Vector3.down * FeetOffset(_player), d, _tpAt);
-            if (!ready && Time.time - _tpAt < Config.TeleportMaxWait) return;
+            bool ready = _collision.HasStable($"{cx},{cy},{cz}", d, _arriveAt)
+                         && (feetY - cy * 8f > 1.5f || _collision.HasStable(KeyBelow(cx, cy, cz), d, _arriveAt))
+                         && _collision.HasGroundUnder(_arriveLock + Vector3.down * FeetOffset(_player), d, _arriveAt);
+            if (!ready && Time.time - _arriveAt < Config.TeleportMaxWait) return;
 
-            _tpPending = false;
-            Logger.Info($"[SlBridge/TP] перенос через {Time.time - _tpAt:0.0} с, пол {(ready ? "есть" : "НЕ найден (таймаут)")}, секций {_collision.SectionCount}, очередь {_collision.Pending}");
-            _poseSeq = _tpSeq; // с этого момента Minecraft снова принимает позы SL
-            _collision.RemoveOlderThan(_tpAt); // коллизии старого места больше не нужны
-            string hint = _tpDim.EndsWith("the_nether") ? L.T("Незер", "Nether") : _tpDim.EndsWith("the_end") ? L.T("Энд", "The End") : null;
-            if (!_hasSpawn) { _spawnSl = _tpTarget; _hasSpawn = true; _needSpawn = false; }
-            if (_tpDim.EndsWith("overworld")) _spawnSl = _tpTarget;
-            if (ready)
-            {
-                // пол у клиента уже есть — просто переносим, без заморозки
-                if (_frozen) { _frozen = false; _player.Gravity = DefaultGravity * Config.GravityScale; }
-                _teleportFreezeAt = -1f;
-                _lastGoodPos = _tpTarget;
-                _player.Position = _tpTarget;
-                if (hint != null) _player.SendHint(hint, 4f);
-            }
-            else
-            {
-                _lastGoodPos = Vector3.zero;
-                _frozen = false;
-                TeleportTo(_tpTarget, hint); // дождались таймаута — с заморозкой до появления пола
-            }
+            _arriving = false;
+            _inFacility = false;
+            _frozen = false;
+            _teleportFreezeAt = -1f;
+            _player.Gravity = DefaultGravity * Config.GravityScale;
+            try { _player.DisableEffect<Ensnared>(); } catch { }
+            _lastGoodPos = _arriveLock;
+            _anchor = _arriveLock;
+            Logger.Info($"[SlBridge/TP] готово через {Time.time - _arriveAt:0.0} с, пол {(ready ? "есть" : "НЕ найден (таймаут)")}, секций {_collision.SectionCount}" +
+                        (ready ? "" : $", ячейка {cx},{cy},{cz}: {(_collision.Has($"{cx},{cy},{cz}") ? "есть" : "нет")}, под ногами: {_collision.DescribeUnder(_arriveLock + Vector3.down * FeetOffset(_player))}"));
+            if (_arriveHint != null) _player.SendHint(_arriveHint, 4f);
         }
 
         private string KeyBelow(int cx, int cy, int cz) => $"{cx},{cy - 1},{cz}";
+
+        private bool IsNoclip()
+        {
+            try { return _player.RoleBase is IFpcRole fpc && fpc.FpcModule.Noclip.IsActive; } catch { return false; }
+        }
+
+        private bool IsSneaking()
+        {
+            try { return _player.RoleBase is IFpcRole fpc && fpc.FpcModule.CurrentMovementState == PlayerMovementState.Sneaking; } catch { return false; }
+        }
+
+        /// <summary>
+        /// Плавание как в Minecraft: под водой всплываешь (присел — тонешь), у поверхности покачиваешься,
+        /// в лаве всплываешь медленнее. Коллизий у жидкостей нет — только гравитация SL.
+        /// </summary>
+        private void ApplySwimGravity(bool noclip)
+        {
+            Vector3 g = DefaultGravity * Config.GravityScale;
+            if (!noclip)
+            {
+                if (_fluidEye != 0) g = new Vector3(0f, IsSneaking() ? -Config.SwimSink : _fluidEye == 2 ? Config.LavaRise : Config.SwimRise, 0f);
+                else if (_fluidFeet != 0) g = new Vector3(0f, -6f, 0f); // голова над поверхностью — мягко тянет вниз, держимся на плаву
+            }
+            if ((_player.Gravity - g).sqrMagnitude < 0.0001f) return;
+            _player.Gravity = g;
+        }
 
         private void FreezeIfNotBuilt(Vector3 pos)
         {
@@ -694,7 +795,7 @@ namespace SlBridge
             CoordMap.DirToMcAngles(cam.forward, out float yaw, out float pitch);
             float feet = CoordMap.SlToMc(_player.Position).y - FeetOffset(_player);
             _mc.Send("{\"t\":\"pose\",\"x\":" + F(eye.x) + ",\"y\":" + F(eye.y) + ",\"z\":" + F(eye.z)
-                + ",\"fy\":" + F(feet) + ",\"yaw\":" + F(yaw) + ",\"pitch\":" + F(pitch) + ",\"seq\":" + _poseSeq + ",\"lamp\":" + LampLevel() + ",\"beam\":" + (_player.CurrentItem?.Type == ItemType.Flashlight ? 1 : 0) + "}");
+                + ",\"fy\":" + F(feet) + ",\"yaw\":" + F(yaw) + ",\"pitch\":" + F(pitch) + ",\"seq\":" + _poseSeq + ",\"lamp\":" + LampLevel() + ",\"beam\":" + (_player.CurrentItem?.Type == ItemType.Flashlight ? 1 : 0) + ",\"nc\":" + (IsNoclip() ? 1 : 0) + "}");
         }
 
         /// <summary>Лампа (Lantern) или фонарик в руке и включены — светят в Minecraft.</summary>
@@ -740,48 +841,46 @@ namespace SlBridge
                     break;
 
                 case "spawn":
+                {
                     if (!m.Bool("ready") || _player == null) break; // мир ещё грузится — спросим позже
-                    _spawnSl = CoordMap.McToSl(m.Num("x"), m.Num("y") + 0.05, m.Num("z")) + Vector3.up * FeetOffset(_player);
-                    _hasSpawn = true;
-                    _needSpawn = false;
-                    TeleportTo(_spawnSl, L.T("Добро пожаловать в мир Minecraft!", "Welcome to the Minecraft world!"));
+                    _spawnMc = new Vector3((float)m.Num("x"), (float)m.Num("y"), (float)m.Num("z"));
+                    _hasSpawnMc = true;
+                    BeginArrival(m.Num("x"), m.Num("y"), m.Num("z"), m.Str("dim", "minecraft:overworld"), -1,
+                        L.T("Добро пожаловать в мир Minecraft!", "Welcome to the Minecraft world!"));
                     break;
+                }
 
                 case "teleport":
                 {
-                    // Minecraft телепортировал игрока (портал, жемчуг, /tp). Сам SL-игрок пока стоит на месте (заморожен
-                    // на старых коллизиях), а Minecraft присылает коллизии нового места. Переносим, только когда пол там
-                    // построен и простоял UnfreezeDelay — коробки успели дойти до клиента SL.
+                    // Minecraft переместил игрока (портал, жемчуг, /tp, возрождение) — см. BeginArrival
                     if (_player == null) break;
-                    _tpSeq = (int)m.Num("seq");
-                    _tpTarget = CoordMap.McToSl(m.Num("x"), m.Num("y") + 0.05, m.Num("z")) + Vector3.up * FeetOffset(_player);
-                    _tpDim = m.Str("dim", "");
-                    _tpAt = Time.time;
-                    _tpPending = true;
-                    Logger.Info($"[SlBridge/TP] телепорт Minecraft → {_tpDim} ({m.Num("x"):0.0}, {m.Num("y"):0.0}, {m.Num("z"):0.0}), ждём коллизии; точек привязки {_waypoints.Count}");
-                    _worldItems.Clear();
-                    _mobs.Clear();
-                    _mc.Send("{\"t\":\"resync\"}"); // Minecraft заново пришлёт все ячейки вокруг нового места
-                    // игрока не замораживаем: пока ждём, он стоит на коллизиях старого места
+                    string dim = m.Str("dim", "");
+                    string hint = dim != _dim ? (dim.EndsWith("the_nether") ? L.T("Незер", "Nether") : dim.EndsWith("the_end") ? L.T("Энд", "The End") : null) : null;
+                    BeginArrival(m.Num("x"), m.Num("y"), m.Num("z"), dim, (int)m.Num("seq"), hint);
                     break;
                 }
 
                 case "nudge":
                 {
-                    // поставил блок под себя в прыжке — встаём на него; держим, пока его коробка не дойдёт до клиента
-                    if (_player == null || _tpPending) break;
+                    // поставил блок под себя в прыжке (или выплываешь на берег) — ставим ноги ровно на верх блока.
+                    // Гравитацию не трогаем: иначе инерция прыжка уносит вверх.
+                    if (_player == null || _arriving) break;
                     var cur = CoordMap.SlToMc(_player.Position);
                     var up = CoordMap.McToSl(cur.x, m.Num("fy") + 0.02, cur.z) + Vector3.up * FeetOffset(_player);
                     if (up.y <= _player.Position.y) break;
                     _player.Position = up;
                     _lastGoodPos = up;
-                    _player.Gravity = Vector3.zero;
-                    _nudgeUntil = Time.time + Config.BuildUpHold;
                     break;
                 }
 
+                case "fluid":
+                    _fluidFeet = (int)m.Num("f");
+                    _fluidEye = (int)m.Num("e");
+                    break;
+
                 case "sec":
                 {
+                    if (_dim != null && m.Has("d") && m.Str("d") != _dim) break; // запоздавшая ячейка другого измерения
                     var arr = m.Arr("b");
                     var b = new float[arr.Count];
                     for (int i = 0; i < b.Length; i++) b[i] = (float)(double)arr[i];
@@ -790,6 +889,7 @@ namespace SlBridge
                 }
 
                 case "secDel":
+                    if (_dim != null && m.Has("d") && m.Str("d") != _dim) break;
                     _collision.EnqueueRemove(m.Str("k"));
                     break;
 

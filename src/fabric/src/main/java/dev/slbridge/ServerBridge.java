@@ -179,11 +179,19 @@ public final class ServerBridge {
         lastSnap = now;
         lastLevel = level;
 
-        // Страховка: если игрок SL всё-таки оказался внутри земли — поднимаем на ближайший воздух и сообщаем SL.
-        if (unstick(sp, level, feetY)) return;
-
-        // 3) Урон от падения по правилам Minecraft (вода, сено, слизь уменьшают/отменяют).
-        fall(sp, level, feetY);
+        if (Pose.noclip) {
+            // ноуклип SL — как наблюдатель в Minecraft: сквозь блоки, без падения и без выталкивания
+            fallDist = 0;
+            lastFeetY = feetY;
+            stuckTicks = 0;
+        } else {
+            // Страховка: если игрок SL всё-таки оказался внутри блоков — выталкиваем в ближайшее свободное место.
+            if (unstick(sp, level, feetY)) return;
+            // 3) Урон от падения по правилам Minecraft (вода, сено, слизь уменьшают/отменяют).
+            fall(sp, level, feetY);
+        }
+        // 3а) Жидкости: SL всплывает/тонет по ним; у берега — помогаем выбраться, как в Minecraft.
+        fluids(sp, level, prev, now, feetY);
 
         // 3б) Лампа/фонарик в руке SL светят и в Minecraft: невидимый блок света у головы, едет за игроком.
         updateLamp(sp, level);
@@ -319,27 +327,81 @@ public final class ServerBridge {
 
     private int stuckTicks;
 
+    private boolean free(ServerLevel level, BlockPos p) {
+        return level.getBlockState(p).getCollisionShape(level, p).isEmpty()
+                && level.getBlockState(p.above()).getCollisionShape(level, p.above()).isEmpty();
+    }
+
+    /**
+     * Игрок целиком внутри блоков дольше секунды — выталкиваем в ближайшее свободное место (сначала вбок на 1 блок,
+     * как Minecraft выталкивает игрока, потом вверх). Ноуклип сюда не попадает.
+     */
     private boolean unstick(ServerPlayer sp, ServerLevel level, double feetY) {
         BlockPos feet = BlockPos.containing(sp.getX(), feetY + 0.3, sp.getZ());
         BlockPos head = feet.above();
         boolean solidFeet = level.getBlockState(feet).isCollisionShapeFullBlock(level, feet);
         boolean solidHead = level.getBlockState(head).isCollisionShapeFullBlock(level, head);
         if (!(solidFeet && solidHead)) { stuckTicks = 0; return false; }
-        if (++stuckTicks < 10) return false;
+        if (++stuckTicks < 20) return false;
         stuckTicks = 0;
-        BlockPos.MutableBlockPos p = feet.mutable();
-        for (int i = 0; i < 96 && p.getY() < level.getMaxY(); i++, p.move(0, 1, 0)) {
-            BlockPos below = p.below();
-            if (level.getBlockState(p).getCollisionShape(level, p).isEmpty()
-                    && level.getBlockState(p.above()).getCollisionShape(level, p.above()).isEmpty()
-                    && !level.getBlockState(below).getCollisionShape(level, below).isEmpty()) {
-                sp.snapTo(sp.getX(), p.getY() + 0.05, sp.getZ(), sp.getYRot(), sp.getXRot());
-                SlBridgeClient.LOG.info(Lang.t("[SLBridge] Игрок застрял в блоках — поднимаю на {}", "[SLBridge] Player stuck in blocks — lifting to {}"), p.getY());
-                sendTeleport(sp);
-                return true;
-            }
+        BlockPos target = null;
+        for (var d : net.minecraft.core.Direction.Plane.HORIZONTAL) {
+            BlockPos q = feet.relative(d);
+            if (free(level, q)) { target = q; break; }
         }
-        return false;
+        if (target == null) {
+            BlockPos.MutableBlockPos p = feet.mutable();
+            for (int i = 0; i < 96 && p.getY() < level.getMaxY(); i++, p.move(0, 1, 0))
+                if (free(level, p) && !level.getBlockState(p.below()).getCollisionShape(level, p.below()).isEmpty()) { target = p.immutable(); break; }
+        }
+        if (target == null) return false;
+        sp.snapTo(target.getX() + 0.5, target.getY() + 0.05, target.getZ() + 0.5, sp.getYRot(), sp.getXRot());
+        SlBridgeClient.LOG.info(Lang.t("[SLBridge] Игрок застрял в блоках — выталкиваю на {}", "[SLBridge] Player stuck in blocks — pushing out to {}"), target);
+        sendTeleport(sp);
+        return true;
+    }
+
+    // ───────────── жидкости ─────────────
+
+    private int lastFluidCode = -1;
+    private int lastLedgeTick = -100;
+
+    private static int fluidAt(ServerLevel level, BlockPos p) {
+        var fs = level.getFluidState(p);
+        if (fs.isEmpty()) return 0;
+        return fs.is(net.minecraft.tags.FluidTags.LAVA) ? 2 : 1;
+    }
+
+    private void fluids(ServerPlayer sp, ServerLevel level, Vec3 prev, Vec3 now, double feetY) {
+        int f = fluidAt(level, BlockPos.containing(now.x, feetY + 0.2, now.z));
+        int e = fluidAt(level, BlockPos.containing(Pose.x, Pose.y, Pose.z));
+        int code = f * 3 + e;
+        if (code != lastFluidCode || tickNo % 20 == 0) {
+            lastFluidCode = code;
+            JsonObject m = new JsonObject();
+            m.addProperty("t", "fluid");
+            m.addProperty("f", f);
+            m.addProperty("e", e);
+            bridge.send(m);
+        }
+        // Выбраться на берег: плывём у поверхности на блок впереди, над ним свободно — ставим ноги на его верх.
+        if (f == 0 || e != 0 || tickNo - lastLedgeTick < 8 || Pose.noclip) return;
+        double vx = now.x - prev.x, vz = now.z - prev.z, hs = Math.hypot(vx, vz);
+        if (hs < 0.03) return;
+        BlockPos ahead = BlockPos.containing(now.x + vx / hs * 0.6, feetY + 0.2, now.z + vz / hs * 0.6);
+        for (int dy = 0; dy <= 1; dy++) {
+            BlockPos b = ahead.above(dy);
+            var shape = level.getBlockState(b).getCollisionShape(level, b);
+            if (shape.isEmpty()) continue;
+            double top = b.getY() + shape.max(net.minecraft.core.Direction.Axis.Y);
+            if (top <= feetY + 0.05 || top - feetY > 1.3 || !free(level, b.above())) return;
+            lastLedgeTick = tickNo;
+            JsonObject n = new JsonObject();
+            n.addProperty("t", "nudge");
+            n.addProperty("fy", top);
+            bridge.send(n);
+            return;
+        }
     }
 
     private void fall(ServerPlayer sp, ServerLevel level, double feetY) {

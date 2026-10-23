@@ -30,6 +30,24 @@ namespace SlBridge
         /// в секции, которая не менялась delay секунд. Нужна после порталов: платформа Энда и новый портал
         /// появляются в мире Minecraft уже после прибытия — пустая секция «построена», но пола в ней ещё нет.
         /// </summary>
+        /// <summary>Для лога: что лежит под ногами (ближайший верх коробки ниже ног в пределах 4 м).</summary>
+        public string DescribeUnder(Vector3 feet)
+        {
+            float best = float.NegativeInfinity; string where = "ничего";
+            foreach (var kv in _sections)
+                foreach (var t in kv.Value)
+                {
+                    if (t == null || t.IsDestroyed) continue;
+                    Vector3 c = t.Position, sz = t.Scale;
+                    if (Mathf.Abs(feet.x - c.x) > Mathf.Abs(sz.x) * 0.5f + 0.3f || Mathf.Abs(feet.z - c.z) > Mathf.Abs(sz.z) * 0.5f + 0.3f) continue;
+                    float top = c.y + Mathf.Abs(sz.y) * 0.5f;
+                    if (top > feet.y + 0.5f || top < feet.y - 4f || top <= best) continue;
+                    best = top;
+                    where = $"{kv.Key}: верх на {top - feet.y:0.00} м от ног, обновлена {(_builtAt.TryGetValue(kv.Key, out var bt) ? Time.time - bt : -1f):0.0} с назад";
+                }
+            return where;
+        }
+
         public bool HasGroundUnder(Vector3 feet, float delay, float since = float.NegativeInfinity)
         {
             foreach (var kv in _sections)

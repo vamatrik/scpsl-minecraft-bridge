@@ -50,6 +50,7 @@ You start with a machete (to break blocks and fight) and one medkit — everythi
 * **E** (interact) — place a block, doors/levers, food, flint and steel/bucket/eye of ender, crafting table/furnace/chest (Minecraft window).
 * **I** — Minecraft inventory with 2×2 crafting. Keys can be rebound in SL: Esc → Settings → Server-specific.
 * SL console (`~`): `.mc time set day`; in the admin panel: `mc give @s diamond 5`.
+* In water and lava you float up by yourself, crouch to dive; just swim into the shore to climb out. **F3+B** — hitboxes, **F3+G** — chunk borders.
 * Darkness is real: hold a lit **lantern** (lights up around you) or a **flashlight** (a narrow beam where you look).
 
 ## Crafting

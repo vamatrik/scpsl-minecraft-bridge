@@ -12,8 +12,9 @@ namespace SlBridge
     public sealed class McMenu
     {
         public const int KeyUse = 9001, Status = 9002, KeyInv = 9003, QuitBtn = 9030;
+        public const int KeyDebug = 9004, KeyHitboxes = 9005, KeyChunks = 9006;
 
-        public readonly SSKeybindSetting Use, InvKey;
+        public readonly SSKeybindSetting Use, InvKey, DebugKey, HitboxKey, ChunkKey;
         public readonly SSTextArea StatusText;
         public readonly SSButton Quit;
         public readonly ServerSpecificSettingBase[] All;
@@ -26,6 +27,13 @@ namespace SlBridge
             InvKey = new SSKeybindSetting(KeyInv, L.T("Инвентарь Minecraft (крафт 2×2)", "Minecraft inventory (2×2 crafting)"), KeyCode.I, true, false,
                 L.T("Открыть инвентарь Minecraft с твоими предметами: перекладывать, крафтить 2×2. Закрыть — E или Esc.",
                     "Open the Minecraft inventory with your items: move them around, craft 2×2. Close with E or Esc."));
+            DebugKey = new SSKeybindSetting(KeyDebug, L.T("Отладка Minecraft (F3)", "Minecraft debug (F3)"), KeyCode.F3, true, false,
+                L.T("Держи и нажми вторую клавишу, как в Minecraft: F3+B — хитбоксы, F3+G — границы чанков.",
+                    "Hold it and press a second key, like in Minecraft: F3+B — hitboxes, F3+G — chunk borders."));
+            HitboxKey = new SSKeybindSetting(KeyHitboxes, L.T("F3 + … хитбоксы", "F3 + … hitboxes"), KeyCode.B, true, false,
+                L.T("Вместе с F3 — показать/скрыть хитбоксы, как F3+B в Minecraft.", "Together with F3 — show/hide hitboxes, like F3+B in Minecraft."));
+            ChunkKey = new SSKeybindSetting(KeyChunks, L.T("F3 + … границы чанков", "F3 + … chunk borders"), KeyCode.G, true, false,
+                L.T("Вместе с F3 — показать/скрыть границы чанков, как F3+G в Minecraft.", "Together with F3 — show/hide chunk borders, like F3+G in Minecraft."));
             StatusText = new SSTextArea(Status,
                 L.T("Крафт и плавка — в окнах Minecraft: E по верстаку или печке, I — инвентарь. Рецепты предметов SL — в лаунчере, вкладка «⚒ Крафты».\nБыстрый выход: Ctrl+Shift+F10 (работает, пока открыт лаунчер).",
                     "Crafting and smelting happen in Minecraft windows: E on a crafting table or furnace, I for the inventory. SL item recipes are in the launcher, “⚒ Crafting” tab.\nQuick exit: Ctrl+Shift+F10 (works while the launcher is open)."),
@@ -37,6 +45,9 @@ namespace SlBridge
                 new SSGroupHeader("Minecraft"),
                 Use,
                 InvKey,
+                DebugKey,
+                HitboxKey,
+                ChunkKey,
                 StatusText,
                 Quit,
             };
