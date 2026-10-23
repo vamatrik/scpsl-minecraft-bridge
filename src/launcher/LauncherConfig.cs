@@ -23,6 +23,11 @@ namespace SlBridge.Launcher
         public string LastWorld { get; set; } = "";
         /// <summary>Язык лаунчера и всего мода: "ru" или "en" (пусто — по языку Windows).</summary>
         public string Language { get; set; } = "";
+        /// <summary>Моды оптимизации (Lithium, FerriteCore, ImmediatelyFast, EntityCulling) и отдельно Sodium.</summary>
+        public bool OptMods { get; set; } = false;
+        public bool SodiumMod { get; set; } = false;
+        /// <summary>Что поставил лаунчер: проект Modrinth → имя файла в mods (удаляем только своё).</summary>
+        public System.Collections.Generic.Dictionary<string, string> OptModFiles { get; set; } = new();
         public string SlClientArgs { get; set; } = "-screen-fullscreen 0 -window-mode borderless";
 
         public static string BaseDir => AppContext.BaseDirectory;

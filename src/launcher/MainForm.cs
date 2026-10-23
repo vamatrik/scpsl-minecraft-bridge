@@ -59,7 +59,7 @@ namespace SlBridge.Launcher
             side.Controls.Add(logo);
             _nav = new[] { NavButton(L.T("1  Подготовка", "1  Setup"), 0), NavButton(L.T("2  Играть", "2  Play"), 1), NavButton(L.T("⚒  Крафты", "⚒  Crafting"), 2), NavButton(L.T("?  Справка", "?  Help"), 3) };
             for (int i = 0; i < _nav.Length; i++) { _nav[i].Location = new Point(10, 100 + i * 46); side.Controls.Add(_nav[i]); }
-            var ver = Ui.Label(L.T("мост 0.8.0\nClaude x Vamatrik", "bridge 0.8.0\nClaude x Vamatrik"), 8.5f, Ui.Muted);
+            var ver = Ui.Label(L.T("мост 0.8.1\nClaude x Vamatrik", "bridge 0.8.1\nClaude x Vamatrik"), 8.5f, Ui.Muted);
             ver.Location = new Point(18, 626);
             side.Controls.Add(ver);
 
@@ -172,6 +172,30 @@ namespace SlBridge.Launcher
             _stMod = new StepCard(5, L.T("Мод моста + Fabric API", "Bridge mod + Fabric API"), L.T("Копирует мод моста и Fabric API в папку mods выбранной сборки/игры.", "Copies the bridge mod and Fabric API into the mods folder of the chosen instance/game."), w);
             _stMod.Buttons.Controls.Add(Btn(L.T("Установить мод", "Install mod"), () => Try(_orc.InstallMod), Ui.Accent));
             _stMod.Buttons.Controls.Add(Btn(L.T("Открыть папку mods", "Open mods folder"), () => { if (Directory.Exists(_orc.ModsDir)) Open(_orc.ModsDir); }));
+            // моды оптимизации с Modrinth (ставятся/убираются сразу и проверяются перед каждым запуском)
+            var opt = new CheckBox
+            {
+                Text = L.T("Моды оптимизации: Lithium, FerriteCore, ImmediatelyFast, EntityCulling", "Optimization mods: Lithium, FerriteCore, ImmediatelyFast, EntityCulling"),
+                AutoSize = true, ForeColor = Ui.Text, Checked = _cfg.OptMods, Margin = new Padding(0, 2, 0, 2),
+            };
+            var sod = new CheckBox
+            {
+                Text = L.T("Sodium — быстрее рисует мир (для 26.3 пока бета)", "Sodium — faster world rendering (still beta for 26.3)"),
+                AutoSize = true, ForeColor = Ui.Text, Checked = _cfg.SodiumMod, Margin = new Padding(0, 2, 0, 2),
+            };
+            async void SyncOpt()
+            {
+                _cfg.OptMods = opt.Checked; _cfg.SodiumMod = sod.Checked; _cfg.Save();
+                if (Orchestrator.MinecraftProcess != null) { Log(L.T("Minecraft запущен — моды обновятся при следующем запуске.", "Minecraft is running — mods will update on the next launch.")); return; }
+                opt.Enabled = sod.Enabled = false;
+                try { await OptimizationMods.Sync(_cfg, _orc.ModsDir, Log); }
+                catch (Exception e) { Log(L.T("Ошибка: ", "Error: ") + e.Message); }
+                finally { opt.Enabled = sod.Enabled = true; }
+            }
+            opt.CheckedChanged += (_, _) => SyncOpt();
+            sod.CheckedChanged += (_, _) => SyncOpt();
+            _stMod.Extra.Controls.Add(opt);
+            _stMod.Extra.Controls.Add(sod);
             flow.Controls.Add(_stMod);
 
             var tip = new StepCard(6, L.T("Если оверлей что-то перекрывает", "If the overlay covers something"),

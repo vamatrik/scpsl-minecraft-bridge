@@ -219,6 +219,11 @@ namespace SlBridge.Launcher
 
             if (MinecraftProcess == null)
             {
+                // выбранные в «Подготовке» моды оптимизации — на месте и свежие
+                if (!string.IsNullOrEmpty(ModsDir) && (_c.OptMods || _c.SodiumMod || (_c.OptModFiles?.Count ?? 0) > 0))
+                {
+                    try { await OptimizationMods.Sync(_c, ModsDir, _log); } catch (Exception e) { _log(L.T("Моды оптимизации: ", "Optimization mods: ") + e.Message); }
+                }
                 if (world != null && !string.IsNullOrEmpty(_c.GameDirEffective))
                 {
                     WriteLaunchRequest(world);
