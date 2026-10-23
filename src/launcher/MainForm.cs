@@ -13,7 +13,7 @@ namespace SlBridge.Launcher
         private readonly LauncherConfig _cfg;
         private readonly Orchestrator _orc;
         private readonly Panel _content = new Panel { Dock = DockStyle.Fill, BackColor = Ui.Bg };
-        private readonly Panel _prep, _play, _crafts, _help;
+        private readonly Panel _prep, _play, _crafts, _help, _config;
         private readonly Button[] _nav;
         private readonly System.Windows.Forms.Timer _timer = new System.Windows.Forms.Timer { Interval = 1000 };
 
@@ -65,9 +65,9 @@ namespace SlBridge.Launcher
             var logo = Ui.Label("SCP:SL\n× Minecraft", 16f, Ui.Text, FontStyle.Bold);
             logo.Location = new Point(18, 18);
             side.Controls.Add(logo);
-            _nav = new[] { NavButton(L.T("1  Подготовка", "1  Setup"), 0), NavButton(L.T("2  Играть", "2  Play"), 1), NavButton(L.T("⚒  Крафты", "⚒  Crafting"), 2), NavButton(L.T("?  Справка", "?  Help"), 3) };
+            _nav = new[] { NavButton(L.T("1  Подготовка", "1  Setup"), 0), NavButton(L.T("2  Играть", "2  Play"), 1), NavButton(L.T("⚒  Крафты", "⚒  Crafting"), 2), NavButton(L.T("⚙  Настройки", "⚙  Settings"), 4), NavButton(L.T("?  Справка", "?  Help"), 3) };
             for (int i = 0; i < _nav.Length; i++) { _nav[i].Location = new Point(10, 100 + i * 46); side.Controls.Add(_nav[i]); }
-            var ver = Ui.Label(L.T("мост 1.1.5\nClaude x Vamatrik", "bridge 1.1.5\nClaude x Vamatrik"), 8.5f, Ui.Muted);
+            var ver = Ui.Label(L.T("мост 1.2.0\nClaude x Vamatrik", "bridge 1.2.0\nClaude x Vamatrik"), 8.5f, Ui.Muted);
             ver.Location = new Point(18, 626);
             side.Controls.Add(ver);
 
@@ -87,7 +87,8 @@ namespace SlBridge.Launcher
             McIcons.Config = _cfg;
             _crafts = CraftsPage.Build();
             _help = BuildHelp();
-            _content.Controls.AddRange(new Control[] { _prep, _play, _crafts, _help });
+            _config = ConfigPage.Build(_cfg);
+            _content.Controls.AddRange(new Control[] { _prep, _play, _crafts, _help, _config });
             Controls.Add(_content);
             Controls.Add(side);
             Controls.Add(new TitleBar(this, Text));
@@ -142,6 +143,7 @@ namespace SlBridge.Launcher
             {
                 Text = text, Width = 180, Height = 40, FlatStyle = FlatStyle.Flat, TextAlign = ContentAlignment.MiddleLeft,
                 ForeColor = Ui.Text, BackColor = Ui.Side, Font = Ui.F(11f, FontStyle.Bold), Cursor = Cursors.Hand, Padding = new Padding(10, 0, 0, 0),
+                Tag = page,
             };
             b.FlatAppearance.BorderSize = 0;
             b.Click += (_, _) => Show(page);
@@ -154,7 +156,8 @@ namespace SlBridge.Launcher
             _play.Visible = page == 1;
             _crafts.Visible = page == 2;
             _help.Visible = page == 3;
-            for (int i = 0; i < _nav.Length; i++) _nav[i].BackColor = i == page ? Ui.Card : Ui.Side;
+            _config.Visible = page == 4;
+            for (int i = 0; i < _nav.Length; i++) _nav[i].BackColor = (int)_nav[i].Tag == page ? Ui.Card : Ui.Side;
             if (page == 0) RefreshPrep();
             if (page == 1) LoadWorlds();
         }

@@ -576,6 +576,51 @@ namespace SlBridge
             catch { return false; }
         }
 
+        /// <summary>
+        /// SCP-127 говорит, как в SL: за обычного моба — фраза об убийстве (зомби — как за SCP-049-2, остальные — как за людей),
+        /// за босса — «комментарий» к уничтожению похожего по духу SCP: хранитель → SCP-939 (охотится на звук во тьме),
+        /// дракон Края → SCP-106 (хозяин своего «измерения»), иссушитель → SCP-049 (нежить и мор). Как в SL — только если 127 «подружился».
+        /// </summary>
+        private static readonly RoleTypeId[] HumanRoles = { RoleTypeId.ClassD, RoleTypeId.Scientist, RoleTypeId.FacilityGuard, RoleTypeId.NtfSergeant, RoleTypeId.ChaosRifleman };
+
+        private void Scp127Speak(FirearmItem f127, string entity)
+        {
+            try
+            {
+                var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public;
+                var play = typeof(InventorySystem.Items.Firearms.Modules.Scp127.Scp127VoiceTriggerBase).GetMethod("ServerPlayVoiceLine", flags);
+                if (play == null) return;
+                RoleTypeId boss = entity == "minecraft:warden" ? RoleTypeId.Scp939
+                                : entity == "minecraft:ender_dragon" ? RoleTypeId.Scp106
+                                : entity == "minecraft:wither" ? RoleTypeId.Scp049 : RoleTypeId.None;
+                if (boss != RoleTypeId.None
+                    && InventorySystem.Items.Firearms.Modules.ModulesUtils.TryGetModule(f127.Base, out InventorySystem.Items.Firearms.Modules.Scp127.Scp127TerminationCommentaryVoiceTrigger term, false))
+                {
+                    UnityEngine.AudioClip clip = null;
+                    var t = term.GetType();
+                    if (t.GetField("_commentary", flags)?.GetValue(term) is Array arr)
+                        foreach (var c in arr)
+                        {
+                            var ct = c.GetType();
+                            if ((RoleTypeId)ct.GetField("Role").GetValue(c) != boss) continue;
+                            if (ct.GetField("Lines").GetValue(c) is UnityEngine.AudioClip[] ls && ls.Length > 0) clip = ls[UnityEngine.Random.Range(0, ls.Length)];
+                        }
+                    if (clip == null && t.GetField("_genericLines", flags)?.GetValue(term) is UnityEngine.AudioClip[] gl && gl.Length > 0)
+                        clip = gl[UnityEngine.Random.Range(0, gl.Length)];
+                    if (clip != null) { play.Invoke(term, new object[] { clip, null, InventorySystem.Items.Firearms.Modules.Scp127.Scp127VoiceTriggerBase.VoiceLinePriority.Normal }); return; }
+                }
+                if (InventorySystem.Items.Firearms.Modules.ModulesUtils.TryGetModule(f127.Base, out InventorySystem.Items.Firearms.Modules.Scp127.Scp127OnKillVoiceTrigger kill, false)
+                    && kill.GetType().GetField("_onKillLines", flags)?.GetValue(kill) is InventorySystem.Items.Firearms.Modules.Scp127.Scp127VoiceLineCollection lines)
+                {
+                    bool zombie = entity.Contains("zombie") || entity.Contains("husk") || entity.Contains("drowned");
+                    var role = zombie ? RoleTypeId.Scp0492 : HumanRoles[UnityEngine.Random.Range(0, HumanRoles.Length)];
+                    if (lines.TryGetRandom(role, out var clip) || lines.TryGetRandom(RoleTypeId.ClassD, out clip))
+                        play.Invoke(kill, new object[] { clip, null, InventorySystem.Items.Firearms.Modules.Scp127.Scp127VoiceTriggerBase.VoiceLinePriority.Normal });
+                }
+            }
+            catch (Exception e) { Logger.Warn("[SlBridge] SCP-127 фраза: " + e.Message); }
+        }
+
         private void Scp127KillAmmo(FirearmItem f127)
         {
             try
@@ -1461,7 +1506,7 @@ namespace SlBridge
                             float xp = _lastShotDmg;
                             if (m.Bool("dead")) xp += m127.KillBonus;
                             m127.ServerSetStats(m127.ServerExp + xp * Config.Scp127ExpMultiplier);
-                            if (m.Bool("dead")) Scp127KillAmmo(f127);
+                            if (m.Bool("dead")) { Scp127KillAmmo(f127); Scp127Speak(f127, m.Str("entity", "")); }
                         }
                     }
                     break;

@@ -26,7 +26,10 @@ public abstract class HudMixin {
 
     @Inject(method = "extractRenderState", at = @At("HEAD"), cancellable = true)
     private void slbridge$noHud(GuiGraphicsExtractor g, DeltaTracker d, CallbackInfo ci) {
-        if (SlBridgeClient.isBridgeActive()) ci.cancel();
+        if (!SlBridgeClient.isBridgeActive()) return;
+        // весь интерфейс Minecraft прячем, кроме полоски здоровья босса (дракон, иссушитель, рейд) — её в SL нет
+        if (SlBridgeClient.config.bossBar) ((Hud) (Object) this).getBossOverlay().extractRenderState(g);
+        ci.cancel();
     }
 
     @Inject(method = "extractDebugOverlay", at = @At("HEAD"))

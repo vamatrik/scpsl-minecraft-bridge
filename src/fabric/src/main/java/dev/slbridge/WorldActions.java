@@ -89,7 +89,9 @@ public final class WorldActions {
             if (!hurt && !knockback && target instanceof net.minecraft.world.entity.monster.Enderman) res.addProperty("dodged", true);
             res.addProperty("entity", BuiltInRegistries.ENTITY_TYPE.getKey(target.getType()).toString());
             res.addProperty("dmg", mcDamage);
-            if (target instanceof LivingEntity living) {
+            // дракон Края получает урон частями тела — здоровье и смерть берём у него самого
+            Entity owner = target instanceof net.minecraft.world.entity.boss.enderdragon.EnderDragonPart part ? part.parentMob : target;
+            if (owner instanceof LivingEntity living) {
                 if (Float.isFinite(living.getHealth())) res.addProperty("hp", living.getHealth());
                 res.addProperty("dead", living.isDeadOrDying());
             }
@@ -136,7 +138,9 @@ public final class WorldActions {
             res.addProperty("kind", "entity");
             res.addProperty("entity", BuiltInRegistries.ENTITY_TYPE.getKey(target.getType()).toString());
             res.addProperty("dmg", mcDamage);
-            if (target instanceof LivingEntity living) {
+            // дракон Края получает урон частями тела — здоровье и смерть берём у него самого
+            Entity owner = target instanceof net.minecraft.world.entity.boss.enderdragon.EnderDragonPart part ? part.parentMob : target;
+            if (owner instanceof LivingEntity living) {
                 if (Float.isFinite(living.getHealth())) res.addProperty("hp", living.getHealth());
                 res.addProperty("dead", living.isDeadOrDying());
             }

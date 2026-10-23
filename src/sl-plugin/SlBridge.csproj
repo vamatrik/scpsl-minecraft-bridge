@@ -32,6 +32,7 @@
     <Reference Include="Mirror"><HintPath>$(SLManaged)\Mirror.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="UnityEngine"><HintPath>$(SLManaged)\UnityEngine.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="UnityEngine.CoreModule"><HintPath>$(SLManaged)\UnityEngine.CoreModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.AudioModule"><HintPath>$(SLManaged)\UnityEngine.AudioModule.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="UnityEngine.PhysicsModule"><HintPath>$(SLManaged)\UnityEngine.PhysicsModule.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="NorthwoodLib"><HintPath>$(SLManaged)\NorthwoodLib.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="CommandSystem.Core"><HintPath>$(SLManaged)\CommandSystem.Core.dll</HintPath><Private>false</Private></Reference>

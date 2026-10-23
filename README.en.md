@@ -44,7 +44,7 @@ You start with a machete (to break blocks and fight) and one medkit — everythi
 
 ## Controls
 
-Bridge keys live in SL: **Esc → Settings → Server-specific**. The launcher sets them up on the first run; you can change them there.
+The main options (role, jump, light, green screen, performance) are in the launcher, **“⚙ Settings”** tab. Bridge keys live in SL: **Esc → Settings → Server-specific**. The launcher sets them up on the first run; you can change them there.
 
 | Key | What it does |
 |---|---|
@@ -71,7 +71,9 @@ In Minecraft windows (crafting table, inventory, chest) drag items with the mous
 * **Melee like in SL.** The machete and Jailbird hit an area in front: the main target takes full damage, others — half (machete) or full (Jailbird). A Jailbird charge stops at a mob; the Jailbird wears out and explodes on its last charge when broken.
 * **Multitools.** A sword + a pickaxe of the same material → an SL machete of that tier: from wood to netherite, damage and digging speed grow (gold digs fastest but hits weakly). A hint shows the tier when you pick it up. You start with a wooden one.
 * **SCP-268 (cap)** makes you invisible to Minecraft mobs too: they lose track of you while it lasts.
-* **SCP-127** levels up from damage to mobs and gets bonus XP and ammo for kills. **Micro H.I.D.** damage and range match the game. **Grenades and SCP-018** blow up the Minecraft world too.
+* **SCP-127** levels up from damage to mobs; kills give bonus XP, ammo and a kill line like for a human. Bosses get their own commentary: Warden — like SCP-939, Ender Dragon — like SCP-106, Wither — like SCP-049 (once 127 has befriended you).
+* **Boss health bar** (dragon, wither) is shown at the top of the screen.
+* **Your role** in the Minecraft world is chosen in the launcher, “⚙ Settings” tab: Tutorial, Class-D, Scientist, Facility Guard, MTF, Chaos Insurgency (their uniform is green — parts may show through). **Micro H.I.D.** damage and range match the game. **Grenades and SCP-018** blow up the Minecraft world too.
 * **Water and lava.** You float up by yourself; crouch or walk slowly to dive; swim into the shore to climb out. Water cancels fall damage. Lava burns; fire goes out after death.
 * **Ladders and vines.** Look up to climb, down to descend, straight to hang. No fall damage on them.
 * **Falling** follows Minecraft rules: damage = height − 3 blocks (hay, honey, beds, slime soften it).
