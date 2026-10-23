@@ -267,6 +267,10 @@ Layout for the launcher: next to `SlBridgeLauncher.exe` there is a `dist/` folde
 * Network: only `127.0.0.1` (the bridge between plugin and mod, port 25599) and the local SL server (7777).
 * All binaries in the release are built from this repository — check them on VirusTotal or build them yourself.
 
+## Videos and streams
+
+Feel free to use the bridge in your YouTube videos and streams (or anywhere else). If you want, you can leave the author's channel in the description: [youtube.com/@vamatrikultimate](https://www.youtube.com/@vamatrikultimate) — it's much appreciated.
+
 ## Authors
 
 **Claude x Vamatrik** — idea, testing and direction — Vamatrik; architecture and code — Claude (Anthropic).

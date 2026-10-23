@@ -266,6 +266,10 @@ dotnet publish -c Release -r win-x64 --self-contained -p:PublishSingleFile=true 
 * Сеть: только `127.0.0.1` (мост между плагином и модом, порт 25599) и локальный сервер SL (7777).
 * Все бинарники в релизе собираются из этого репозитория — можно проверить на VirusTotal или собрать самому.
 
+## Видео и стримы
+
+Мост можно спокойно использовать в роликах и стримах на YouTube и где угодно ещё. Если хочешь, упомяни в описании канал автора: [youtube.com/@vamatrikultimate](https://www.youtube.com/@vamatrikultimate) — будет очень приятно.
+
 ## Авторы
 
 **Claude x Vamatrik** — идея, тесты и направление — Vamatrik; архитектура и код — Claude (Anthropic).
