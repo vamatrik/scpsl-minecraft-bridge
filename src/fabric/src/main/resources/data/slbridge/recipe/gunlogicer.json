@@ -4,10 +4,11 @@
  "pattern": [
   "###",
   "###",
-  "## "
+  "#B "
  ],
  "key": {
-  "#": "minecraft:iron_ingot"
+  "#": "minecraft:iron_ingot",
+  "B": "minecraft:iron_block"
  },
  "result": {
   "id": "minecraft:trial_key",

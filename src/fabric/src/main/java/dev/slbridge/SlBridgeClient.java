@@ -164,6 +164,11 @@ public final class SlBridgeClient implements ClientModInitializer {
                     if (sp != null) serverBridge.explode(sp, ex, ey, ez, power);
                 });
             }
+            case "options" -> mc.execute(() -> { // настройки Minecraft (кнопка в SL)
+                if (mc.gui.screen() != null) return;
+                optionsSession = true;
+                mc.gui.setScreen(new net.minecraft.client.gui.screens.options.OptionsScreen(null, mc.options));
+            });
             case "debug" -> mc.execute(() -> { // F3 / F3+B / F3+G из SL
                 String what = m.has("what") ? m.get("what").getAsString() : "";
                 if (what.equals("overlay")) { mc.debugEntries.toggleDebugOverlay(); return; }
@@ -230,12 +235,16 @@ public final class SlBridgeClient implements ClientModInitializer {
                 boolean kb = m.has("kb") && m.get("kb").getAsBoolean();
                 double mr = m.has("mr") ? m.get("mr").getAsDouble() : 0, moff = m.has("moff") ? m.get("moff").getAsDouble() : 1.5;
                 float splash = m.has("splash") ? m.get("splash").getAsFloat() : 0f;
+                float mine = m.has("mine") ? m.get("mine").getAsFloat() : 1f;
                 onServer(() -> {
                     IntegratedServer server = mc.getSingleplayerServer();
                     ServerPlayer sp = server == null ? null : ServerBridge.player(server);
                     if (sp == null) return;
-                    if (mr > 0) actions.melee(sp.level(), sp, from, dir, range, mr, moff, dmg, splash, breaks, config, bridge);
-                    else actions.shot(sp.level(), sp, from, dir, range, dmg, breaks, kb, config, bridge);
+                    actions.mine = mine;
+                    try {
+                        if (mr > 0) actions.melee(sp.level(), sp, from, dir, range, mr, moff, dmg, splash, breaks, config, bridge);
+                        else actions.shot(sp.level(), sp, from, dir, range, dmg, breaks, kb, config, bridge);
+                    } finally { actions.mine = 1f; }
                 });
             }
             case "pickup", "drop", "use", "openInv", "armor", "craftList", "craft", "smeltList", "smelt", "cmd", "respawnReq" -> onServer(() -> {
@@ -246,6 +255,7 @@ public final class SlBridgeClient implements ClientModInitializer {
         }
     }
 
+    private static boolean optionsSession;
     private static String rememberedWorld;
     private static Boolean savedBob;
     private static Double savedTilt;
@@ -277,9 +287,13 @@ public final class SlBridgeClient implements ClientModInitializer {
         if (screen instanceof net.minecraft.client.gui.screens.inventory.AbstractContainerScreen<?>
                 || screen instanceof net.minecraft.client.gui.screens.WinScreen) { // титры после Энда — показываем, их закрытие возвращает в Верхний мир
             if (!uiMode) { uiMode = true; mc.getWindow().setTitle(UI_TITLE); }
+        } else if (optionsSession && screen != null) {
+            // настройки Minecraft, открытые кнопкой из SL (и их подменю) — показываем, как окна крафта
+            if (!uiMode) { uiMode = true; mc.getWindow().setTitle(UI_TITLE); }
         } else if (screen instanceof net.minecraft.client.gui.screens.InBedChatScreen) {
             // спим: экран кровати не закрываем (его закрытие будит)
         } else {
+            optionsSession = false;
             if (screen != null) mc.gui.setScreen(null);
             if (uiMode) {
                 uiMode = false;

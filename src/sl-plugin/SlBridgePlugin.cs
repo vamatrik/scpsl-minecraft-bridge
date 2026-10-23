@@ -345,7 +345,8 @@ namespace SlBridge
                 case Scp1509MessageType.AttackPreformedHitMissed:
                     if (Time.time - _last1509 < 0.25f) return; // одно попадание — одно сообщение
                     _last1509 = Time.time;
-                    SendMelee(MeleeDmg(Config.Scp1509Damage), Config.Scp1509Splash);
+                    var tst = SlItemState.TierStats(SlItemState.TierOf(_player.CurrentItem));
+                    SendMelee(MeleeDmg(Config.Scp1509Damage) * tst.Dmg, Config.Scp1509Splash, tst.Mine);
                     break;
             }
         }
@@ -382,7 +383,7 @@ namespace SlBridge
         private void SendShot(float range, float dmg, bool breaks) => SendShot(range, dmg, breaks, false);
 
         /// <summary>Удар ближнего боя по области, как в SL: шар перед камерой; главная цель — полный урон, остальные — splash.</summary>
-        private void SendMelee(float dmg, float splash)
+        private void SendMelee(float dmg, float splash, float mine = 1f)
         {
             if (_player == null || !_mc.Connected) return;
             LogMeleeOnce();
@@ -390,7 +391,7 @@ namespace SlBridge
             var cam = _player.Camera;
             _mc.Send("{\"t\":\"shot\"," + Vec("", CoordMap.SlToMc(cam.position)) + "," + Vec("d", CoordMap.DirSlToMc(cam.forward))
                      + ",\"dmg\":" + F(dmg) + ",\"range\":" + F(Config.MeleeRange) + ",\"breaks\":true,\"kb\":true"
-                     + ",\"mr\":" + F(MeleeRadius()) + ",\"moff\":" + F(MeleeOffset()) + ",\"splash\":" + F(splash) + "}");
+                     + ",\"mr\":" + F(MeleeRadius()) + ",\"moff\":" + F(MeleeOffset()) + ",\"splash\":" + F(splash) + ",\"mine\":" + F(mine) + "}");
         }
         private float _lastShotDmg;
         private bool _lastMeleeCharged;
@@ -683,6 +684,9 @@ namespace SlBridge
                 case SSKeybindSetting k when k.SettingId == McMenu.KeyUse && k.SyncIsPressed:
                     DoUse();
                     break;
+                case SSKeybindSetting k when k.SettingId == McMenu.KeyOptions && k.SyncIsPressed:
+                    if (_mc != null && _mc.Connected && !_uiOpen) _mc.Send("{\"t\":\"options\"}");
+                    break;
                 case SSKeybindSetting k when k.SettingId == McMenu.KeyInv && k.SyncIsPressed:
                     DoOpenInventory();
                     break;
@@ -827,6 +831,8 @@ namespace SlBridge
                 if (added != null)
                 {
                     SlItemState.Apply(added, s.State); // заряд, магазин, обвесы — как были
+                    if (added.Type == ItemType.SCP1509 && SlItemState.TierOf(added) is string tier)
+                        _player.SendHint("<size=22>" + L.T("Мультитул: ", "Multitool: ") + L.T(SlItemState.TierStats(tier).Ru, SlItemState.TierStats(tier).En) + "</size>", 2.5f);
                     // заряд Micro HID клиент SL иногда не получает сразу у нового предмета (показывает 100%) — повторим чуть позже
                     if (added is MicroHIDItem && !string.IsNullOrEmpty(s.State)) _reapply.Add((added, s.State, Time.time + 0.5f));
                 }
@@ -1107,7 +1113,7 @@ namespace SlBridge
             {
                 float look = _player.Camera.forward.y;
                 // под водой: смотришь вниз (или присел) — ныряешь, иначе всплываешь
-                if (_fluidEye != 0) target = IsSneaking() || look < -0.5f ? -Config.SwimSink : _fluidEye == 2 ? Config.LavaRise : Config.SwimRise;
+                if (_fluidEye != 0) target = IsSneaking() ? -Config.SwimSink : _fluidEye == 2 ? Config.LavaRise : Config.SwimRise;
                 else if (_climb) target = IsSneaking() ? 0f : look > 0.3f ? Config.ClimbSpeed : look < -0.5f ? -Config.ClimbSpeed : 0f;
                 else if (_fluidFeet != 0) target = -0.3f; // голова над водой — держимся на плаву
             }
@@ -1215,7 +1221,13 @@ namespace SlBridge
         public void GiveLoadoutTo(Player p)
         {
             foreach (var it in Config.Loadout)
-                if (p.Items.Count() < 8) p.AddItem(it);
+            {
+                if (p.Items.Count() >= 8) continue;
+                var added = p.AddItem(it);
+                // стартовый инструмент — деревянный мультитул (мачете SL слабого уровня)
+                if (added != null && it == ItemType.SCP1509 && !string.IsNullOrEmpty(Config.StarterMultitoolTier))
+                    SlItemState.Apply(added, "tier=" + Config.StarterMultitoolTier);
+            }
             foreach (var kv in Config.Ammo) p.SetAmmo(kv.Key, (ushort)Math.Min(ushort.MaxValue, p.GetAmmo(kv.Key) + kv.Value));
         }
 

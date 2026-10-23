@@ -31,6 +31,8 @@ public final class WorldActions {
     private static final class Damage { float hits; long lastNanos; int breakerId; }
     private final Map<BlockPos, Damage> blockDamage = new HashMap<>();
     private int nextBreakerId = 1_000_000;
+    /** Сила «добычи» следующего удара: сколько попаданий засчитать блоку (мультитул: дерево 1.5 … незерит 6.5). */
+    public float mine = 1f;
 
     /**
      * Удар ближнего боя как в SCP:SL (Jailbird, SCP-1509): шар радиусом radius на offset м перед камерой, только цели
@@ -138,6 +140,13 @@ public final class WorldActions {
                 if (Float.isFinite(living.getHealth())) res.addProperty("hp", living.getHealth());
                 res.addProperty("dead", living.isDeadOrDying());
             }
+        } else if (breaks && blockHit.getType() == HitResult.Type.BLOCK
+                && level.getBlockState(blockHit.getBlockPos()).is(net.minecraft.world.level.block.Blocks.DRAGON_EGG)) {
+            // яйцо дракона не ломается, а отпрыгивает — как от удара в Minecraft
+            BlockPos pos = blockHit.getBlockPos().immutable();
+            level.getBlockState(pos).attack(level, pos, player);
+            res.addProperty("kind", "block");
+            res.addProperty("block", "minecraft:dragon_egg");
         } else if (breaks && blockHit.getType() == HitResult.Type.BLOCK) {
             BlockPos pos = blockHit.getBlockPos().immutable();
             BlockState state = level.getBlockState(pos);
@@ -149,7 +158,7 @@ public final class WorldActions {
             } else {
                 int needed = Math.max(1, (int) Math.ceil(hardness * cfg.shotsPerHardness));
                 Damage d = blockDamage.computeIfAbsent(pos, p -> { Damage n = new Damage(); n.breakerId = nextBreakerId++; return n; });
-                d.hits += 1f;
+                d.hits += Math.max(0.1f, mine);
                 d.lastNanos = System.nanoTime();
                 res.addProperty("progress", Math.min(1f, d.hits / needed));
                 if (d.hits >= needed) {

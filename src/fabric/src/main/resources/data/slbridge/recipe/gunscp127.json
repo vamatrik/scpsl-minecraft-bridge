@@ -3,11 +3,12 @@
  "category": "equipment",
  "pattern": [
   "##D",
-  "#  "
+  "#E "
  ],
  "key": {
   "#": "minecraft:iron_ingot",
-  "D": "minecraft:diamond"
+  "D": "minecraft:diamond",
+  "E": "minecraft:spider_eye"
  },
  "result": {
   "id": "minecraft:trial_key",

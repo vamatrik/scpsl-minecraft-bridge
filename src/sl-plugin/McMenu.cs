@@ -12,9 +12,9 @@ namespace SlBridge
     public sealed class McMenu
     {
         public const int KeyUse = 9001, Status = 9002, KeyInv = 9003, QuitBtn = 9030;
-        public const int KeyDebug = 9004, KeyHitboxes = 9005, KeyChunks = 9006;
+        public const int KeyDebug = 9004, KeyHitboxes = 9005, KeyChunks = 9006, KeyOptions = 9007;
 
-        public readonly SSKeybindSetting Use, InvKey, DebugKey, HitboxKey, ChunkKey;
+        public readonly SSKeybindSetting Use, InvKey, DebugKey, HitboxKey, ChunkKey, OptionsKey;
         public readonly SSTextArea StatusText;
         public readonly SSButton Quit;
         public readonly ServerSpecificSettingBase[] All;
@@ -27,6 +27,9 @@ namespace SlBridge
             InvKey = new SSKeybindSetting(KeyInv, L.T("Инвентарь Minecraft (крафт 2×2)", "Minecraft inventory (2×2 crafting)"), KeyCode.I, true, false,
                 L.T("Открыть инвентарь Minecraft с твоими предметами: перекладывать, крафтить 2×2. Закрыть — E или Esc.",
                     "Open the Minecraft inventory with your items: move them around, craft 2×2. Close with E or Esc."));
+            OptionsKey = new SSKeybindSetting(KeyOptions, L.T("Настройки Minecraft", "Minecraft settings"), KeyCode.O, true, false,
+                L.T("Открыть настройки Minecraft (графика, звук, управление…). Закрыть — Esc или «Готово».",
+                    "Open the Minecraft settings (video, sound, controls…). Close with Esc or “Done”."));
             DebugKey = new SSKeybindSetting(KeyDebug, L.T("Отладка Minecraft (F4)", "Minecraft debug (F4)"), KeyCode.F4, true, false,
                 L.T("Держи и нажми вторую клавишу, как в Minecraft: F4+B — хитбоксы, F4+G — границы чанков.",
                     "Hold it and press a second key, like in Minecraft: F4+B — hitboxes, F4+G — chunk borders."));
@@ -45,6 +48,7 @@ namespace SlBridge
                 new SSGroupHeader("Minecraft"),
                 Use,
                 InvKey,
+                OptionsKey,
                 DebugKey,
                 HitboxKey,
                 ChunkKey,

@@ -36,31 +36,33 @@ LEG = {
     'Z': ('minecraft:copper_ingot','Медный слиток',   '#C87850'),
     'J': ('minecraft:coal',        'Уголь',           '#2B2B2B'),
     'r': ('minecraft:redstone_block', 'Блок редстоуна', '#A01414'),
+    'w': ('',                      'Меч (любой материал)', '#B0B0B0'),
+    'p': ('',                      'Кирка того же материала', '#8C8C8C'),
     '*': ('',                      'Этот же предмет (разряженный)', '#3FA34D'),
 }
-LEG_EN = {'#': 'Iron ingot', 'B': 'Iron block', 'D': 'Diamond', 'N': 'Netherite ingot', 'G': 'Gunpowder', 'S': 'Stick', 'R': 'Redstone', 'T': 'Torch', 'X': 'TNT', 'L': 'Glowstone dust', 'U': 'Sugar', 'O': 'Glass bottle', 'C': 'Cocoa beans', 'E': 'Spider eye', 'M': 'Slimeball', 'H': 'Leather cap', 'P': 'Ender pearl', 'F': 'Flower pot', 'I': 'Packed ice', 'Y': 'Blue ice', 'W': 'Bowl', 'K': 'Note block', 'V': 'Eye of ender', 'Q': 'Glass pane', 'A': 'Glass', 'Z': 'Copper ingot', 'J': 'Coal', 'r': 'Redstone block', '*': 'The same item (used)'}
+LEG_EN = {'#': 'Iron ingot', 'B': 'Iron block', 'D': 'Diamond', 'N': 'Netherite ingot', 'G': 'Gunpowder', 'S': 'Stick', 'R': 'Redstone', 'T': 'Torch', 'X': 'TNT', 'L': 'Glowstone dust', 'U': 'Sugar', 'O': 'Glass bottle', 'C': 'Cocoa beans', 'E': 'Spider eye', 'M': 'Slimeball', 'H': 'Leather cap', 'P': 'Ender pearl', 'F': 'Flower pot', 'I': 'Packed ice', 'Y': 'Blue ice', 'W': 'Bowl', 'K': 'Note block', 'V': 'Eye of ender', 'Q': 'Glass pane', 'A': 'Glass', 'Z': 'Copper ingot', 'J': 'Coal', 'r': 'Redstone block', 'w': 'Sword (any material)', 'p': 'Pickaxe of the same material', '*': 'The same item (used)'}
 
 # (ключ ItemType SL, имя, иконка, группа, форма|список для бесформенных, кол-во)
 SHAPED = [
     # ── оружие: только железные слитки ──
-    ('GunCOM15',   'COM-15',            'crossbow', 'Оружие', ['##', '# '], 1),
+    ('GunCOM15',   'COM-15',            'crossbow', 'Оружие', ['##', 'Z '], 1),
     ('GunCOM18',   'COM-18',            'crossbow', 'Оружие', ['###', '#  '], 1),
     ('GunCom45',   'COM-45',            'crossbow', 'Оружие', ['###', '## '], 1),
     ('GunRevolver','.44 Револьвер',     'crossbow', 'Оружие', ['###', ' # '], 1),
     ('GunFSP9',    'FSP-9',             'crossbow', 'Оружие', ['###', '#  ', '#  '], 1),
     ('GunCrossvec','Crossvec',          'crossbow', 'Оружие', ['###', '###', '#  '], 1),
-    ('GunE11SR',   'MTF-E11-SR',        'crossbow', 'Оружие', ['###', '###', ' # '], 1),
+    ('GunE11SR',   'MTF-E11-SR',        'crossbow', 'Оружие', ['#R#', '###', ' # '], 1),
     ('GunAK',      'AK',                'crossbow', 'Оружие', ['###', '## ', '#  '], 1),
     ('GunA7',      'A7',                'crossbow', 'Оружие', ['###', ' ##', ' # '], 1),
     ('GunShotgun', 'Дробовик',          'crossbow', 'Оружие', ['###', '###', '# #'], 1),
-    ('GunLogicer', 'Logicer',           'crossbow', 'Оружие', ['###', '###', '## '], 1),
+    ('GunLogicer', 'Logicer',           'crossbow', 'Оружие', ['###', '###', '#B '], 1),
     ('GunFRMG0',   'FR-MG-0',           'crossbow', 'Оружие', ['###', '# #', '## '], 1),
     # ── особое оружие ──
-    ('GunSCP127',  'SCP-127',           'crossbow', 'Особое оружие', ['##D', '#  '], 1),
+    ('GunSCP127',  'SCP-127',           'crossbow', 'Особое оружие', ['##D', '#E '], 1),
     ('ParticleDisruptor', 'Молекулярный разрушитель', 'trident', 'Особое оружие', ['##B', '#  '], 1),
     ('MicroHID',   'Micro H.I.D.',      'lightning_rod', 'Особое оружие', ['###', 'DDD', '###'], 1),
-    ('Jailbird',   'Дубинка (Jailbird)','mace',     'Особое оружие', ['D', '#', '#'], 1),
-    ('SCP1509',    'Мачете (SCP-1509)', 'iron_sword','Особое оружие', ['  #', ' # ', 'S  '], 1),
+    ('Jailbird',   'Дубинка (Jailbird)','mace',     'Особое оружие', ['D', 'r', '#'], 1),
+    ('SCP1509',    'Мачете (SCP-1509)', 'iron_sword','Особое оружие', ['  D', ' N ', 'S  '], 1),
     # ── патроны (по 80 за крафт) ──
     ('Ammo9x19',   'Патроны 9x19 (80)',     'iron_nugget', 'Патроны', ['G', '#'], 1),
     ('Ammo556x45', 'Патроны 5.56x45 (80)',  'iron_nugget', 'Патроны', ['G', '#', '#'], 1),
@@ -81,8 +83,8 @@ SHAPELESS = [
     ('GrenadeHE',   'Осколочная граната', 'fire_charge', 'Снаряжение', ['#', 'X'], 1),
     ('GrenadeFlash','Светошумовая граната','glowstone_dust','Снаряжение', ['#', 'L', 'G'], 1),
     ('Painkillers', 'Обезболивающее',     'bone_meal',  'Медицина', ['U', 'U', 'O'], 1),
-    ('Adrenaline',  'Адреналин',          'experience_bottle', 'Медицина', ['minecraft:golden_apple'], 1),
-    ('SCP500',      'SCP-500 (панацея)',  'redstone',   'Медицина', ['minecraft:enchanted_golden_apple'], 1),
+    ('Adrenaline',  'Адреналин',          'experience_bottle', 'Медицина', ['U', 'O', 'minecraft:glistering_melon_slice'], 1),
+    ('SCP500',      'SCP-500 (панацея)',  'redstone',   'Медицина', ['minecraft:golden_apple'], 1),
     ('SCP207',      'SCP-207',            'honey_bottle','SCP', ['U', 'U', 'C', 'O'], 1),
     ('AntiSCP207',  'Анти-SCP-207',       'potion',     'SCP', ['U', 'U', 'E', 'O'], 1),
     ('SCP018',      'SCP-018 (мяч)',      'slime_ball', 'SCP', ['M', 'M', 'R'], 1),
@@ -185,6 +187,31 @@ for key, ru, en in RECHARGE:
     put(f"data/slbridge/recipe/recharge_{key.lower()}.json", obj)
     table.append(dict(key=key, name=ru, name_en=en, group='Перезарядка', shaped=True, grid=["rrr", "r*r", "rrr"], legend=['r', '*'], count=1))
 
+# Панацея ×8 из зачарованного золотого яблока
+obj = {"type": "minecraft:crafting_shapeless", "category": "misc", "ingredients": ["minecraft:enchanted_golden_apple"],
+       "result": result("SCP500", "SCP-500 (панацея)", "redstone", 8)}
+put("data/slbridge/recipe/scp500_x8.json", obj)
+table.append(dict(key='SCP500', name='SCP-500 (панацея) ×8', name_en='SCP-500 (panacea) ×8', group='Медицина', shaped=False, items=['minecraft:enchanted_golden_apple'], count=8))
+
+# Мультитулы: меч + кирка одного материала → мачете SL с уровнем (урон и скорость добычи зависят от материала)
+TIERS = [('wooden', 'wood', 'Деревянный мультитул', 'Wooden multitool'), ('stone', 'stone', 'Каменный мультитул', 'Stone multitool'),
+         ('copper', 'copper', 'Медный мультитул', 'Copper multitool'), ('iron', 'iron', 'Железный мультитул', 'Iron multitool'),
+         ('golden', 'gold', 'Золотой мультитул', 'Golden multitool'), ('diamond', 'diamond', 'Алмазный мультитул', 'Diamond multitool'),
+         ('netherite', 'netherite', 'Незеритовый мультитул', 'Netherite multitool')]
+for mat, tier, ru, en in TIERS:
+    tkey = "item.slbridge.multitool_" + tier
+    LANG_RU[tkey] = ru; LANG_EN[tkey] = en
+    res = {"id": "minecraft:trial_key", "count": 1, "components": {
+        "minecraft:custom_data": {"slItem": "SCP1509", "slState": "tier=" + tier},
+        "minecraft:item_name": {"translate": tkey, "fallback": en},
+        "minecraft:item_model": f"minecraft:{mat}_sword",
+        "minecraft:enchantment_glint_override": True, "minecraft:rarity": "rare"}}
+    obj = {"type": "minecraft:crafting_shapeless", "category": "equipment",
+           "ingredients": [f"minecraft:{mat}_sword", f"minecraft:{mat}_pickaxe"], "result": res}
+    put(f"data/slbridge/recipe/multitool_{tier}.json", obj)
+table.append(dict(key='SCP1509', name='Мультитул (мачете SL): дерево, камень, медь, железо, золото, алмаз, незерит', name_en='Multitool (SL machete): wood, stone, copper, iron, gold, diamond, netherite',
+                  group='Особое оружие', shaped=False, items=['w', 'p'], count=1))
+
 # ── проверка конфликтов с ванильными рецептами и между собой ──
 TAGS = {}
 def tag_items(t, seen=None):
@@ -255,7 +282,8 @@ for code, d in (('ru_ru', LANG_RU), ('en_us', LANG_EN)):
     json.dump(d, open(fp, 'w', encoding='utf-8'), ensure_ascii=False, indent=1, sort_keys=True)
 
 # ── таблица для лаунчера (C#) ──
-APPLES = {'minecraft:golden_apple': ('Золотое яблоко', 'Golden apple'), 'minecraft:enchanted_golden_apple': ('Зачарованное золотое яблоко', 'Enchanted golden apple')}
+APPLES = {'minecraft:golden_apple': ('Золотое яблоко', 'Golden apple'), 'minecraft:enchanted_golden_apple': ('Зачарованное золотое яблоко', 'Enchanted golden apple'),
+          'minecraft:glistering_melon_slice': ('Сверкающий ломтик арбуза', 'Glistering melon slice')}
 def cs(s): return '"' + s.replace('\\', '\\\\').replace('"', '\\"') + '"'
 L = ['// Сгенерировано tools/gen_recipes.py — не править руками.', 'namespace SlBridge.Launcher', '{',
      '    internal static class RecipeData', '    {',

@@ -2,7 +2,9 @@
  "type": "minecraft:crafting_shapeless",
  "category": "misc",
  "ingredients": [
-  "minecraft:golden_apple"
+  "minecraft:sugar",
+  "minecraft:glass_bottle",
+  "minecraft:glistering_melon_slice"
  ],
  "result": {
   "id": "minecraft:trial_key",

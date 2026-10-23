@@ -3,12 +3,13 @@
  "category": "equipment",
  "pattern": [
   "D",
-  "#",
+  "r",
   "#"
  ],
  "key": {
   "#": "minecraft:iron_ingot",
-  "D": "minecraft:diamond"
+  "D": "minecraft:diamond",
+  "r": "minecraft:redstone_block"
  },
  "result": {
   "id": "minecraft:trial_key",

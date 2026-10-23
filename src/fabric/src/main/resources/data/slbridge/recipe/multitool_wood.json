@@ -1,0 +1,25 @@
+{
+ "type": "minecraft:crafting_shapeless",
+ "category": "equipment",
+ "ingredients": [
+  "minecraft:wooden_sword",
+  "minecraft:wooden_pickaxe"
+ ],
+ "result": {
+  "id": "minecraft:trial_key",
+  "count": 1,
+  "components": {
+   "minecraft:custom_data": {
+    "slItem": "SCP1509",
+    "slState": "tier=wood"
+   },
+   "minecraft:item_name": {
+    "translate": "item.slbridge.multitool_wood",
+    "fallback": "Wooden multitool"
+   },
+   "minecraft:item_model": "minecraft:wooden_sword",
+   "minecraft:enchantment_glint_override": true,
+   "minecraft:rarity": "rare"
+  }
+ }
+}

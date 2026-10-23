@@ -50,9 +50,10 @@ You start with a machete (to break blocks and fight) and one medkit — everythi
 * **E** (interact) — place a block, doors/levers, food, flint and steel/bucket/eye of ender, crafting table/furnace/chest (Minecraft window).
 * **I** — Minecraft inventory with 2×2 crafting. Keys can be rebound in SL: Esc → Settings → Server-specific.
 * SL console (`~`): `.mc time set day`; in the admin panel: `mc give @s diamond 5`.
-* In water and lava you float up by yourself, look down (or crouch) to dive; just swim into the shore to climb out.
+* In water and lava you float up by yourself, crouch or walk slowly to dive; just swim into the shore to climb out.
+* **O** — Minecraft settings. **Multitool**: a sword + a pickaxe of the same material → an SL machete of that tier: better material hits harder and digs faster (gold digs fastest but hits weakly).
 * **F4** — Minecraft debug screen, **F4+B** — hitboxes, **F4+G** — chunk borders (F3 is SL's own debug).
-* The starter machete and medkit come once per world; get them again with `.kit start`. `.mc gamerule keep_inventory true` keeps items on death. Your SL inventory is saved in the world folder.
+* The starter wooden multitool and medkit come once per world; get them again with `.kit start`. `.mc gamerule keep_inventory true` keeps items on death. Your SL inventory is saved in the world folder.
 * Jailbird and the machete hit an area like in SL; SCP-127 levels up from damage to mobs and gets XP and ammo for kills.
 * Ladders and vines: look up to climb, down to descend. Beds: sleep and set your respawn point. Grenades and SCP-018 blow up the Minecraft world too.
 * Darkness is real: hold a lit **lantern** (lights up around you) or a **flashlight** (a narrow beam where you look).
@@ -61,7 +62,7 @@ You start with a machete (to break blocks and fight) and one medkit — everythi
 
 Every SL item is crafted on a Minecraft crafting table (E on the table). The result immediately becomes a real SCP:SL item in your inventory; ammo is added 80 at a time. Shapes can be mirrored horizontally, and small shapes can go anywhere in the grid. The vanilla iron and diamond chestplates are replaced by SL light and combat armor (in the bridge, Minecraft armor comes from your SL armor anyway). Darkness in Minecraft is real — craft a lantern and hold it lit in your hand (or a flashlight — it shines a narrow beam where you look). Your SL items show up in Minecraft windows too — the Micro H.I.D., Jailbird and Particle Disruptor can be recharged on a crafting table. The drawings are also in the launcher, “⚒ Crafting” tab.
 
-Legend: `#` — Iron ingot, `B` — Iron block, `D` — Diamond, `N` — Netherite ingot, `G` — Gunpowder, `S` — Stick, `R` — Redstone, `T` — Torch, `X` — TNT, `L` — Glowstone dust, `U` — Sugar, `O` — Glass bottle, `C` — Cocoa beans, `E` — Spider eye, `M` — Slimeball, `H` — Leather cap, `P` — Ender pearl, `F` — Flower pot, `I` — Packed ice, `Y` — Blue ice, `W` — Bowl, `K` — Note block, `V` — Eye of ender, `Q` — Glass pane, `A` — Glass, `J` — Coal, `r` — Redstone block, `*` — The same item (used), `·` — empty.
+Legend: `#` — Iron ingot, `B` — Iron block, `D` — Diamond, `N` — Netherite ingot, `G` — Gunpowder, `S` — Stick, `R` — Redstone, `T` — Torch, `X` — TNT, `L` — Glowstone dust, `U` — Sugar, `O` — Glass bottle, `C` — Cocoa beans, `E` — Spider eye, `M` — Slimeball, `H` — Leather cap, `P` — Ender pearl, `F` — Flower pot, `I` — Packed ice, `Y` — Blue ice, `W` — Bowl, `K` — Note block, `V` — Eye of ender, `Q` — Glass pane, `A` — Glass, `Z` — Copper ingot, `J` — Coal, `r` — Redstone block, `w` — Sword (any material), `p` — Pickaxe of the same material, `*` — The same item (used), `·` — empty.
 
 
 ### Weapons
@@ -69,7 +70,7 @@ Legend: `#` — Iron ingot, `B` — Iron block, `D` — Diamond, `N` — Netheri
 ```
 COM-15    COM-18    COM-45
 # # ·     # # #     # # #
-# · ·     # · ·     # # ·
+Z · ·     # · ·     # # ·
 · · ·     · · ·     · · ·
 ```
 ```
@@ -80,7 +81,7 @@ COM-15    COM-18    COM-45
 ```
 ```
 MTF-E11-SR    AK            A7
-# # #         # # #         # # #
+# R #         # # #         # # #
 # # #         # # ·         · # #
 · # ·         # · ·         · # ·
 ```
@@ -88,7 +89,7 @@ MTF-E11-SR    AK            A7
 Shotgun    Logicer    FR-MG-0
 # # #      # # #      # # #
 # # #      # # #      # · #
-# · #      # # ·      # # ·
+# · #      # B ·      # # ·
 ```
 
 ### Special weapons
@@ -96,15 +97,16 @@ Shotgun    Logicer    FR-MG-0
 ```
 SCP-127               Particle Disruptor    Micro H.I.D.
 # # D                 # # B                 # # #
-# · ·                 # · ·                 D D D
+# E ·                 # · ·                 D D D
 · · ·                 · · ·                 # # #
 ```
 ```
 Jailbird              Machete (SCP-1509)
-D · ·                 · · #
-# · ·                 · # ·
+D · ·                 · · D
+r · ·                 · N ·
 # · ·                 S · ·
 ```
+- **Multitool (SL machete): wood, stone, copper, iron, gold, diamond, netherite** — in any order: Sword (any material) + Pickaxe of the same material
 
 ### Ammo
 
@@ -163,8 +165,9 @@ Q V Q
 ### Medical
 
 - **Painkillers** — in any order: Sugar + Sugar + Glass bottle
-- **Adrenaline** — in any order: Golden apple
-- **SCP-500 (panacea)** — in any order: Enchanted golden apple
+- **Adrenaline** — in any order: Sugar + Glass bottle + Glistering melon slice
+- **SCP-500 (panacea)** — in any order: Golden apple
+- **SCP-500 (panacea) ×8** — in any order: Enchanted golden apple
 
 ### Recharge
 

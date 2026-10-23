@@ -21,8 +21,11 @@ namespace SlBridge
         [Description("Роль, которой играет игрок в мире Minecraft.")]
         public RoleTypeId Role { get; set; } = RoleTypeId.Tutorial;
 
-        [Description("Стартовые предметы (и после смерти): мачете — ломать и бить, аптечка — один раз отхилиться. Остальное крафтится.")]
+        [Description("Стартовый набор (только при первом входе в мир или по .kit start): деревянный мультитул — ломать и бить, аптечка. Остальное крафтится.")]
         public List<ItemType> Loadout { get; set; } = new List<ItemType> { ItemType.SCP1509, ItemType.Medkit };
+
+        [Description("Мачете из стартового набора — мультитул этого уровня: wood, stone, iron, gold, diamond, netherite (пусто — обычное мачете SCP-1509).")]
+        public string StarterMultitoolTier { get; set; } = "wood";
 
         [Description("Стартовые патроны: тип → количество.")]
         public Dictionary<ItemType, ushort> Ammo { get; set; } = new Dictionary<ItemType, ushort>();
@@ -95,8 +98,8 @@ namespace SlBridge
 
         [Description("Множитель гравитации SL в мире Minecraft (1 — как в SL).")]
         public float GravityScale { get; set; } = 1f;
-        [Description("Усиление прыжка в процентах (эффект Lightweight, без смены гравитации). 12 ≈ 1.25 м — как в Minecraft.")]
-        public byte JumpBoostPercent { get; set; } = 12;
+        [Description("Усиление прыжка в процентах (эффект Lightweight, без смены гравитации). 20 — чуть выше блока, удобно запрыгивать.")]
+        public byte JumpBoostPercent { get; set; } = 20;
 
         [Description("Сколько секунд держать E, чтобы подобрать предмет Minecraft.")]
         public float PickupTime { get; set; } = 0.4f;

@@ -467,6 +467,9 @@ public final class ServerBridge {
         double dy = lastFeetY - feetY;
         lastFeetY = feetY;
         if (sp.isInWater() || sp.onClimbable() || sp.isInLava()) { fallDist = 0; return; }
+        // лестницы и лианы проверяем сами: у «приклеенного» к камере SL тела Minecraft onClimbable() часто не срабатывает
+        BlockPos cf = BlockPos.containing(sp.getX(), feetY + 0.1, sp.getZ());
+        if (climbable(level, cf) || climbable(level, cf.above()) || climbable(level, cf.below())) { fallDist = 0; lastFeetY = feetY; return; }
         // Вода гасит падение, как в Minecraft. В мосте игрок SL «стоит» на поверхности воды (там коллизия-пол),
         // поэтому тело Minecraft может воды не касаться — проверяем блоки у ног и под ногами сами.
         BlockPos feetPos = BlockPos.containing(sp.getX(), feetY + 0.1, sp.getZ());

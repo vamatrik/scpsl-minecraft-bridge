@@ -3,10 +3,11 @@
  "category": "equipment",
  "pattern": [
   "##",
-  "# "
+  "Z "
  ],
  "key": {
-  "#": "minecraft:iron_ingot"
+  "#": "minecraft:iron_ingot",
+  "Z": "minecraft:copper_ingot"
  },
  "result": {
   "id": "minecraft:trial_key",

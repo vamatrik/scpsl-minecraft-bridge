@@ -2,12 +2,13 @@
  "type": "minecraft:crafting_shaped",
  "category": "equipment",
  "pattern": [
-  "###",
+  "#R#",
   "###",
   " # "
  ],
  "key": {
-  "#": "minecraft:iron_ingot"
+  "#": "minecraft:iron_ingot",
+  "R": "minecraft:redstone"
  },
  "result": {
   "id": "minecraft:trial_key",

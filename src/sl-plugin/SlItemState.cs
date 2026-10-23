@@ -15,11 +15,33 @@ namespace SlBridge
     {
         private static readonly CultureInfo Inv = CultureInfo.InvariantCulture;
 
+        // ── Мультитул: мачете SL (SCP-1509) с уровнем материала — от него урон и скорость добычи ──
+        public static readonly Dictionary<ushort, string> Tier = new Dictionary<ushort, string>();
+
+        /// <summary>Урон (множитель к урону мачете SL) и «добыча» (сколько попаданий по блоку за удар).</summary>
+        public static (float Dmg, float Mine, string Ru, string En) TierStats(string tier)
+        {
+            switch (tier)
+            {
+                case "wood": return (0.6f, 1.5f, "деревянный мультитул", "wooden multitool");
+                case "stone": return (0.75f, 2.5f, "каменный мультитул", "stone multitool");
+                case "copper": return (0.8f, 3f, "медный мультитул", "copper multitool");
+                case "iron": return (0.9f, 4f, "железный мультитул", "iron multitool");
+                case "gold": return (0.7f, 6f, "золотой мультитул", "golden multitool");
+                case "diamond": return (1.1f, 5f, "алмазный мультитул", "diamond multitool");
+                case "netherite": return (1.3f, 6.5f, "незеритовый мультитул", "netherite multitool");
+                default: return (1f, 3f, "мачете SCP-1509", "SCP-1509 machete");
+            }
+        }
+
+        public static string TierOf(Item it) => it != null && Tier.TryGetValue(it.Serial, out var t) ? t : null;
+
         public static string Capture(Item it)
         {
             var d = new List<string>();
             try
             {
+                if (it != null && it.Type == ItemType.SCP1509 && TierOf(it) is string tier) d.Add("tier=" + tier);
                 switch (it)
                 {
                     case FirearmItem fa:
@@ -65,6 +87,7 @@ namespace SlBridge
             var d = Parse(state);
             try
             {
+                if (it.Type == ItemType.SCP1509 && d.TryGetValue("tier", out var tr)) Tier[it.Serial] = tr;
                 switch (it)
                 {
                     case FirearmItem fa:
@@ -91,6 +114,7 @@ namespace SlBridge
         public static string Describe(string state)
         {
             var d = Parse(state);
+            if (d.TryGetValue("tier", out var tier)) { var st = TierStats(tier); return " — " + L.T(st.Ru, st.En); }
             if (d.ContainsKey("br")) return L.T(" (сломан)", " (broken)");
             if (d.TryGetValue("en", out var e) && float.TryParse(e, NumberStyles.Float, Inv, out var en)) return $" ({Math.Round(en * 100)}%)";
             if (d.TryGetValue("jc", out var c) && c != "0") return L.T($" (ударов: {c})", $" (charges used: {c})");

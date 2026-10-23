@@ -1,0 +1,25 @@
+{
+ "type": "minecraft:crafting_shapeless",
+ "category": "equipment",
+ "ingredients": [
+  "minecraft:stone_sword",
+  "minecraft:stone_pickaxe"
+ ],
+ "result": {
+  "id": "minecraft:trial_key",
+  "count": 1,
+  "components": {
+   "minecraft:custom_data": {
+    "slItem": "SCP1509",
+    "slState": "tier=stone"
+   },
+   "minecraft:item_name": {
+    "translate": "item.slbridge.multitool_stone",
+    "fallback": "Stone multitool"
+   },
+   "minecraft:item_model": "minecraft:stone_sword",
+   "minecraft:enchantment_glint_override": true,
+   "minecraft:rarity": "rare"
+  }
+ }
+}
