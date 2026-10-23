@@ -56,6 +56,13 @@ namespace SlBridge.Compositor
         private static IDXGISwapChain1 _swap;
         private static ID3D11RenderTargetView _rtv;
         private static int _swapW, _swapH;
+        private static int _fpsSl, _fpsMc, _fpsOut;
+        private static ID3D11PixelShader _refPs;
+        private static ID3D11Texture2D _refTex;
+        private static ID3D11RenderTargetView _refRtv;
+        private static ID3D11ShaderResourceView _refSrv;
+        private static long _fpsAt;
+        private static double _renderMs;
         private static Func<Native.RECT> _slRectRef;
 
         // Окно для OBS: обычное окно (не оверлей) с той же картинкой. Оверлей сделан через DirectComposition —
@@ -161,8 +168,20 @@ namespace SlBridge.Compositor
 
                 bool newSl = _sl.Poll(_ctx);
                 bool newMc = _mc != null && _mc.Poll(_ctx);
+                if (newSl) _fpsSl++;
+                if (newMc) _fpsMc++;
+                // замер: раз в 10 с — сколько кадров реально пришло от SL и Minecraft и сколько выдал оверлей
+                if (sw.ElapsedMilliseconds - _fpsAt >= 10000)
+                {
+                    double sec = (sw.ElapsedMilliseconds - _fpsAt) / 1000.0;
+                    Log($"FPS: SL {_fpsSl / sec:0}, Minecraft {_fpsMc / sec:0}, оверлей {_fpsOut / sec:0}, кадр оверлея {(_fpsOut > 0 ? _renderMs / _fpsOut : 0):0.00} мс{(_mcUi ? " (окно Minecraft)" : "")}");
+                    _fpsSl = _fpsMc = _fpsOut = 0; _renderMs = 0; _fpsAt = sw.ElapsedMilliseconds;
+                }
                 if (!newSl && !(_mcUi && newMc)) { Thread.Sleep(1); continue; }
+                long t0 = Stopwatch.GetTimestamp();
                 Render();
+                _renderMs += (Stopwatch.GetTimestamp() - t0) * 1000.0 / Stopwatch.Frequency;
+                _fpsOut++;
             }
         }
 
@@ -325,6 +344,15 @@ namespace SlBridge.Compositor
             var psBlob = Compiler.Compile(Shaders.Source, "PS", "compositor.hlsl", "ps_5_0");
             _vs = _device.CreateVertexShader(vsBlob.Span);
             _ps = _device.CreatePixelShader(psBlob.Span);
+            var refBlob = Compiler.Compile(Shaders.Source, "RefPS", "compositor.hlsl", "ps_5_0");
+            _refPs = _device.CreatePixelShader(refBlob.Span);
+            _refTex = _device.CreateTexture2D(new Texture2DDescription
+            {
+                Width = 1, Height = 1, MipLevels = 1, ArraySize = 1, Format = Format.R16G16B16A16_Float,
+                SampleDescription = new SampleDescription(1, 0), Usage = ResourceUsage.Default, BindFlags = BindFlags.RenderTarget | BindFlags.ShaderResource,
+            });
+            _refRtv = _device.CreateRenderTargetView(_refTex);
+            _refSrv = _device.CreateShaderResourceView(_refTex);
             _sampler = _device.CreateSamplerState(SamplerDescription.LinearClamp);
             _cb = _device.CreateBuffer(new BufferDescription((uint)sizeof(Params), BindFlags.ConstantBuffer, ResourceUsage.Default));
 
@@ -384,6 +412,18 @@ namespace SlBridge.Compositor
             ClientUv(_sl, out p.SlOx, out p.SlOy, out p.SlSx, out p.SlSy);
             ClientUv(_mc, out p.McOx, out p.McOy, out p.McSx, out p.McSy);
             _ctx.UpdateSubresource(in p, _cb);
+            // проход 1: образец фона в текстуру 1×1
+            _ctx.PSSetShaderResource(2, null);
+            _ctx.OMSetRenderTargets(_refRtv);
+            _ctx.RSSetViewport(new Viewport(0, 0, 1, 1));
+            _ctx.IASetPrimitiveTopology(PrimitiveTopology.TriangleList);
+            _ctx.VSSetShader(_vs);
+            _ctx.PSSetShader(_refPs);
+            _ctx.PSSetConstantBuffer(0, _cb);
+            _ctx.PSSetSampler(0, _sampler);
+            _ctx.PSSetShaderResource(0, _sl.Srv);
+            _ctx.Draw(3, 0);
+            // проход 2: сама картинка
             _ctx.OMSetRenderTargets(_rtv);
             _ctx.RSSetViewport(new Viewport(0, 0, _swapW, _swapH));
             _ctx.IASetPrimitiveTopology(PrimitiveTopology.TriangleList);
@@ -393,6 +433,7 @@ namespace SlBridge.Compositor
             _ctx.PSSetSampler(0, _sampler);
             _ctx.PSSetShaderResource(0, _sl.Srv);
             _ctx.PSSetShaderResource(1, (_mc != null && _mc.Srv != null) ? _mc.Srv : _sl.Srv);
+            _ctx.PSSetShaderResource(2, _refSrv);
             _ctx.Draw(3, 0);
             _swap.Present(0, PresentFlags.None);
             if (_obsRtv != null)

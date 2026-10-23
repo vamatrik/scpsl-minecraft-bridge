@@ -5,6 +5,7 @@ namespace SlBridge.Compositor
         public const string Source = @"
 Texture2D SlTex : register(t0);
 Texture2D McTex : register(t1);
+Texture2D RefTex : register(t2);
 SamplerState Lin : register(s0);
 
 cbuffer P : register(b0)
@@ -41,6 +42,34 @@ float Dom(float3 c, float3 kc)
 }
 
 float3 Hue(float3 c) { return c / max(max(max(c.r, c.g), c.b), 1e-3); }
+float Lum(float3 c) { return dot(c, float3(0.299, 0.587, 0.114)); }
+bool Same(float3 a, float3 b)
+{
+    float la = Lum(a), lb = Lum(b);
+    return length(Hue(a) - Hue(b)) < 0.12 && la > lb * 0.6 && la < lb * 1.6 + 0.01;
+}
+
+// Отдельный проход в текстуру 1×1 раз в кадр: выбрать образец фона (одинаков для всех пикселей — не считать его 2 млн раз).
+float4 RefPS(V i) : SV_Target
+{
+    // Эффекты SL (SCP-268, затемнение, ослепление, низкое HP) перекрашивают и затемняют весь кадр — фон перестаёт
+    // быть «эталонным зелёным». Поэтому берём образцы фона прямо из кадра (края и кольцо ближе к центру, без низа,
+    // где оружие и интерфейс) и выбираем самый «типичный» — тот, на который похоже больше всего других образцов.
+    // Всё, что похоже на него по оттенку и яркости, тоже фон.
+    static const float2 refPts[12] = { float2(0.5, 0.04), float2(0.04, 0.5), float2(0.96, 0.5), float2(0.25, 0.04),
+                                       float2(0.75, 0.04), float2(0.04, 0.25), float2(0.96, 0.25), float2(0.5, 0.25),
+                                       float2(0.3, 0.35), float2(0.7, 0.35), float2(0.25, 0.5), float2(0.75, 0.5) };
+    float3 smp[12];
+    [unroll] for (int j = 0; j < 12; j++) smp[j] = SlTex.SampleLevel(Lin, SlUv.xy + refPts[j] * SlUv.zw, 0).rgb;
+    int best = 0; int bestN = -1;
+    [unroll] for (int a = 0; a < 12; a++)
+    {
+        int n = 0;
+        [unroll] for (int b = 0; b < 12; b++) n += Same(smp[a], smp[b]) ? 1 : 0;
+        if (n > bestN) { bestN = n; best = a; }
+    }
+    return float4(smp[best], bestN);
+}
 
 float4 PS(V i) : SV_Target
 {
@@ -64,18 +93,10 @@ float4 PS(V i) : SV_Target
     float2 slUv = SlUv.xy + i.uv * SlUv.zw;
     float3 s = SlTex.Sample(Lin, slUv).rgb;
 
-    // Эффекты SL (низкое HP, ослепление) обесцвечивают фон. Берём «эталон» фона из краёв кадра —
-    // самую «ключевую» из точек — и вырезаем всё, что близко к нему по оттенку.
-    static const float2 refPts[8] = { float2(0.5, 0.04), float2(0.04, 0.5), float2(0.96, 0.5), float2(0.25, 0.04),
-                                      float2(0.75, 0.04), float2(0.04, 0.25), float2(0.96, 0.25), float2(0.5, 0.3) };
-    float3 refC = float3(0, 0, 0);
-    float refDom = -1;
-    [unroll] for (int j = 0; j < 8; j++)
-    {
-        float3 c = SlTex.SampleLevel(Lin, SlUv.xy + refPts[j] * SlUv.zw, 0).rgb;
-        float d = Dom(c, KeyColor);
-        if (d > refDom) { refDom = d; refC = c; }
-    }
+    // образец фона «сейчас» (см. RefPS): rgb — цвет, a — сколько из 12 образцов с ним согласны
+    float4 refT = RefTex.Load(int3(0, 0, 0));
+    float3 refC = refT.rgb;
+    int bestN = (int)(refT.a + 0.5);
     // Ключ по «преобладанию» ключевого канала над остальными (для зелёного: g над max(r,b)),
     // делённому на яркость, — освещение, туман и пересвет SL на него почти не влияют.
     float3 kc = KeyColor;
@@ -84,11 +105,12 @@ float4 PS(V i) : SV_Target
     float dom = (keyCh - other) / max(keyCh, 1e-3);
     float k = saturate((dom - KeyThreshold) / max(KeySoftness, 1e-3));
     k *= saturate((keyCh - KeyMinBrightness) / 0.04);
-    if (AdaptiveKey > 0.5 && refDom > 0.04 && refDom < KeyThreshold + KeySoftness)
+    // фон «сейчас»: половина образцов согласна, что это он, и он не чёрный (маска очков SCP-1344 — не фон)
+    if (AdaptiveKey > 0.5 && bestN >= 6 && Lum(refC) > 0.012)
     {
         float dist = length(Hue(s) - Hue(refC));
-        float kr = 1.0 - saturate((dist - 0.05) / 0.08);
-        kr *= saturate((dom - refDom * 0.5) / max(refDom * 0.3, 1e-3)); // и всё же «зеленее» оружия
+        float lr = Lum(s) / max(Lum(refC), 1e-3);
+        float kr = (1.0 - saturate((dist - 0.05) / 0.08)) * saturate((lr - 0.45) / 0.15) * saturate((2.0 - lr) / 0.3);
         k = max(k, kr);
     }
     // Despill: убираем зелёный оттенок с полупрозрачного (дым, искры, края) — он становится серым.

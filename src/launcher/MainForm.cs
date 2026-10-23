@@ -67,7 +67,7 @@ namespace SlBridge.Launcher
             side.Controls.Add(logo);
             _nav = new[] { NavButton(L.T("1  Подготовка", "1  Setup"), 0), NavButton(L.T("2  Играть", "2  Play"), 1), NavButton(L.T("⚒  Крафты", "⚒  Crafting"), 2), NavButton(L.T("?  Справка", "?  Help"), 3) };
             for (int i = 0; i < _nav.Length; i++) { _nav[i].Location = new Point(10, 100 + i * 46); side.Controls.Add(_nav[i]); }
-            var ver = Ui.Label(L.T("мост 1.1.4\nClaude x Vamatrik", "bridge 1.1.4\nClaude x Vamatrik"), 8.5f, Ui.Muted);
+            var ver = Ui.Label(L.T("мост 1.1.5\nClaude x Vamatrik", "bridge 1.1.5\nClaude x Vamatrik"), 8.5f, Ui.Muted);
             ver.Location = new Point(18, 626);
             side.Controls.Add(ver);
 
@@ -244,7 +244,21 @@ namespace SlBridge.Launcher
             _stMod.Extra.Controls.Add(sod);
             flow.Controls.Add(_stMod);
 
-            var tip = new StepCard(6, L.T("Если оверлей что-то перекрывает", "If the overlay covers something"),
+            var perf = new StepCard(6, L.T("Оптимизация", "Performance"),
+                L.T("Две игры делят одну видеокарту, а картинку собирает оверлей — поэтому лишние кадры одной игры отнимают их у другой.\n" +
+                    "• Рекомендуется ограничить FPS до 60 в каждой игре: в настройках графики SCP:SL и в настройках Minecraft (O в игре). Обычно это заметно поднимает реальную плавность.\n" +
+                    "• Вертикальную синхронизацию в Minecraft лучше выключить.\n" +
+                    "• Графику SL можно ставить низкую: SL рисует только оружие и интерфейс, мир рисует Minecraft.\n" +
+                    "• Ещё больше FPS: в dist\\compositor\\compositor.json поставь \"McRenderScale\": 0.75 — Minecraft будет рисовать почти вдвое меньше пикселей.",
+                    "Two games share one graphics card and the overlay combines their pictures — extra frames in one game are taken from the other.\n" +
+                    "• It's recommended to cap FPS at 60 in each game: in the SCP:SL graphics settings and in the Minecraft settings (O in game). This usually makes the real result noticeably smoother.\n" +
+                    "• Turn off VSync in Minecraft.\n" +
+                    "• SL graphics can be low: SL only draws the weapon and UI, Minecraft draws the world.\n" +
+                    "• For even more FPS: set \"McRenderScale\": 0.75 in dist\\compositor\\compositor.json — Minecraft will render about half the pixels."), w);
+            perf.SetStatus(null, L.T("совет", "tip"));
+            flow.Controls.Add(perf);
+
+            var tip = new StepCard(7, L.T("Если оверлей что-то перекрывает", "If the overlay covers something"),
                 L.T("Ctrl+Shift+F12 — выключить/включить оверлей (картинку Minecraft поверх SL).\nCtrl+Shift+F11 — показать маску: белым — где подставляется Minecraft.\nCtrl+Shift+F10 — быстрый выход (закрыть всё, кроме лаунчера).", "Ctrl+Shift+F12 — turn the overlay (Minecraft picture over SL) off/on.\nCtrl+Shift+F11 — show the mask: white is where Minecraft is drawn.\nCtrl+Shift+F10 — quick exit (close everything except the launcher)."), w);
             tip.SetStatus(null, L.T("на заметку", "good to know"));
             flow.Controls.Add(tip);

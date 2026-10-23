@@ -82,6 +82,15 @@ In Minecraft windows (crafting table, inventory, chest) drag items with the mous
 * **Your SL inventory** is saved in the world folder and comes back next time; each world has its own. Item state (attachments, loaded ammo, Micro H.I.D. charge, Jailbird wear, SCP-127 and multitool tiers) is kept everywhere.
 * **No hunger** — food is crafted into medkits (see Crafting). Experience is picked up automatically.
 
+## Performance
+
+Two games share one graphics card and the overlay combines their pictures (the overlay itself costs a fraction of a millisecond per frame). Extra frames in one game are taken from the other, so:
+
+* **Cap FPS at 60 in each game** — in the SCP:SL graphics settings and in the Minecraft settings (**O** in game). This usually makes the real result noticeably smoother.
+* Turn off VSync in Minecraft and enable Sodium (checkbox in the launcher).
+* SL graphics can be low: SL only draws the weapon and UI, Minecraft draws the world.
+* For more FPS: `"McRenderScale": 0.75` in `dist/compositor/compositor.json` makes Minecraft render about half the pixels (the world gets slightly softer, crafting windows stay full size).
+
 ## Crafting
 
 All recipes are also in the game: **U** opens the SL crafting book in Minecraft style — with real items and hover tooltips. The launcher’s “⚒ Crafting” tab draws them with item icons too (taken from your installed Minecraft).
