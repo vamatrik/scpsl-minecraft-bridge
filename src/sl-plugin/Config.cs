@@ -98,8 +98,8 @@ namespace SlBridge
 
         [Description("Множитель гравитации SL в мире Minecraft (1 — как в SL).")]
         public float GravityScale { get; set; } = 1f;
-        [Description("Усиление прыжка в процентах (эффект Lightweight, без смены гравитации). 20 — чуть выше блока, удобно запрыгивать.")]
-        public byte JumpBoostPercent { get; set; } = 20;
+        [Description("Усиление прыжка в процентах (эффект Lightweight, без смены гравитации). 18 — чуть выше блока, удобно запрыгивать.")]
+        public byte JumpBoostPercent { get; set; } = 18;
 
         [Description("Сколько секунд держать E, чтобы подобрать предмет Minecraft.")]
         public float PickupTime { get; set; } = 0.4f;
