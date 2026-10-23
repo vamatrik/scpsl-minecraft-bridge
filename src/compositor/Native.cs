@@ -27,6 +27,7 @@ namespace SlBridge.Compositor
         }
         [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left, Top, Right, Bottom; public int W => Right - Left; public int H => Bottom - Top; }
         [StructLayout(LayoutKind.Sequential)] public struct POINT { public int X, Y; }
+        [DllImport("user32")] public static extern bool GetCursorPos(out POINT p);
         [StructLayout(LayoutKind.Sequential)] public struct MSG { public IntPtr hwnd; public uint message; public IntPtr wParam, lParam; public uint time; public POINT pt; }
 
         [DllImport("user32", CharSet = CharSet.Unicode)] public static extern ushort RegisterClassEx(ref WNDCLASSEX c);

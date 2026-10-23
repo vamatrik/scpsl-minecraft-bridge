@@ -14,6 +14,8 @@ public final class BridgeConfig {
     public int port = 25599;
     /** Вертикальный FOV камеры SCP:SL в градусах (в SL — 70). */
     public float fov = 70f;
+    /** Рисовать свою стрелку-курсор в окнах Minecraft (системный курсор там не виден). */
+    public boolean drawCursor = true;
     /** Во сколько раз урон Minecraft больше переводится в урон SL (20 HP → 100 HP). */
     public float damageScale = 5f;
     /** Сколько выстрелов нужно на единицу твёрдости блока (камень 1.5 → 3 выстрела). */
@@ -39,6 +41,7 @@ public final class BridgeConfig {
         }
         c.port = Integer.parseInt(p.getProperty("port", String.valueOf(c.port)));
         c.fov = Float.parseFloat(p.getProperty("fov", String.valueOf(c.fov)));
+        c.drawCursor = Boolean.parseBoolean(p.getProperty("drawCursor", String.valueOf(c.drawCursor)));
         c.damageScale = Float.parseFloat(p.getProperty("damageScale", String.valueOf(c.damageScale)));
         c.shotsPerHardness = Float.parseFloat(p.getProperty("shotsPerHardness", String.valueOf(c.shotsPerHardness)));
         c.collisionRadiusCells = Integer.parseInt(p.getProperty("collisionRadiusCells", String.valueOf(c.collisionRadiusCells)));
@@ -50,6 +53,7 @@ public final class BridgeConfig {
         Properties out = new Properties();
         out.setProperty("port", String.valueOf(c.port));
         out.setProperty("fov", String.valueOf(c.fov));
+        out.setProperty("drawCursor", String.valueOf(c.drawCursor));
         out.setProperty("damageScale", String.valueOf(c.damageScale));
         out.setProperty("shotsPerHardness", String.valueOf(c.shotsPerHardness));
         out.setProperty("collisionRadiusCells", String.valueOf(c.collisionRadiusCells));

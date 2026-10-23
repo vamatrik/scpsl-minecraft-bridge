@@ -48,9 +48,17 @@ namespace SlBridge.Launcher
             BackColor = Ui.Bg;
             ForeColor = Ui.Text;
             Font = Ui.F(10f);
-            ClientSize = new Size(940, 680);
-            MinimumSize = new Size(940, 680);
+            FormBorderStyle = FormBorderStyle.None; // своя тёмная полоса сверху вместо белой виндовой
+            Padding = new Padding(1); // тонкая рамка по краю
+            ClientSize = new Size(942, 682 + TitleBar.H);
+            MinimumSize = new Size(942, 682 + TitleBar.H);
             StartPosition = FormStartPosition.CenterScreen;
+            try
+            {
+                using var ico = typeof(MainForm).Assembly.GetManifestResourceStream("app.ico");
+                if (ico != null) Icon = new Icon(ico);
+            }
+            catch { }
 
             // боковая панель
             var side = new Panel { Dock = DockStyle.Left, Width = 200, BackColor = Ui.Side };
@@ -59,7 +67,7 @@ namespace SlBridge.Launcher
             side.Controls.Add(logo);
             _nav = new[] { NavButton(L.T("1  Подготовка", "1  Setup"), 0), NavButton(L.T("2  Играть", "2  Play"), 1), NavButton(L.T("⚒  Крафты", "⚒  Crafting"), 2), NavButton(L.T("?  Справка", "?  Help"), 3) };
             for (int i = 0; i < _nav.Length; i++) { _nav[i].Location = new Point(10, 100 + i * 46); side.Controls.Add(_nav[i]); }
-            var ver = Ui.Label(L.T("мост 0.8.1\nClaude x Vamatrik", "bridge 0.8.1\nClaude x Vamatrik"), 8.5f, Ui.Muted);
+            var ver = Ui.Label(L.T("мост 0.8.5\nClaude x Vamatrik", "bridge 0.8.5\nClaude x Vamatrik"), 8.5f, Ui.Muted);
             ver.Location = new Point(18, 626);
             side.Controls.Add(ver);
 
@@ -81,6 +89,7 @@ namespace SlBridge.Launcher
             _content.Controls.AddRange(new Control[] { _prep, _play, _crafts, _help });
             Controls.Add(_content);
             Controls.Add(side);
+            Controls.Add(new TitleBar(this, Text));
 
             _timer.Tick += (_, _) => { RefreshStatus(); CheckQuitRequest(); };
             try { if (File.Exists(QuitFile)) File.Delete(QuitFile); } catch { } // старый запрос с прошлого раза
@@ -88,6 +97,42 @@ namespace SlBridge.Launcher
             RefreshPrep();
             bool ready = _orc.SlClientFound && _orc.SlServerFound && _orc.ModInstalled;
             Show(ready ? 1 : 0);
+        }
+
+        // окно без рамки: сворачивание по клику на панели задач, тень, перетаскивание за края — как у обычного
+        protected override CreateParams CreateParams
+        {
+            get
+            {
+                var cp = base.CreateParams;
+                cp.Style |= 0x00020000 | 0x00080000; // WS_MINIMIZEBOX | WS_SYSMENU
+                cp.ClassStyle |= 0x00020000;         // CS_DROPSHADOW
+                return cp;
+            }
+        }
+
+        protected override void WndProc(ref Message m)
+        {
+            const int WM_NCHITTEST = 0x84;
+            if (m.Msg == 0x0312 && m.WParam.ToInt32() == HotkeyQuit) { _ = QuickExit(); return; }
+            base.WndProc(ref m);
+            if (m.Msg == WM_NCHITTEST && WindowState == FormWindowState.Normal)
+            {
+                var p = PointToClient(new Point(unchecked((short)(long)m.LParam), unchecked((short)((long)m.LParam >> 16))));
+                const int g = 6;
+                bool l = p.X < g, r = p.X >= ClientSize.Width - g, t = p.Y < g, b = p.Y >= ClientSize.Height - g;
+                if (t && l) m.Result = (IntPtr)13; else if (t && r) m.Result = (IntPtr)14;
+                else if (b && l) m.Result = (IntPtr)16; else if (b && r) m.Result = (IntPtr)17;
+                else if (l) m.Result = (IntPtr)10; else if (r) m.Result = (IntPtr)11;
+                else if (t) m.Result = (IntPtr)12; else if (b) m.Result = (IntPtr)15;
+            }
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            base.OnPaint(e);
+            using var pen = new Pen(Color.FromArgb(48, 53, 63));
+            e.Graphics.DrawRectangle(pen, 0, 0, ClientSize.Width - 1, ClientSize.Height - 1);
         }
 
         private Button NavButton(string text, int page)
@@ -402,11 +447,6 @@ namespace SlBridge.Launcher
             base.OnHandleDestroyed(e);
         }
 
-        protected override void WndProc(ref Message m)
-        {
-            if (m.Msg == 0x0312 && m.WParam.ToInt32() == HotkeyQuit) { _ = QuickExit(); return; }
-            base.WndProc(ref m);
-        }
 
         private static string QuitFile => Path.Combine(Path.GetDirectoryName(LauncherConfig.LanguageFile), "quit.req");
 
@@ -465,12 +505,14 @@ namespace SlBridge.Launcher
               L.T("E (взаимодействие Minecraft) — поставить блок из руки, открыть дверь, нажать рычаг, съесть еду, использовать огниво/ведро/око Эндера, открыть верстак/печь/сундук.\n", "E (Minecraft interact) places the held block, opens doors, presses levers, eats food, uses flint and steel/buckets/eyes of ender, opens crafting tables/furnaces/chests.\n") +
               L.T("Оружие, патроны, броню, аптечки и SCP-предметы можно скрафтить — рисунки рецептов во вкладке «⚒ Крафты».\n", "Weapons, ammo, armor, medkits and SCP items can be crafted — recipe drawings are on the “⚒ Crafting” tab.\n") +
               L.T("I — инвентарь Minecraft с крафтом 2×2. В окнах Minecraft предметы таскаются мышкой; закрыть — E или Esc.\n", "I opens the Minecraft inventory with 2×2 crafting. In Minecraft windows you drag items with the mouse; close with E or Esc.\n") +
-              L.T("В воде и лаве всплываешь сам; присесть — нырнуть. У берега плыви на него — выберешься.\n", "In water and lava you float up by yourself; crouch to dive. Swim into the shore to climb out.\n") +
+              L.T("В воде и лаве всплываешь сам; посмотреть вниз (или присесть) — нырнуть. У берега плыви на него — выберешься.\n", "In water and lava you float up by yourself; look down (or crouch) to dive. Swim into the shore to climb out.\n") +
               L.T("Лестница и лианы: смотришь вверх — лезешь, вниз — спускаешься, прямо или присел — висишь.\n", "Ladders and vines: look up to climb, look down to go down, look straight or crouch to hang.\n") +
               L.T("Кровать (E): ночью — сон до утра, в любое время — точка возрождения. Отойдёшь — проснёшься.\n", "Bed (E): at night you sleep until morning, any time it sets your respawn point. Walk away to wake up.\n") +
               L.T("Гранаты и SCP-018 взрывают и мир Minecraft: ломают блоки и ранят мобов.\n", "Grenades and SCP-018 blow up the Minecraft world too: they break blocks and hurt mobs.\n") +
-              L.T("F3+B — хитбоксы, F3+G — границы чанков (как в Minecraft).\n", "F3+B — hitboxes, F3+G — chunk borders (like in Minecraft).\n") +
-              L.T("Клавиши E, I и F3 меняются в SL: Esc → Настройки → Server-specific.\n", "E, I and F3 can be rebound in SL: Esc → Settings → Server-specific.\n") +
+              L.T("F4 — экран отладки Minecraft, F4+B — хитбоксы, F4+G — границы чанков (F3 в SL занят своей отладкой).\n", "F4 — Minecraft debug screen, F4+B — hitboxes, F4+G — chunk borders (F3 is SL's own debug).\n") +
+              L.T("Мачете и аптечка выдаются один раз — при первом входе в мир; ещё раз — командой .kit start в консоли (~).\n", "The machete and medkit are given once — on your first time in a world; get them again with .kit start in the console (~).\n") +
+              L.T("Сохранять вещи после смерти: .mc gamerule keep_inventory true. Без этого после смерти появляешься с пустыми руками.\n", "Keep items after death: .mc gamerule keep_inventory true. Otherwise you respawn empty-handed.\n") +
+              L.T("Клавиши E, I и F4 меняются в SL: Esc → Настройки → Server-specific.\n", "E, I and F4 can be rebound in SL: Esc → Settings → Server-specific.\n") +
               L.T("Консоль SL (~): .mc <команда Minecraft>, например .mc time set day. В админ-панели (M) — просто mc time set day.", "SL console (~): .mc <Minecraft command>, e.g. .mc time set day. In the admin panel (M) — just mc time set day."));
             H(L.T("Оверлей", "Overlay"));
             P(L.T("Ctrl+Shift+F12 — выключить/включить оверлей (если что-то перекрывает или нужно увидеть «голый» SL).\n", "Ctrl+Shift+F12 — turn the overlay off/on (if something is covered or you want to see “bare” SL).\n") +

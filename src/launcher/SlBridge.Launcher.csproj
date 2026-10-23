@@ -9,5 +9,9 @@
     <RootNamespace>SlBridge.Launcher</RootNamespace>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
     <InvariantGlobalization>true</InvariantGlobalization>
+    <ApplicationIcon>assets\app.ico</ApplicationIcon>
   </PropertyGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="assets\app.ico" LogicalName="app.ico" />
+  </ItemGroup>
 </Project>

@@ -57,6 +57,8 @@ public final class SlBridgeClient implements ClientModInitializer {
         bridge.start();
 
         ClientTickEvents.END_CLIENT_TICK.register(this::clientTick);
+        net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientChunkEvents.CHUNK_LOAD.register(
+                (world, chunk) -> CollisionStreamer.markChunkDirty(chunk.getPos().x(), chunk.getPos().z()));
         ServerTickEvents.END_SERVER_TICK.register(server -> {
             if (!isBridgeActive()) { serverBridge.clearLamp(); return; }
             serverBridge.tick(server);
@@ -162,8 +164,9 @@ public final class SlBridgeClient implements ClientModInitializer {
                     if (sp != null) serverBridge.explode(sp, ex, ey, ez, power);
                 });
             }
-            case "debug" -> mc.execute(() -> { // F3+B / F3+G из SL
+            case "debug" -> mc.execute(() -> { // F3 / F3+B / F3+G из SL
                 String what = m.has("what") ? m.get("what").getAsString() : "";
+                if (what.equals("overlay")) { mc.debugEntries.toggleDebugOverlay(); return; }
                 var id = what.equals("chunks") ? net.minecraft.client.gui.components.debug.DebugScreenEntries.CHUNK_BORDERS
                         : net.minecraft.client.gui.components.debug.DebugScreenEntries.ENTITY_HITBOXES;
                 mc.debugEntries.toggleStatus(id);
@@ -173,6 +176,21 @@ public final class SlBridgeClient implements ClientModInitializer {
                     m.get("yaw").getAsFloat(), m.get("pitch").getAsFloat(), m.has("seq") ? m.get("seq").getAsInt() : 0,
                     m.has("fy") ? m.get("fy").getAsDouble() : Double.NaN);
             }
+            case "invSave" -> mc.execute(() -> { // инвентарь SL → файл в папке мира
+                IntegratedServer srv = mc.getSingleplayerServer();
+                if (srv == null) return;
+                try {
+                    var root = srv.getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT).toAbsolutePath().normalize();
+                    if (m.has("world") && !m.get("world").getAsString().equals(root.getFileName().toString())) return; // уже другой мир
+                    JsonObject o = new JsonObject();
+                    o.add("items", m.get("items"));
+                    o.add("ammo", m.get("ammo"));
+                    var f = root.resolve("slbridge_inventory.json");
+                    var tmp = root.resolve("slbridge_inventory.json.tmp");
+                    java.nio.file.Files.writeString(tmp, o.toString());
+                    java.nio.file.Files.move(tmp, f, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                } catch (Exception e) { LOG.warn("[SLBridge] inventory save: {}", e.toString()); }
+            });
             case "spawnReq" -> mc.execute(() -> {
                 LocalPlayer p = mc.player;
                 Vec3 h = home != null ? home : (p != null ? p.position() : null);
@@ -189,6 +207,18 @@ public final class SlBridgeClient implements ClientModInitializer {
                     r.addProperty("dim", mc.level.dimension().identifier().toString());
                     Pose.dim = mc.level.dimension();
                 }
+                // папка сохранения — чтобы SL выдал стартовый набор только при самом первом входе в этот мир
+                IntegratedServer srv = mc.getSingleplayerServer();
+                if (srv != null) {
+                    try {
+                        var root = srv.getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT).toAbsolutePath().normalize();
+                        r.addProperty("world", root.getFileName().toString());
+                        // инвентарь SL, сохранённый в этом мире (предметы SL живут в SL — без этого при перезапуске пропадали)
+                        var f = root.resolve("slbridge_inventory.json");
+                        if (java.nio.file.Files.exists(f))
+                            r.add("inv", com.google.gson.JsonParser.parseString(java.nio.file.Files.readString(f)));
+                    } catch (Exception e) { LOG.warn("[SLBridge] inventory load: {}", e.toString()); }
+                }
                 bridge.send(r);
             });
             case "shot" -> {
@@ -198,10 +228,14 @@ public final class SlBridgeClient implements ClientModInitializer {
                 float dmg = m.has("dmg") ? m.get("dmg").getAsFloat() : 20f;
                 boolean breaks = !m.has("breaks") || m.get("breaks").getAsBoolean();
                 boolean kb = m.has("kb") && m.get("kb").getAsBoolean();
+                double mr = m.has("mr") ? m.get("mr").getAsDouble() : 0, moff = m.has("moff") ? m.get("moff").getAsDouble() : 1.5;
+                float splash = m.has("splash") ? m.get("splash").getAsFloat() : 0f;
                 onServer(() -> {
                     IntegratedServer server = mc.getSingleplayerServer();
                     ServerPlayer sp = server == null ? null : ServerBridge.player(server);
-                    if (sp != null) actions.shot(sp.level(), sp, from, dir, range, dmg, breaks, kb, config, bridge);
+                    if (sp == null) return;
+                    if (mr > 0) actions.melee(sp.level(), sp, from, dir, range, mr, moff, dmg, splash, breaks, config, bridge);
+                    else actions.shot(sp.level(), sp, from, dir, range, dmg, breaks, kb, config, bridge);
                 });
             }
             case "pickup", "drop", "use", "openInv", "armor", "craftList", "craft", "smeltList", "smelt", "cmd", "respawnReq" -> onServer(() -> {

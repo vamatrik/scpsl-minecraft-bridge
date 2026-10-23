@@ -41,7 +41,21 @@ public final class CollisionStreamer {
                     dirty.add(BlockPos.asLong(Math.floorDiv(x + dx, C), Math.floorDiv(y + dy, C), Math.floorDiv(z + dz, C)));
     }
 
-    public void reset() { sent.clear(); dirty.clear(); }
+    public void reset() { sent.clear(); dirty.clear(); sweepAt = 0; }
+
+    /** Клиент получил чанк — ячейки в нём (на всю высоту рядом с игроком) пересчитать: раньше там могло быть «пусто». */
+    public static void markChunkDirty(int chunkX, int chunkZ) {
+        int cy0 = Math.floorDiv((int) Math.floor(Pose.feetY), C) - 4;
+        for (int cx = chunkX * 2; cx <= chunkX * 2 + 1; cx++)
+            for (int cz = chunkZ * 2; cz <= chunkZ * 2 + 1; cz++)
+                for (int cy = cy0; cy <= cy0 + 8; cy++)
+                    dirty.add(BlockPos.asLong(cx, cy, cz));
+    }
+
+    // Самопроверка: каждый тик заново считаем пару уже отправленных ячеек (по кругу) и, если они
+    // отличаются от отправленного, шлём ещё раз. Так любая пропущенная правка мира чинится сама за ~1 с.
+    private int sweepAt;
+    private static final int SWEEP_PER_TICK = 3;
 
     // летящие гранаты / SCP-018 (координаты Minecraft); живут 1.5 с после последнего обновления
     private static volatile double[][] focus;
@@ -114,6 +128,37 @@ public final class CollisionStreamer {
             for (float f : boxes) arr.add(f);
             m.add("b", arr);
             bridge.send(m);
+        }
+
+        // пометки для ячеек вдали не нужны: когда до них дойдём, они всё равно построятся с нуля
+        dirty.retainAll(wanted);
+
+        // самопроверка вокруг игрока (только когда срочной работы нет)
+        if (done < budget) {
+            List<Long> keys = new ArrayList<>();
+            for (int cx = pcx - radius; cx <= pcx + radius; cx++)
+                for (int cy = pcy - radius; cy <= pcy + radius; cy++)
+                    for (int cz = pcz - radius; cz <= pcz + radius; cz++) {
+                        long key = BlockPos.asLong(cx, cy, cz);
+                        if (sent.containsKey(key)) keys.add(key);
+                    }
+            for (int i = 0; i < SWEEP_PER_TICK && !keys.isEmpty(); i++) {
+                long key = keys.get(Math.floorMod(sweepAt++, keys.size()));
+                int cx = BlockPos.getX(key), cy = BlockPos.getY(key), cz = BlockPos.getZ(key);
+                if (!level.hasChunk(Math.floorDiv(cx * C, 16), Math.floorDiv(cz * C, 16))) continue;
+                float[] boxes = buildCell(level, cx, cy, cz);
+                if (Arrays.equals(sent.get(key), boxes)) continue;
+                SlBridgeClient.LOG.info("[SLBridge] Ячейка {},{},{} разошлась с миром — отправляю заново", cx, cy, cz);
+                sent.put(key, boxes);
+                JsonObject m = new JsonObject();
+                m.addProperty("t", "sec");
+                m.addProperty("k", cx + "," + cy + "," + cz);
+                m.addProperty("d", dimId);
+                JsonArray arr = new JsonArray(boxes.length);
+                for (float f : boxes) arr.add(f);
+                m.add("b", arr);
+                bridge.send(m);
+            }
         }
 
         sent.keySet().removeIf(key -> {

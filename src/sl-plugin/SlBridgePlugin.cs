@@ -66,7 +66,7 @@ namespace SlBridge
         private bool _frozen;
         // Жидкость у ног и у глаз (0 — нет, 1 — вода, 2 — лава), присылает Minecraft
         private int _fluidFeet, _fluidEye;
-        private bool _f3Held;
+        private bool _f3Held, _f3Combo;
         // отложенный телепорт из Minecraft
         // ── Прибытие после телепорта Minecraft ──
         // Игрок SL при телепорте Minecraft НЕ переносится: сдвигается привязка координат (CoordMap.Origin), так что
@@ -147,6 +147,7 @@ namespace SlBridge
             ServerEvents.ExplosionSpawning += OnExplosion;
             PlayerEvents.Dying += OnDying;
             PlayerEvents.Hurting += OnHurting;
+            ServerEvents.PickupCreated += OnPickupCreated;
             PlayerEvents.ProcessedScp1509Message += On1509;
             ServerEvents.WaitingForPlayers += OnWaiting;
             ServerEvents.RoundStarted += OnRoundStarted;
@@ -174,6 +175,7 @@ namespace SlBridge
             ServerEvents.ExplosionSpawning -= OnExplosion;
             PlayerEvents.Dying -= OnDying;
             PlayerEvents.Hurting -= OnHurting;
+            ServerEvents.PickupCreated -= OnPickupCreated;
             PlayerEvents.ProcessedScp1509Message -= On1509;
             ServerEvents.WaitingForPlayers -= OnWaiting;
             ServerEvents.RoundStarted -= OnRoundStarted;
@@ -185,6 +187,7 @@ namespace SlBridge
             StaticUnityMethods.OnUpdate -= OnUpdate;
             _mc?.Stop();
             _collision?.DestroyAll();
+            DestroyPad();
             _backdrop?.Destroy();
             _waypoints?.Clear();
             _worldItems?.Clear();
@@ -218,6 +221,7 @@ namespace SlBridge
             CoordMap.Origin = new Vector3(Config.OriginX, Config.OriginY, Config.OriginZ);
             NewRoundObjects();
             _inv.Clear();
+            _invWorld = null;
             _player = null;
             _hasSpawn = false;
             _needSpawn = true;
@@ -247,7 +251,7 @@ namespace SlBridge
 
         private void OnLeft(PlayerLeftEventArgs ev)
         {
-            if (ev.Player == _player) { _player = null; _inv.Clear(); }
+            if (ev.Player == _player) { _player = null; _inv.Clear(); _invWorld = null; }
         }
 
         private void OnSpawned(PlayerSpawnedEventArgs ev)
@@ -256,7 +260,9 @@ namespace SlBridge
             if (ev.Role.RoleTypeId != Config.Role) return;
             if (_needRespawn) { _needRespawn = false; _hasSpawn = false; _mc.Send("{\"t\":\"respawnReq\"}"); }
             else _needSpawn = true;
-            GiveLoadout(ev.Player);
+            // стартовый набор — только при первом появлении в мире (см. spawn) или командой kit start;
+            // после смерти — пусто, а с keep_inventory — то, что было
+            RestoreKeptInventory();
             ApplyMovement(ev.Player);
             _armorTier = -1;
             _lastGoodPos = Vector3.zero;
@@ -281,14 +287,50 @@ namespace SlBridge
         private void OnJailbird(PlayerProcessedJailbirdMessageEventArgs ev)
         {
             if (ev.Player != _player) return;
-            // Рывок SL останавливает сам, когда Jailbird врезается в хитбокс моба (как в стену), и делает удар —
-            // нам приходит AttackPerformed. Если перед этим был рывок — урон заряженного удара.
-            if (ev.Message == JailbirdMessageType.ChargeStarted) _chargeUntil = Time.time + 1.6f;
+            // Рывок: врезался в моба — бьём заряженным ударом и на миг связываем игрока (рывок останавливается),
+            // см. TickJailbirdCharge. Обычный удар — как раньше.
+            if (ev.Message == JailbirdMessageType.ChargeStarted) { _chargeUntil = Time.time + 1.6f; return; }
             if (ev.Message == JailbirdMessageType.AttackPerformed)
             {
+                if (Time.time < _chargeHitIgnoreUntil) return; // удар рывка уже засчитан
                 bool charged = _chargeUntil > 0 && Time.time < _chargeUntil;
                 _chargeUntil = -1f;
-                SendShot(Config.MeleeRange, charged ? Config.JailbirdChargeDamage : Config.JailbirdDamage, true, true);
+                _lastMeleeCharged = charged;
+                SendMelee(charged ? JailbirdCharge() : MeleeDmg(Config.JailbirdDamage), Config.JailbirdSplash);
+            }
+        }
+
+        private float _chargeHitIgnoreUntil;
+        // мобы рядом (координаты Minecraft): центр по x/z, низ по y, размеры — для попадания рывком Jailbird
+        private readonly List<float[]> _mobBoxes = new List<float[]>();
+
+        private void TickJailbirdCharge()
+        {
+            if (_chargeUntil <= 0f) return;
+            if (Time.time > _chargeUntil) { _chargeUntil = -1f; return; }
+            var cam = _player.Camera;
+            var tip = CoordMap.SlToMc(cam.position + cam.forward * 1.1f);
+            var body = CoordMap.SlToMc(_player.Position);
+            foreach (var b in _mobBoxes)
+            {
+                float hx = b[3] * 0.5f + 0.45f, hz = b[5] * 0.5f + 0.45f;
+                bool vert = body.y + 0.9f >= b[1] && body.y - 1.0f <= b[1] + b[4];
+                bool near = (Mathf.Abs(tip.x - b[0]) <= hx && Mathf.Abs(tip.z - b[2]) <= hz)
+                            || (Mathf.Abs(body.x - b[0]) <= hx && Mathf.Abs(body.z - b[2]) <= hz);
+                if (!vert || !near) continue;
+                _chargeUntil = -1f;
+                _chargeHitIgnoreUntil = Time.time + 1.2f;
+                try { _player.EnableEffect<Ensnared>(1, Config.JailbirdHitStun); } catch { }
+                // удар по направлению на моба (камера может смотреть чуть мимо)
+                var from = CoordMap.SlToMc(cam.position);
+                var dir = new Vector3(b[0] - from.x, b[1] + b[4] * 0.5f - from.y, b[2] - from.z).normalized;
+                float chargeDmg = JailbirdCharge();
+                _lastMeleeCharged = true;
+                _lastShotDmg = chargeDmg;
+                _mc.Send("{\"t\":\"shot\"," + Vec("", from) + "," + Vec("d", dir) + ",\"dmg\":" + F(chargeDmg)
+                         + ",\"range\":" + F(Config.MeleeRange + 1.5f) + ",\"breaks\":false,\"kb\":true"
+                         + ",\"mr\":" + F(MeleeRadius()) + ",\"moff\":" + F(MeleeOffset()) + ",\"splash\":" + F(Config.JailbirdSplash) + "}");
+                return;
             }
         }
 
@@ -303,7 +345,7 @@ namespace SlBridge
                 case Scp1509MessageType.AttackPreformedHitMissed:
                     if (Time.time - _last1509 < 0.25f) return; // одно попадание — одно сообщение
                     _last1509 = Time.time;
-                    SendShot(Config.MeleeRange, Config.Scp1509Damage, true, true);
+                    SendMelee(MeleeDmg(Config.Scp1509Damage), Config.Scp1509Splash);
                     break;
             }
         }
@@ -339,9 +381,78 @@ namespace SlBridge
 
         private void SendShot(float range, float dmg, bool breaks) => SendShot(range, dmg, breaks, false);
 
+        /// <summary>Удар ближнего боя по области, как в SL: шар перед камерой; главная цель — полный урон, остальные — splash.</summary>
+        private void SendMelee(float dmg, float splash)
+        {
+            if (_player == null || !_mc.Connected) return;
+            LogMeleeOnce();
+            _lastShotDmg = dmg;
+            var cam = _player.Camera;
+            _mc.Send("{\"t\":\"shot\"," + Vec("", CoordMap.SlToMc(cam.position)) + "," + Vec("d", CoordMap.DirSlToMc(cam.forward))
+                     + ",\"dmg\":" + F(dmg) + ",\"range\":" + F(Config.MeleeRange) + ",\"breaks\":true,\"kb\":true"
+                     + ",\"mr\":" + F(MeleeRadius()) + ",\"moff\":" + F(MeleeOffset()) + ",\"splash\":" + F(splash) + "}");
+        }
+        private float _lastShotDmg;
+        private bool _lastMeleeCharged;
+
+        /// <summary>
+        /// Jailbird изнашивается и от ударов по мобам, как по игрокам в SL: каждый урон копится (обычный удар — немного,
+        /// рывок — сильнее), а если рывок попал, когда дубинка уже сломана, — она взрывается.
+        /// </summary>
+        private void JailbirdWear(float damage, bool charged)
+        {
+            try
+            {
+                if (!(_player.CurrentItem?.Base is InventorySystem.Items.Jailbird.JailbirdItem jb)) return;
+                var t = typeof(InventorySystem.Items.Jailbird.JailbirdItem);
+                var det = t.GetField("_deterioration", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?.GetValue(jb)
+                          as InventorySystem.Items.Jailbird.JailbirdDeteriorationTracker;
+                // взрывается только дубинка, которая уже светилась красным ДО этого удара (последний рывок),
+                // а не та, что сломалась от урона по толпе мобов в этот же удар
+                bool wasRed = det != null && det.WearState >= InventorySystem.Items.Jailbird.JailbirdWearState.AlmostBroken;
+                var prop = t.GetProperty("TotalMeleeDamageDealt");
+                prop?.SetValue(jb, (float)prop.GetValue(jb) + damage);
+                det?.RecheckUsage();
+                if (charged && wasRed && det != null && det.IsBroken)
+                {
+                    Logger.Info("[SlBridge] Jailbird сломан — рывок в моба: взрыв");
+                    Utils.ExplosionUtils.ServerExplode(_player.ReferenceHub, ExplosionType.Jailbird);
+                }
+            }
+            catch (Exception e) { Logger.Warn("[SlBridge] износ Jailbird: " + e.Message); }
+        }
+
+        // ── настоящие числа оружия ближнего боя — прямо из предмета SL (урон, радиус и вынос шара удара) ──
+        private InventorySystem.Items.Autosync.MeleeAutoSync HeldMelee => _player?.CurrentItem?.Base as InventorySystem.Items.Autosync.MeleeAutoSync;
+        private float MeleeDmg(float cfg) { var m = HeldMelee; return cfg > 0f || m == null ? cfg : m.MeleeDamage; }
+        private float MeleeRadius() { var m = HeldMelee; return Config.MeleeHitRadius > 0f || m == null ? Mathf.Max(0.5f, Config.MeleeHitRadius) : m.HitregRadius; }
+        private float MeleeOffset() { var m = HeldMelee; return Config.MeleeHitOffset > 0f || m == null ? Mathf.Max(0.5f, Config.MeleeHitOffset) : m.HitregOffset; }
+        private float JailbirdCharge()
+        {
+            if (Config.JailbirdChargeDamage > 0f) return Config.JailbirdChargeDamage;
+            try
+            {
+                if (_player.CurrentItem?.Base is InventorySystem.Items.Jailbird.JailbirdItem jb)
+                {
+                    var f = typeof(InventorySystem.Items.Jailbird.JailbirdItem).GetField("_chargeDamage", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                    if (f != null) return (float)f.GetValue(jb);
+                }
+            }
+            catch { }
+            return 200f;
+        }
+        private bool _meleeLogged;
+        private void LogMeleeOnce()
+        {
+            if (_meleeLogged || HeldMelee == null) return;
+            _meleeLogged = true;
+            Logger.Info($"[SlBridge] ближний бой из игры: {_player.CurrentItem.Type} урон {HeldMelee.MeleeDamage}, радиус {HeldMelee.HitregRadius}, вынос {HeldMelee.HitregOffset}, заряд Jailbird {JailbirdCharge()}");
+        }
+
         private void SendShot(float range, float dmg, bool breaks, bool knockback)
         {
             if (_player == null || !_mc.Connected) return;
+            _lastShotDmg = dmg;
             var cam = _player.Camera;
             _mc.Send("{\"t\":\"shot\"," + Vec("", CoordMap.SlToMc(cam.position)) + "," + Vec("d", CoordMap.DirSlToMc(cam.forward))
                      + ",\"dmg\":" + F(dmg) + ",\"range\":" + F(range) + ",\"breaks\":" + (breaks ? "true" : "false") + ",\"kb\":" + (knockback ? "true" : "false") + "}");
@@ -356,6 +467,8 @@ namespace SlBridge
                            || (stack != null && stack.Sl != null && stack.Sl.StartsWith("Ammo"))
                            || (stack != null && stack.Sl == null && _inv.All.Any(s => s.Id == stack.Id && s.Count < s.Max));
             if (!hasRoom) { _player.SendHint(L.T("<size=22>Инвентарь полон</size>", "<size=22>Inventory is full</size>"), 1.5f); return; }
+            if (stack != null && stack.Sl != null && Enum.TryParse<ItemType>(stack.Sl, out var slType) && OverCategoryLimit(slType))
+            { _player.SendHint(L.T("<size=22>Больше таких не унести (лимит SL)</size>", "<size=22>Can't carry more of these (SL limit)</size>"), 1.5f); return; }
             _mc.Send("{\"t\":\"pickup\",\"e\":" + id + "}");
         }
 
@@ -380,7 +493,8 @@ namespace SlBridge
         // Пока летят — Minecraft строит коллизии и вокруг них (иначе за пределами куба вокруг игрока они проваливаются,
         // а SCP-018 не от чего отскакивать). Взрыв SL повторяется в мире Minecraft: ломает блоки, ранит мобов.
         private readonly List<Projectile> _flying = new List<Projectile>();
-        private float _nextFocus;
+        private float _nextFocus, _lastFocusAt;
+        private readonly Dictionary<Projectile, Vector3> _flyPrev = new Dictionary<Projectile, Vector3>();
 
         private void OnThrewProjectile(PlayerThrewProjectileEventArgs ev)
         {
@@ -392,14 +506,27 @@ namespace SlBridge
         private void TickFlying()
         {
             if (_flying.Count == 0 || Time.time < _nextFocus || !_mc.Connected) return;
-            _nextFocus = Time.time + 0.1f;
+            float dt = Time.time - _lastFocusAt;
+            _lastFocusAt = Time.time;
+            _nextFocus = Time.time + 0.05f;
             _flying.RemoveAll(p => p == null || p.IsDestroyed);
             var pts = new List<string>();
+            var seen = new HashSet<Projectile>();
             foreach (var p in _flying)
             {
-                var mc = CoordMap.SlToMc(p.Position);
-                pts.Add("[" + F(mc.x) + "," + F(mc.y) + "," + F(mc.z) + "]");
+                seen.Add(p);
+                Vector3 now = p.Position;
+                // где снаряд будет через 0.25 и 0.5 с — коллизии там строятся заранее, а не когда он уже пролетел
+                Vector3 v = _flyPrev.TryGetValue(p, out var prev) && dt > 0.01f && dt < 0.5f ? (now - prev) / dt : Vector3.zero;
+                _flyPrev[p] = now;
+                foreach (float t in new[] { 0f, 0.25f, 0.5f })
+                {
+                    if (t > 0f && v.sqrMagnitude < 1f) break;
+                    var mc = CoordMap.SlToMc(now + v * t + 0.5f * Physics.gravity * t * t);
+                    pts.Add("[" + F(mc.x) + "," + F(mc.y) + "," + F(mc.z) + "]");
+                }
             }
+            foreach (var k in new List<Projectile>(_flyPrev.Keys)) if (!seen.Contains(k)) _flyPrev.Remove(k);
             _mc.Send("{\"t\":\"focus\",\"p\":[" + string.Join(",", pts) + "]}");
         }
 
@@ -407,10 +534,67 @@ namespace SlBridge
         {
             if (_player == null || !_hasSpawn || !_mc.Connected) return;
             float power = ev.ExplosionType == ExplosionType.Grenade ? Config.GrenadeExplosionPower
-                        : ev.ExplosionType == ExplosionType.SCP018 ? Config.Scp018ExplosionPower : 0f;
+                        : ev.ExplosionType == ExplosionType.SCP018 ? Config.Scp018ExplosionPower
+                        : ev.ExplosionType == ExplosionType.Jailbird ? Config.JailbirdExplosionPower : 0f;
             if (power <= 0f) return;
             var mc = CoordMap.SlToMc(ev.Position);
             _mc.Send("{\"t\":\"explode\"," + Vec("", mc) + ",\"power\":" + F(power) + "}");
+        }
+
+        // Предметы, которые SL выбросил сам (лимит категории: второе спец. оружие, лишние патроны сверх лимита) —
+        // в мире Minecraft пикап SL упал бы сквозь коллизии. Превращаем их в предметы Minecraft на следующем кадре.
+        private readonly List<Pickup> _strayPickups = new List<Pickup>();
+
+        /// <summary>Взять ещё один предмет этого типа — превысит лимит категории SL (спец. оружие, гранаты, SCP...)?</summary>
+        private bool OverCategoryLimit(ItemType type)
+        {
+            try
+            {
+                if (!InventorySystem.InventoryItemLoader.AvailableItems.TryGetValue(type, out var tmpl) || !tmpl.CountsTowardsCategoryLimit) return false;
+                var cat = tmpl.Category;
+                if (cat == ItemCategory.Armor || cat == ItemCategory.Ammo) return false;
+                int limit = Math.Abs(InventorySystem.Configs.InventoryLimits.GetCategoryLimit(cat, _player.ReferenceHub));
+                int have = _player.Items.Count(i => !_inv.IsStack(i) && i.Base.Category == cat && i.Base.CountsTowardsCategoryLimit);
+                return have + 1 > limit;
+            }
+            catch { return false; }
+        }
+
+        private void Scp127KillAmmo(FirearmItem f127)
+        {
+            try
+            {
+                if (!InventorySystem.Items.Firearms.Modules.ModulesUtils.TryGetModule(f127.Base, out InventorySystem.Items.Firearms.Modules.Scp127.Scp127MagazineModule mag)) return;
+                typeof(InventorySystem.Items.Firearms.Modules.Scp127.Scp127MagazineModule)
+                    .GetMethod("ServerGrantRewardSafe", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+                    ?.Invoke(mag, new object[] { mag.KillBonus });
+            }
+            catch (Exception e) { Logger.Warn("[SlBridge] SCP-127 патроны за убийство: " + e.Message); }
+        }
+
+        private void OnPickupCreated(PickupCreatedEventArgs ev)
+        {
+            if (_player == null || !_hasSpawn || _inFacility || ev.Pickup == null || ev.Pickup is Projectile) return;
+            _strayPickups.Add(ev.Pickup);
+        }
+
+        private void ConvertStrayPickups()
+        {
+            if (_strayPickups.Count == 0 || !_mc.Connected) return;
+            foreach (var p in _strayPickups)
+            {
+                try
+                {
+                    if (p == null || p.IsDestroyed || p is Projectile) continue;
+                    McStack st = p is AmmoPickup ap ? McStack.ForSl(p.Type, ap.Ammo) : McStack.ForSl(p.Type, 0, null);
+                    var mc = CoordMap.SlToMc(p.Position);
+                    p.Destroy();
+                    _mc.Send("{\"t\":\"drop\",\"item\":" + st.ToJson() + "," + Vec("", mc) + "," + Vec("d", new Vector3(0f, 0.2f, 0f)) + "}");
+                    Logger.Info($"[SlBridge] SL выбросил {p.Type} (лимит инвентаря) — стал предметом Minecraft");
+                }
+                catch (Exception e) { Logger.Warn("[SlBridge] пикап SL → Minecraft: " + e.Message); }
+            }
+            _strayPickups.Clear();
         }
 
         private void OnDroppingAmmo(PlayerDroppingAmmoEventArgs ev)
@@ -437,20 +621,29 @@ namespace SlBridge
             if (ev.Player != _player) return;
             // Как в Minecraft: всё выпадает там, где умер — и стаки Minecraft, и предметы SL (как предметы Minecraft:
             // обычные «пикапы» SL упали бы сквозь коллизии и пропали). Подбираются на E и снова становятся предметами SL.
-            foreach (var s in _inv.TakeAll(_player)) DropToMinecraft(s, false);
-            var ammo = new Dictionary<ItemType, int>();
+            // всё, что было, по порядку слотов: стаки Minecraft и предметы SL (с состоянием: обвесы, магазин, заряд)
+            var all = new List<McStack>();
             foreach (var it in _player.Items.ToList())
-            {
-                if (_inv.IsStack(it)) continue;
-                DropToMinecraft(McStack.ForSl(it), false); // с состоянием: обвесы, магазин, заряд
-            }
+                all.Add(_inv.IsStack(it) ? _inv.Get(it).Clone() : McStack.ForSl(it));
+            _inv.TakeAll(_player);
+            var ammo = new Dictionary<ItemType, ushort>();
             foreach (ItemType t in Enum.GetValues(typeof(ItemType)))
             {
                 if (!t.ToString().StartsWith("Ammo")) continue;
-                int n = _player.GetAmmo(t);
-                if (n > 0) ammo[t] = (ammo.TryGetValue(t, out var x) ? x : 0) + n;
+                ushort n = _player.GetAmmo(t);
+                if (n > 0) ammo[t] = n;
             }
-            foreach (var kv in ammo) DropToMinecraft(McStack.ForSl(kv.Key, kv.Value), false);
+            if (_keepInventory)
+            {
+                // gamerule keep_inventory: вернём всё при возрождении
+                _keptItems = all;
+                _keptAmmo = ammo;
+            }
+            else
+            {
+                foreach (var s in all) DropToMinecraft(s, false);
+                foreach (var kv in ammo) DropToMinecraft(McStack.ForSl(kv.Key, kv.Value), false);
+            }
             try { _player.ClearInventory(); } catch (Exception e) { Logger.Warn("ClearInventory: " + e.Message); }
             _respawnAt = Time.time + Config.RespawnDelay;
             _needRespawn = true;
@@ -463,7 +656,10 @@ namespace SlBridge
         {
             if (ev.Player != _player) return;
             if (ev.DamageHandler is PlayerStatsSystem.UniversalDamageHandler u && u.TranslationId == PlayerStatsSystem.DeathTranslations.Falldown.Id)
+            {
                 ev.IsAllowed = false;
+                if (Config.DebugLog) Logger.Info($"[SlBridge] свой урон SL от падения ({u.Damage:0}) отменён — считает Minecraft");
+            }
         }
 
         private void OnSetting(ReferenceHub hub, ServerSpecificSettingBase setting)
@@ -478,12 +674,20 @@ namespace SlBridge
                     DoOpenInventory();
                     break;
                 case SSKeybindSetting k when k.SettingId == McMenu.KeyDebug:
-                    _f3Held = k.SyncIsPressed;
+                    // F3 сам по себе (без B/G) — показать/скрыть экран отладки Minecraft, как в игре: по отпусканию
+                    if (k.SyncIsPressed) { _f3Held = true; _f3Combo = false; }
+                    else if (_f3Held)
+                    {
+                        _f3Held = false;
+                        if (!_f3Combo) _mc?.Send("{\"t\":\"debug\",\"what\":\"overlay\"}");
+                    }
                     break;
                 case SSKeybindSetting k when k.SettingId == McMenu.KeyHitboxes && k.SyncIsPressed && _f3Held:
+                    _f3Combo = true;
                     _mc?.Send("{\"t\":\"debug\",\"what\":\"hitboxes\"}");
                     break;
                 case SSKeybindSetting k when k.SettingId == McMenu.KeyChunks && k.SyncIsPressed && _f3Held:
+                    _f3Combo = true;
                     _mc?.Send("{\"t\":\"debug\",\"what\":\"chunks\"}");
                     break;
                 case SSButton b when b.SettingId == McMenu.QuitBtn:
@@ -531,6 +735,7 @@ namespace SlBridge
         /// <summary>Попросить лаунчер закрыть всё (SL, Minecraft, сервер, оверлей). Лаунчер следит за этим файлом.</summary>
         private void RequestQuit()
         {
+            try { SaveInventoryIfChanged(true); } catch { }
             try
             {
                 string f = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(L.FilePath), "quit.req");
@@ -613,7 +818,7 @@ namespace SlBridge
                 if (_player == null) return;
                 _inv.Clear();
                 if (_player.Role != Config.Role) _player.SetRole(Config.Role, RoleChangeReason.RemoteAdmin, RoleSpawnFlags.None);
-                else { _needSpawn = true; GiveLoadout(_player); ApplyMovement(_player); }
+                else { _needSpawn = true; ApplyMovement(_player); }
                 return;
             }
 
@@ -649,15 +854,26 @@ namespace SlBridge
                 else if (_frozen) _frozen = false;
                 if (!_inFacility && !_frozen) _anchor = pos;
                 if (!_frozen) ApplySwimGravity(noclip);
+                PadTick(pos);
             }
 
             if (Time.time >= _nextHousekeeping)
             {
                 _nextHousekeeping = Time.time + 1f;
                 _waypoints.Prune(pos);
+                SaveInventoryIfChanged();
+                // трупы SL (их физика в мире Minecraft глючит), кровь и дырки от пуль
+                if (Config.CleanupRagdolls)
+                    foreach (var r in new List<Ragdoll>(Ragdoll.List)) try { r.Destroy(); } catch { }
+                if (Config.CleanupDecals)
+                    foreach (var t in new[] { Decals.DecalPoolType.Blood, Decals.DecalPoolType.Bullet, Decals.DecalPoolType.Buckshot, Decals.DecalPoolType.GlassCrack })
+                        Utils.Networking.NetworkUtils.SendToAuthenticated(new CommandSystem.Commands.RemoteAdmin.Cleanup.DecalCleanupMessage(t, int.MaxValue));
                 // Lightweight (прыжок как в Minecraft) — проверяем, что не слетел после возрождения/эффектов
                 if (Config.JumpBoostPercent > 0 && (!_player.TryGetEffect<Lightweight>(out var lw) || lw.Intensity != Config.JumpBoostPercent))
                     _player.EnableEffect<Lightweight>(Config.JumpBoostPercent, 0f);
+                // без тумана SL: «комнату-фон» можно отодвинуть, и фонарик меньше засвечивает её зелёные стены
+                if (Config.NoFog && (!_player.TryGetEffect<FogControl>(out var fog) || fog.Intensity != 1))
+                    _player.EnableEffect<FogControl>(1, 0f); // 1 = FogType.None
                 // броня SL → броня Minecraft
                 int tier = _player.Items.Any(i => i.Type == ItemType.ArmorHeavy) ? 3 : _player.Items.Any(i => i.Type == ItemType.ArmorCombat) ? 2 : _player.Items.Any(i => i.Type == ItemType.ArmorLight) ? 1 : 0;
                 if (tier != _armorTier && _mc.Connected) { _armorTier = tier; _mc.Send("{\"t\":\"armor\",\"tier\":" + tier + "}"); }
@@ -673,14 +889,9 @@ namespace SlBridge
 
             PollMelee();
             TickFlying();
+            ConvertStrayPickups();
 
-            bool wantSolid = _player.CurrentItem is LabApi.Features.Wrappers.JailbirdItem;
-            if (wantSolid != _mobsSolid)
-            {
-                _mobsSolid = wantSolid;
-                if (wantSolid) _mc.Send("{\"t\":\"streams\"}"); // прислать мобов заново
-                else _mobs.Clear();
-            }
+            TickJailbirdCharge();
 
 
             if (Config.DebugLog && Time.time >= _nextDebug)
@@ -723,6 +934,7 @@ namespace SlBridge
             _collision.Clear();
             _worldItems.Clear();
             _mobs.Clear();
+            _mobBoxes.Clear();
             if (!string.IsNullOrEmpty(dim)) _dim = dim;
             if (seq >= 0) _poseSeq = seq; // позы SL сразу соответствуют точке прибытия
             _mc.Send("{\"t\":\"resync\"}"); // Minecraft заново пришлёт все ячейки вокруг нового места
@@ -737,7 +949,47 @@ namespace SlBridge
             _lastGoodPos = p;
             _player.Gravity = Vector3.zero;
             try { _player.EnableEffect<Ensnared>(1, 0f); } catch { } // не даём ходить, пока ждём — без рассинхрона
+            _fluidFeet = _fluidEye = 0; _climb = false; // жидкость/лестницу у нового места Minecraft пришлёт заново
+            // Страховочная площадка прямо под ногами: создаётся сразу, так что к моменту, когда игрока отпустят,
+            // она точно есть и у клиента SL, даже если коробки мира ещё «в пути». Исчезает, когда отойдёшь.
+            DestroyPad();
+            _pad = PrimitiveObjectToy.Create(new Vector3(p.x, feet - 0.26f, p.z), Quaternion.identity, new Vector3(1.4f, 0.5f, 1.4f), null, false);
+            _pad.Type = PrimitiveType.Cube;
+            _pad.Flags = Config.DebugShowCollision ? (AdminToys.PrimitiveFlags.Collidable | AdminToys.PrimitiveFlags.Visible) : AdminToys.PrimitiveFlags.Collidable;
+            _pad.Color = new Color(0.2f, 0.4f, 1f, 1f);
+            _pad.IsStatic = true;
+            _pad.Spawn();
+            _padUntil = float.MaxValue;
             Logger.Info($"[SlBridge/TP] прибытие → {_dim} ({x:0.0}, {y:0.0}, {z:0.0}), игрок {(_inFacility ? "перенесён из комплекса" : "стоит на месте")}, ждём коллизии");
+        }
+
+        private PrimitiveObjectToy _pad;
+        private float _padUntil, _watchFallUntil;
+
+        private void DestroyPad()
+        {
+            if (_pad != null && !_pad.IsDestroyed) _pad.Destroy();
+            _pad = null;
+        }
+
+        /// <summary>После прибытия: убрать площадку, когда отошёл; записать в лог, если всё-таки провалился.</summary>
+        private void PadTick(Vector3 pos)
+        {
+            if (_pad != null)
+            {
+                var d = pos - _arriveLock; d.y = 0f;
+                if (Time.time > _padUntil || d.sqrMagnitude > 2.25f) DestroyPad();
+            }
+            if (_watchFallUntil > 0f)
+            {
+                if (Time.time > _watchFallUntil) _watchFallUntil = -1f;
+                else if (_arriveLock.y - pos.y > 2f)
+                {
+                    _watchFallUntil = -1f;
+                    Logger.Warn($"[SlBridge/TP] упал после прибытия на {_arriveLock.y - pos.y:0.0} м; под ногами: {_collision.DescribeUnder(pos + Vector3.down * FeetOffset(_player))}; " +
+                                $"на месте прибытия: {_collision.DescribeUnder(_arriveLock + Vector3.down * FeetOffset(_player))}; переезжают {_collision.SettlingCount}, в запасе {_collision.PoolSize}");
+                }
+            }
         }
 
         private void ArrivalTick(Vector3 pos)
@@ -747,10 +999,22 @@ namespace SlBridge
             float feetY = mc.y - FeetOffset(_player) - 0.05f;
             int cx = Mathf.FloorToInt(mc.x / 8f), cy = Mathf.FloorToInt(feetY / 8f), cz = Mathf.FloorToInt(mc.z / 8f);
             float d = Config.UnfreezeDelay;
-            bool ready = _collision.HasStable($"{cx},{cy},{cz}", d, _arriveAt)
-                         && (feetY - cy * 8f > 1.5f || _collision.HasStable(KeyBelow(cx, cy, cz), d, _arriveAt))
-                         && _collision.HasGroundUnder(_arriveLock + Vector3.down * FeetOffset(_player), d, _arriveAt);
+            // Не только ячейка под ногами, а все 3×3 вокруг (и ряд ниже, если ноги у дна ячейки): сразу после
+            // прибытия можно идти в любую сторону — коробки там уже есть и у клиента SL.
+            bool cells = true;
+            bool lowInCell = feetY - cy * 8f <= 1.5f;
+            for (int ix = cx - 1; ix <= cx + 1 && cells; ix++)
+                for (int iz = cz - 1; iz <= cz + 1 && cells; iz++)
+                    for (int iy = lowInCell ? cy - 1 : cy; iy <= cy && cells; iy++)
+                    {
+                        string k = $"{ix},{iy},{iz}";
+                        cells = _collision.HasStable(k, d, _arriveAt) && _collision.Settled(k);
+                    }
+            // опора: коробка под ногами — или вода/лава (в них не стоят, а плавают)
+            bool ready = cells && (_fluidFeet != 0 || _collision.HasGroundUnder(_arriveLock + Vector3.down * FeetOffset(_player), d, _arriveAt));
             if (!ready && Time.time - _arriveAt < Config.TeleportMaxWait) return;
+            if (_fluidFeet != 0) DestroyPad(); else _padUntil = Time.time + 8f;
+            _watchFallUntil = Time.time + 3f;
 
             _arriving = false;
             _inFacility = false;
@@ -774,7 +1038,8 @@ namespace SlBridge
 
         private bool IsSneaking()
         {
-            try { return _player.RoleBase is IFpcRole fpc && fpc.FpcModule.CurrentMovementState == PlayerMovementState.Sneaking; } catch { return false; }
+            // присед (C) или красться — оба считаем «присел»
+            try { return _player.RoleBase is IFpcRole fpc && (fpc.FpcModule.CurrentMovementState == PlayerMovementState.Sneaking || fpc.FpcModule.CurrentMovementState == PlayerMovementState.Crouching); } catch { return false; }
         }
 
         /// <summary>
@@ -799,7 +1064,8 @@ namespace SlBridge
             if (!noclip)
             {
                 float look = _player.Camera.forward.y;
-                if (_fluidEye != 0) target = IsSneaking() ? -Config.SwimSink : _fluidEye == 2 ? Config.LavaRise : Config.SwimRise;
+                // под водой: смотришь вниз (или присел) — ныряешь, иначе всплываешь
+                if (_fluidEye != 0) target = IsSneaking() || look < -0.5f ? -Config.SwimSink : _fluidEye == 2 ? Config.LavaRise : Config.SwimRise;
                 else if (_climb) target = IsSneaking() ? 0f : look > 0.3f ? Config.ClimbSpeed : look < -0.5f ? -Config.ClimbSpeed : 0f;
                 else if (_fluidFeet != 0) target = -0.3f; // голова над водой — держимся на плаву
             }
@@ -903,12 +1169,92 @@ namespace SlBridge
             return li.Type == ItemType.Lantern ? Config.LanternLight : li.Type == ItemType.Flashlight ? Config.FlashlightLight : 0;
         }
 
-        private void GiveLoadout(Player p)
+        /// <summary>Стартовый набор (команда kit start или самое первое появление в мире).</summary>
+        public void GiveLoadoutTo(Player p)
         {
-            // Предметы Minecraft не трогаем — только оружие/патроны из конфига, если их нет.
             foreach (var it in Config.Loadout)
-                if (!p.Items.Any(i => i.Type == it)) p.AddItem(it);
-            foreach (var kv in Config.Ammo) p.SetAmmo(kv.Key, kv.Value);
+                if (p.Items.Count() < 8) p.AddItem(it);
+            foreach (var kv in Config.Ammo) p.SetAmmo(kv.Key, (ushort)Math.Min(ushort.MaxValue, p.GetAmmo(kv.Key) + kv.Value));
+        }
+
+        // Мир, в котором стартовый набор уже выдан, — список в %APPDATA%\SlBridge\kits.txt (по папке мира Minecraft).
+        private static string KitsFile => System.IO.Path.Combine(System.IO.Path.GetDirectoryName(L.FilePath), "kits.txt");
+
+        private void GiveFirstKitIfNew(string world)
+        {
+            if (_player == null || string.IsNullOrEmpty(world)) return;
+            try
+            {
+                var lines = System.IO.File.Exists(KitsFile) ? System.IO.File.ReadAllLines(KitsFile).ToList() : new List<string>();
+                if (lines.Contains(world)) return;
+                lines.Add(world);
+                System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(KitsFile));
+                System.IO.File.WriteAllLines(KitsFile, lines);
+            }
+            catch (Exception e) { Logger.Warn("[SlBridge] kits.txt: " + e.Message); }
+            GiveLoadoutTo(_player);
+            Logger.Info("[SlBridge] Стартовый набор выдан (первое появление в мире «" + world + "»)");
+        }
+
+        // ── Сохранение инвентаря при смерти (gamerule keep_inventory в Minecraft) ──
+        private bool _keepInventory;
+        private List<McStack> _keptItems;
+        private Dictionary<ItemType, ushort> _keptAmmo;
+
+        // ── инвентарь SL сохраняется в папке мира Minecraft (slbridge_inventory.json) ──
+        private string _invWorld;      // мир, чей инвентарь сейчас у игрока (null — ещё не загружен)
+        private string _invSavedSig;
+
+        private void LoadSavedInventory(string world, Dictionary<string, object> inv)
+        {
+            if (_player == null || string.IsNullOrEmpty(world) || world == _invWorld) return;
+            if (_invWorld != null)
+            {
+                // зашёл в другой мир, не перезапуская SL — вещи прошлого мира остались в его файле
+                _inv.TakeAll(_player);
+                try { _player.ClearInventory(); } catch { }
+            }
+            _invWorld = world;
+            _invSavedSig = null;
+            _keptItems = null; _keptAmmo = null;
+            if (inv == null) return;
+            int n = 0;
+            foreach (var o in inv.Arr("items"))
+                if (o is Dictionary<string, object> so) { var st = McStack.FromMsg(so); if (st != null) { GiveBack(st); n++; } }
+            if (inv.TryGetValue("ammo", out var a) && a is Dictionary<string, object> ammo)
+                foreach (var kv in ammo)
+                    if (Enum.TryParse<ItemType>(kv.Key, out var at) && kv.Value is double cnt) _player.SetAmmo(at, (ushort)Math.Min(ushort.MaxValue, cnt));
+            Logger.Info($"[SlBridge] инвентарь мира «{world}» восстановлен: предметов {n}");
+        }
+
+        /// <summary>Раз в секунду: если инвентарь изменился — отправить в Minecraft, он запишет в папку мира.</summary>
+        private void SaveInventoryIfChanged(bool force = false)
+        {
+            if (_player == null || _invWorld == null || !_mc.Connected) return;
+            var items = new List<string>();
+            if (_keptItems != null) foreach (var s in _keptItems) items.Add(s.ToJson()); // умер с keep_inventory
+            else foreach (var it in _player.Items.ToList()) items.Add(_inv.IsStack(it) ? _inv.Get(it).ToJson() : McStack.ForSl(it).ToJson());
+            var ammo = new List<string>();
+            var src = _keptAmmo;
+            foreach (ItemType t in Enum.GetValues(typeof(ItemType)))
+            {
+                if (!t.ToString().StartsWith("Ammo")) continue;
+                ushort n = src != null ? (src.TryGetValue(t, out var k) ? k : (ushort)0) : _player.GetAmmo(t);
+                if (n > 0) ammo.Add("\"" + t + "\":" + n);
+            }
+            string body = "\"items\":[" + string.Join(",", items) + "],\"ammo\":{" + string.Join(",", ammo) + "}";
+            if (!force && body == _invSavedSig) return;
+            _invSavedSig = body;
+            _mc.Send("{\"t\":\"invSave\",\"world\":\"" + MiniJson.Escape(_invWorld) + "\"," + body + "}");
+        }
+
+        private void RestoreKeptInventory()
+        {
+            if (_keptItems == null) return;
+            var items = _keptItems; var ammo = _keptAmmo;
+            _keptItems = null; _keptAmmo = null;
+            foreach (var s in items) GiveBack(s);
+            if (ammo != null) foreach (var kv in ammo) _player.SetAmmo(kv.Key, kv.Value);
         }
 
         /// <summary>
@@ -945,8 +1291,14 @@ namespace SlBridge
                     _hasSpawnMc = true;
                     BeginArrival(m.Num("x"), m.Num("y"), m.Num("z"), m.Str("dim", "minecraft:overworld"), -1,
                         L.T("Добро пожаловать в мир Minecraft!", "Welcome to the Minecraft world!"));
+                    LoadSavedInventory(m.Str("world", ""), m.TryGetValue("inv", out var inv) ? inv as Dictionary<string, object> : null);
+                    GiveFirstKitIfNew(m.Str("world", ""));
                     break;
                 }
+
+                case "rules":
+                    _keepInventory = m.Bool("keepInv");
+                    break;
 
                 case "teleport":
                 {
@@ -955,6 +1307,20 @@ namespace SlBridge
                     string dim = m.Str("dim", "");
                     string hint = dim != _dim ? (dim.EndsWith("the_nether") ? L.T("Незер", "Nether") : dim.EndsWith("the_end") ? L.T("Энд", "The End") : null) : null;
                     BeginArrival(m.Num("x"), m.Num("y"), m.Num("z"), dim, (int)m.Num("seq"), hint);
+                    break;
+                }
+
+                case "unstick":
+                {
+                    // Minecraft вытолкнул игрока из блоков на соседнюю клетку — просто переставляем, без «телепорта»
+                    // (коллизии вокруг остаются, заморозки нет).
+                    if (_player == null || _arriving) break;
+                    var to = CoordMap.McToSl(m.Num("x"), m.Num("y") + 0.02, m.Num("z")) + Vector3.up * FeetOffset(_player);
+                    _player.Position = to;
+                    _poseSeq = (int)m.Num("seq");
+                    _lastGoodPos = to;
+                    if (!_inFacility) _anchor = to;
+                    Logger.Info("[SlBridge/TP] Minecraft вытолкнул из блоков — переставил рядом");
                     break;
                 }
 
@@ -1002,9 +1368,23 @@ namespace SlBridge
                     break;
 
                 case "hit":
-                    if (_player != null && m.Str("kind") == "entity")
+                    if (_player != null && m.Str("kind") == "entity" && !m.Bool("dodged")) // эндермен увернулся — это промах
                     {
                         _player.SendHitMarker(m.Bool("dead") ? 2.5f : 1f);
+                        if (_player.CurrentItem is LabApi.Features.Wrappers.JailbirdItem && !m.Bool("dodged"))
+                        {
+                            JailbirdWear(_lastShotDmg, _lastMeleeCharged); // износ — по урону главной цели
+                            _lastMeleeCharged = false;
+                        }
+                        // SCP-127 растёт от урона по живым целям — мобы Minecraft тоже считаются
+                        if (_player.CurrentItem is FirearmItem f127 && f127.Type == ItemType.GunSCP127 && SlItemState.TryGet127(f127, out var m127))
+                        {
+                            // как в SL: опыт = урон; за убийство — ещё KillBonus оружия и патроны в магазин (KillBonus магазина)
+                            float xp = _lastShotDmg;
+                            if (m.Bool("dead")) xp += m127.KillBonus;
+                            m127.ServerSetStats(m127.ServerExp + xp * Config.Scp127ExpMultiplier);
+                            if (m.Bool("dead")) Scp127KillAmmo(f127);
+                        }
                     }
                     break;
 
@@ -1013,9 +1393,11 @@ namespace SlBridge
                     break;
 
                 case "mobs":
-                    // Твёрдые хитбоксы мобов нужны только для Jailbird (в них упирается рывок).
-                    // Без него мобы «мягкие», как в Minecraft: их расталкивает тело игрока в Minecraft.
-                    if (_mobsSolid) _mobs.Update(m.Arr("list"));
+                    // Твёрдых хитбоксов мобов в SL нет (мешали) — только список для попаданий рывком Jailbird.
+                    _mobBoxes.Clear();
+                    foreach (var o in m.Arr("list"))
+                        if (o is Dictionary<string, object> mo)
+                            _mobBoxes.Add(new[] { (float)mo.Num("x"), (float)mo.Num("y"), (float)mo.Num("z"), (float)mo.Num("w"), (float)mo.Num("h"), (float)mo.Num("d") });
                     break;
 
                 case "picked":

@@ -50,8 +50,10 @@ namespace SlBridge
         public float KeyColorR { get; set; } = 0f;
         public float KeyColorG { get; set; } = 1f;
         public float KeyColorB { get; set; } = 0f;
-        [Description("Половина размера «комнаты-фона» вокруг игрока, в метрах. Маленькая — чтобы туман SL не размывал цвет-ключ.")]
-        public float BackdropHalfSize { get; set; } = 2.5f;
+        [Description("Половина размера «комнаты-фона» вокруг игрока, в метрах. Без тумана (no_fog) её можно отодвинуть — фонарик меньше засвечивает стены.")]
+        public float BackdropHalfSize { get; set; } = 4f;
+        [Description("Убрать туман SL (эффект FogControl), чтобы далёкие стены «комнаты-фона» не размывались.")]
+        public bool NoFog { get; set; } = true;
         [Description("Высота центра комнаты над точкой игрока (примерно уровень глаз).")]
         public float BackdropCenterHeight { get; set; } = 0.6f;
 
@@ -68,15 +70,25 @@ namespace SlBridge
         [Description("Сила взрыва в Minecraft (как у динамита — 4): осколочная граната и SCP-018. 0 — не взрывать мир Minecraft.")]
         public float GrenadeExplosionPower { get; set; } = 3f;
         public float Scp018ExplosionPower { get; set; } = 1.5f;
+        public float JailbirdExplosionPower { get; set; } = 2f;
 
         [Description("Яркость света в Minecraft от лампы (Lantern) в руке, 0–15. Без лампы в темноте темно.")]
         public int LanternLight { get; set; } = 14;
         [Description("Яркость пятна от включённого фонарика в руке, 0–15: светит узким лучом туда, куда смотришь (дальше — тусклее).")]
         public int FlashlightLight { get; set; } = 15;
 
-        [Description("Свет над игроком, чтобы оружие в руках не было чёрным.")]
-        public float LightIntensity { get; set; } = 1.5f;
-        public float LightRange { get; set; } = 10f;
+        [Description("Свет у камеры, чтобы оружие в руках не было чёрным (мягкий, без теней).")]
+        public float LightIntensity { get; set; } = 0.7f;
+        public float LightRange { get; set; } = 3f;
+        [Description("Подсветка зелёных стен лампами (даёт яркие пятна). 0 — выключено: стены равномерные, яркость — через backdrop_glow.")]
+        public float WallLightIntensity { get; set; } = 0f;
+        public float WallLightRange { get; set; } = 2.2f;
+        [Description("«Неон» зелёных стен: множитель яркости цвета (1 — обычный).")]
+        public float BackdropGlow { get; set; } = 2f;
+
+        [Description("Раз в секунду убирать трупы SL, кровь и следы от пуль.")]
+        public bool CleanupRagdolls { get; set; } = true;
+        public bool CleanupDecals { get; set; } = true;
 
         [Description("Раз в 5 секунд писать в лог состояние моста (секции, коллизии, позиция).")]
         public bool DebugLog { get; set; } = false;
@@ -93,17 +105,27 @@ namespace SlBridge
         [Description("Сколько коллизионных примитивов создавать за кадр (меньше — плавнее, но медленнее подгрузка).")]
         public int CollisionBudgetPerFrame { get; set; } = 120;
 
-        [Description("Ближний бой и Micro HID: дальность (м) и урон SL.")]
+        [Description("Ближний бой и Micro HID: дальность (м) и урон SL. Урон Jailbird и SCP-1509: 0 — взять из предмета SL (как в игре). Micro HID — как в игре: 400/с на 6 м, заряженный 1000/с на 10 м.")]
         public float MeleeRange { get; set; } = 3f;
-        public float JailbirdDamage { get; set; } = 60f;
+        public float JailbirdDamage { get; set; } = 0f;
         public float MarshmallowDamage { get; set; } = 40f;
-        public float MicroHidRange { get; set; } = 8f;
-        public float MicroHidDamagePerTick { get; set; } = 30f;
+        public float MicroHidRange { get; set; } = 6f;
+        public float MicroHidDamagePerTick { get; set; } = 40f;
         [Description("Micro HID на ПКМ (заряженный выстрел): дальность и урон за 0.1 с.")]
-        public float MicroHidChargeRange { get; set; } = 12f;
-        public float MicroHidChargeDamagePerTick { get; set; } = 80f;
-        public float JailbirdChargeDamage { get; set; } = 200f;
-        public float Scp1509Damage { get; set; } = 50f;
+        public float MicroHidChargeRange { get; set; } = 10f;
+        public float MicroHidChargeDamagePerTick { get; set; } = 100f;
+        public float JailbirdChargeDamage { get; set; } = 0f;
+        [Description("Удар ближнего боя по области, как в SL: шар радиусом melee_hit_radius на melee_hit_offset м перед камерой. 0 — взять из предмета SL.")]
+        public float MeleeHitRadius { get; set; } = 0f;
+        public float MeleeHitOffset { get; set; } = 0f;
+        [Description("Урон остальным целям в области (доля от урона по главной): SCP-1509 — половина, Jailbird — полный.")]
+        public float Scp1509Splash { get; set; } = 0.5f;
+        public float JailbirdSplash { get; set; } = 1f;
+        [Description("Рывок Jailbird врезался в моба: на сколько секунд связать игрока (рывок останавливается).")]
+        public float JailbirdHitStun { get; set; } = 0.4f;
+        [Description("SCP-127 получает опыт за урон по мобам Minecraft: множитель (1 — как за урон по игрокам).")]
+        public float Scp127ExpMultiplier { get; set; } = 1f;
+        public float Scp1509Damage { get; set; } = 0f;
 
         [Description("Выключить всё, что мешает в мире Minecraft: обеззараживание ЛКЗ, Dead Man's Sequence, боеголовку, прибытие отрядов.")]
         public bool DisableFacilityEvents { get; set; } = true;

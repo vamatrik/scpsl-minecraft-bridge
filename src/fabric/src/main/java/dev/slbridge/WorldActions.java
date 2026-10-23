@@ -32,6 +32,69 @@ public final class WorldActions {
     private final Map<BlockPos, Damage> blockDamage = new HashMap<>();
     private int nextBreakerId = 1_000_000;
 
+    /**
+     * Удар ближнего боя как в SCP:SL (Jailbird, SCP-1509): шар радиусом radius на offset м перед камерой, только цели
+     * впереди. Главная цель (ближе всех к прицелу) получает полный урон, остальные — splash (1509 — половину,
+     * Jailbird — полный). Никого нет — обычный удар лучом (ломает блок).
+     */
+    public void melee(ServerLevel level, ServerPlayer player, Vec3 from, Vec3 dir, double range, double radius, double offset,
+                      float slDamage, float splash, boolean breaks, BridgeConfig cfg, BridgeServer bridge) {
+        Vec3 f = dir.normalize();
+        Vec3 center = from.add(f.scale(offset));
+        List<Entity> found = level.getEntities(player, new AABB(center, center).inflate(radius),
+                e -> e != player && e.isAlive() && e.isPickable() && !e.isSpectator() && e instanceof LivingEntity);
+        Entity primary = null; double best = -2;
+        List<Entity> targets = new java.util.ArrayList<>();
+        for (Entity e : found) {
+            AABB b = e.getBoundingBox();
+            double cx = Math.max(b.minX, Math.min(center.x, b.maxX)), cy = Math.max(b.minY, Math.min(center.y, b.maxY)), cz = Math.max(b.minZ, Math.min(center.z, b.maxZ));
+            if (center.distanceToSqr(cx, cy, cz) > radius * radius) continue;
+            Vec3 to = b.getCenter().subtract(from);
+            double dot = to.lengthSqr() < 1e-6 ? 1 : to.normalize().dot(f);
+            if (dot <= 0.1) continue; // за спиной/сбоку не бьём
+            // сквозь стену не бьём
+            if (level.clip(new ClipContext(from, b.getCenter(), ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, player)).getType() == HitResult.Type.BLOCK) continue;
+            targets.add(e);
+            if (dot > best) { best = dot; primary = e; }
+        }
+        if (primary == null) { shot(level, player, from, dir, range, slDamage, breaks, true, cfg, bridge); return; }
+        JsonObject res = new JsonObject();
+        res.addProperty("t", "hit");
+        res.addProperty("kind", "entity");
+        res.addProperty("targets", targets.size());
+        for (Entity e : targets) {
+            float dmg = e == primary ? slDamage : slDamage * splash;
+            if (dmg <= 0) continue;
+            hitEntity(level, player, e, dmg, true, cfg, e == primary ? res : null);
+        }
+        bridge.send(res);
+    }
+
+    /** Урон по мобу из SL (общая часть выстрела и удара). res — куда записать результат (для главной цели). */
+    private boolean hitEntity(ServerLevel level, ServerPlayer player, Entity target, float slDamage, boolean knockback, BridgeConfig cfg, JsonObject res) {
+        float mcDamage = slDamage / cfg.damageScale;
+        target.setInvulnerableTime(0);
+        if (target instanceof LivingEntity le0) { le0.damageCooldownTime = 0; le0.hurtTime = 0; }
+        Vec3 velBefore = target.getDeltaMovement();
+        var src = !knockback && target instanceof net.minecraft.world.entity.monster.Enderman
+                ? level.damageSources().thrown(player, player)
+                : level.damageSources().playerAttack(player);
+        boolean hurt = target.hurtServer(level, src, mcDamage);
+        if (!knockback) target.setDeltaMovement(velBefore);
+        if (target instanceof LivingEntity le1) le1.damageCooldownTime = 0;
+        target.setInvulnerableTime(0);
+        if (res != null) {
+            if (!hurt && !knockback && target instanceof net.minecraft.world.entity.monster.Enderman) res.addProperty("dodged", true);
+            res.addProperty("entity", BuiltInRegistries.ENTITY_TYPE.getKey(target.getType()).toString());
+            res.addProperty("dmg", mcDamage);
+            if (target instanceof LivingEntity living) {
+                if (Float.isFinite(living.getHealth())) res.addProperty("hp", living.getHealth());
+                res.addProperty("dead", living.isDeadOrDying());
+            }
+        }
+        return hurt;
+    }
+
     /** Выстрел из SCP:SL: луч из камеры. Попал в моба — урон, попал в блок — копим «трещины» и ломаем. */
     public void shot(ServerLevel level, ServerPlayer player, Vec3 from, Vec3 dir, double range, float slDamage, boolean breaks, boolean knockback,
                      BridgeConfig cfg, BridgeServer bridge) {
@@ -61,7 +124,9 @@ public final class WorldActions {
             var src = !knockback && target instanceof net.minecraft.world.entity.monster.Enderman
                     ? level.damageSources().thrown(player, player)
                     : level.damageSources().playerAttack(player);
-            target.hurtServer(level, src, mcDamage);
+            boolean hurt = target.hurtServer(level, src, mcDamage);
+            // эндермен увернулся (телепортировался) — в SL без хитмаркера
+            if (!hurt && !knockback && target instanceof net.minecraft.world.entity.monster.Enderman) res.addProperty("dodged", true);
             // отбрасывание — только от холодного оружия (Jailbird, SCP-1509); пули и Micro HID моба не толкают
             if (!knockback) target.setDeltaMovement(velBefore);
             if (target instanceof LivingEntity le1) le1.damageCooldownTime = 0;

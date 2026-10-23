@@ -25,6 +25,7 @@ namespace SlBridge
                     case FirearmItem fa:
                         d.Add("att=" + fa.AttachmentsCode.ToString(Inv));
                         d.Add("mag=" + (fa.StoredAmmo + fa.ChamberedAmmo).ToString(Inv));
+                        if (TryGet127(fa, out var m127)) d.Add("x127=" + m127.ServerExp.ToString("0.#", Inv));
                         break;
                     case MicroHIDItem hid:
                         d.Add("en=" + hid.Energy.ToString("0.###", Inv));
@@ -37,6 +38,13 @@ namespace SlBridge
             }
             catch (Exception e) { Logger.Warn("[SlBridge] состояние предмета: " + e.Message); }
             return d.Count > 0 ? string.Join(";", d) : null;
+        }
+
+        /// <summary>SCP-127: модуль опыта (уровень оружия).</summary>
+        public static bool TryGet127(FirearmItem fa, out InventorySystem.Items.Firearms.Modules.Scp127.Scp127TierManagerModule m)
+        {
+            m = null;
+            try { return fa != null && InventorySystem.Items.Firearms.Modules.ModulesUtils.TryGetModule(fa.Base, out m); } catch { return false; }
         }
 
         private static Dictionary<string, string> Parse(string state)
@@ -63,6 +71,8 @@ namespace SlBridge
                         if (d.TryGetValue("att", out var a) && uint.TryParse(a, NumberStyles.Integer, Inv, out var code)) fa.AttachmentsCode = code;
                         if (d.TryGetValue("mag", out var m) && int.TryParse(m, NumberStyles.Integer, Inv, out var mag))
                             fa.StoredAmmo = Math.Max(0, Math.Min(mag, fa.MaxAmmo));
+                        if (d.TryGetValue("x127", out var x) && float.TryParse(x, NumberStyles.Float, Inv, out var xp) && TryGet127(fa, out var m127))
+                            m127.ServerSetStats(xp);
                         break;
                     case MicroHIDItem hid:
                         if (d.TryGetValue("en", out var e) && float.TryParse(e, NumberStyles.Float, Inv, out var en)) hid.Energy = Math.Max(0f, Math.Min(1f, en));

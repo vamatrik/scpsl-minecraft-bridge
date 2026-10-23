@@ -50,7 +50,10 @@ You start with a machete (to break blocks and fight) and one medkit — everythi
 * **E** (interact) — place a block, doors/levers, food, flint and steel/bucket/eye of ender, crafting table/furnace/chest (Minecraft window).
 * **I** — Minecraft inventory with 2×2 crafting. Keys can be rebound in SL: Esc → Settings → Server-specific.
 * SL console (`~`): `.mc time set day`; in the admin panel: `mc give @s diamond 5`.
-* In water and lava you float up by yourself, crouch to dive; just swim into the shore to climb out. **F3+B** — hitboxes, **F3+G** — chunk borders.
+* In water and lava you float up by yourself, look down (or crouch) to dive; just swim into the shore to climb out.
+* **F4** — Minecraft debug screen, **F4+B** — hitboxes, **F4+G** — chunk borders (F3 is SL's own debug).
+* The starter machete and medkit come once per world; get them again with `.kit start`. `.mc gamerule keep_inventory true` keeps items on death. Your SL inventory is saved in the world folder.
+* Jailbird and the machete hit an area like in SL; SCP-127 levels up from damage to mobs and gets XP and ammo for kills.
 * Ladders and vines: look up to climb, down to descend. Beds: sleep and set your respawn point. Grenades and SCP-018 blow up the Minecraft world too.
 * Darkness is real: hold a lit **lantern** (lights up around you) or a **flashlight** (a narrow beam where you look).
 

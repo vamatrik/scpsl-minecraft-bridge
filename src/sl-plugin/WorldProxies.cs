@@ -110,8 +110,10 @@ namespace SlBridge
         // становится нестатичной (чтобы клиент применил новую позицию), потом снова статичной.
         private static readonly Vector3 ParkPos = new Vector3(0f, -4000f, 0f);
         private readonly List<PrimitiveObjectToy> _pool = new List<PrimitiveObjectToy>(); // как стек (Stack в BCL игры нет)
-        private readonly List<KeyValuePair<PrimitiveObjectToy, float>> _settling = new List<KeyValuePair<PrimitiveObjectToy, float>>();
+        // коробка → когда снова сделать статичной (по ПОСЛЕДНЕМУ переезду: если переехала дважды подряд, ждём от второго)
+        private readonly Dictionary<PrimitiveObjectToy, float> _settling = new Dictionary<PrimitiveObjectToy, float>();
         public int PoolSize => _pool.Count;
+        public int SettlingCount => _settling.Count;
 
         private PrimitiveObjectToy NewToy(Vector3 c, Vector3 s)
         {
@@ -131,7 +133,7 @@ namespace SlBridge
             if (toy.IsStatic) toy.IsStatic = false;
             toy.Position = c;
             toy.Scale = s;
-            _settling.Add(new KeyValuePair<PrimitiveObjectToy, float>(toy, Time.time + 0.5f));
+            _settling[toy] = Time.time + 0.6f;
         }
 
         private void Park(PrimitiveObjectToy toy)
@@ -146,15 +148,23 @@ namespace SlBridge
         {
             if (_settling.Count == 0) return;
             float now = Time.time;
-            int w = 0;
-            for (int i = 0; i < _settling.Count; i++)
+            List<PrimitiveObjectToy> done = null;
+            foreach (var kv in _settling)
+                if (kv.Key == null || kv.Key.IsDestroyed || now >= kv.Value) (done ??= new List<PrimitiveObjectToy>()).Add(kv.Key);
+            if (done == null) return;
+            foreach (var t in done)
             {
-                var kv = _settling[i];
-                if (kv.Key == null || kv.Key.IsDestroyed) continue;
-                if (now >= kv.Value) { if (!kv.Key.IsStatic) kv.Key.IsStatic = true; }
-                else _settling[w++] = kv;
+                _settling.Remove(t);
+                if (t != null && !t.IsDestroyed && !t.IsStatic) t.IsStatic = true;
             }
-            _settling.RemoveRange(w, _settling.Count - w);
+        }
+
+        /// <summary>Коробки ячейки уже на месте у клиента (ни одна не «переезжает» прямо сейчас).</summary>
+        public bool Settled(string key)
+        {
+            if (!_sections.TryGetValue(key, out var list)) return false;
+            foreach (var t in list) if (t != null && _settling.ContainsKey(t)) return false;
+            return true;
         }
 
         public void Apply(string key, float[] b)
@@ -227,7 +237,9 @@ namespace SlBridge
             Destroy();
             _owner = root;
 
-            var color = new Color(_cfg.KeyColorR, _cfg.KeyColorG, _cfg.KeyColorB, 1f);
+            // «неон»: цвет ярче 1 — стены светлее при любом освещении (компоновщику важен оттенок, не яркость)
+            float glow = Mathf.Max(1f, _cfg.BackdropGlow);
+            var color = new Color(_cfg.KeyColorR * glow, _cfg.KeyColorG * glow, _cfg.KeyColorB * glow, 1f);
             float h = _cfg.BackdropHalfSize, d = 0.05f, L = h * 2f + 0.2f;
             var c = Vector3.up * _cfg.BackdropCenterHeight;
             Vector3[] pos = { c + Vector3.right * h, c + Vector3.left * h, c + Vector3.up * h, c + Vector3.down * h, c + Vector3.forward * h, c + Vector3.back * h };
@@ -244,18 +256,40 @@ namespace SlBridge
                 t.Transform.localScale = scl[i];
                 _walls.Add(t);
             }
+            // Свет для оружия — мягкий, небольшого радиуса и без теней: не засвечивает руки.
             _light = LightSourceToy.Create(root, true);
-            // Свет в центре комнаты (на уровне груди), а не у стены — иначе на потолке «горячее пятно», которое не вырезается.
-            _light.Transform.localPosition = c + new Vector3(0f, 0.2f, 0.4f);
+            _light.Transform.localPosition = c + new Vector3(0f, 0.3f, 0.2f);
             _light.Intensity = _cfg.LightIntensity;
             _light.Range = _cfg.LightRange;
             _light.Color = Color.white;
+            try { _light.ShadowType = LightShadows.None; } catch { }
+
+            // Отдельная подсветка стен: по лампе у каждой стены, радиус — только до стены, до оружия в центре не достаёт.
+            if (_cfg.WallLightIntensity > 0f)
+            {
+                float off = Mathf.Max(0.5f, h - _cfg.WallLightRange * 0.45f);
+                Vector3[] dirs = { Vector3.right, Vector3.left, Vector3.up, Vector3.down, Vector3.forward, Vector3.back };
+                foreach (var dir in dirs)
+                {
+                    var l = LightSourceToy.Create(root, true);
+                    l.Transform.localPosition = c + dir * off;
+                    l.Intensity = _cfg.WallLightIntensity;
+                    l.Range = _cfg.WallLightRange;
+                    l.Color = Color.white;
+                    try { l.ShadowType = LightShadows.None; } catch { }
+                    _wallLights.Add(l);
+                }
+            }
         }
+
+        private readonly List<LightSourceToy> _wallLights = new List<LightSourceToy>();
 
         public void Destroy()
         {
             foreach (var w in _walls) if (!w.IsDestroyed) w.Destroy();
             _walls.Clear();
+            foreach (var l in _wallLights) if (!l.IsDestroyed) l.Destroy();
+            _wallLights.Clear();
             if (_light != null && !_light.IsDestroyed) _light.Destroy();
             _light = null;
             _owner = null;

@@ -28,6 +28,12 @@ namespace SlBridge.Compositor
         public string MinecraftPlacement { get; set; } = "behind";
         /// <summary>Сквозные клики (окно-оверлей не перехватывает мышь). Выключать только для отладки.</summary>
         public bool ClickThrough { get; set; } = true;
+        /// <summary>Отдельное окно «SCP:SL x Minecraft (OBS)» с той же картинкой — его захватывает OBS («Захват окна»).</summary>
+        public bool ObsWindow { get; set; } = false;
+        /// <summary>Рисовать свой курсор в окнах Minecraft (верстак, инвентарь) — курсор Windows там не виден.</summary>
+        public bool DrawCursorInUi { get; set; } = false;
+        /// <summary>Окно Minecraft на 1 пиксель ниже экрана — чтобы OBS («Захват экрана») снимал окна Minecraft вживую.</summary>
+        public bool AvoidFullscreenFlip { get; set; } = true;
         /// <summary>Режим отладки: показывать маску ключа.</summary>
         public bool DebugShowMask { get; set; } = false;
 

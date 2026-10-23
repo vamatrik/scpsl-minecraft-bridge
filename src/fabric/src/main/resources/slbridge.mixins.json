@@ -5,6 +5,7 @@
   "client": [
     "CameraMixin",
     "HudMixin",
+    "CursorMixin",
     "GameRendererMixin",
     "MinecraftMixin",
     "InputMixin$Mouse",

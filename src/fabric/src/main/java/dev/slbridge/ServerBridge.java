@@ -85,6 +85,7 @@ public final class ServerBridge {
     /** Наши блоки света: позиция → уровень. Лампа — один у головы; фонарик — пятно там, куда смотришь. */
     private final java.util.Map<BlockPos, Integer> lamps = new java.util.HashMap<>();
     private ServerLevel lampLevel;
+    private Boolean lastKeepInv;
 
     private static boolean lampFits(ServerLevel level, BlockPos p) {
         var st = level.getBlockState(p);
@@ -97,19 +98,17 @@ public final class ServerBridge {
         if (want > 0) {
             Vec3 eye = new Vec3(Pose.x, Pose.y, Pose.z);
             if (Pose.beam) {
-                // Фонарик: узкий луч — яркое пятно на поверхности, куда смотришь (как в SCP:SL), и слабый свет рядом.
+                // Фонарик: один источник света на несколько метров впереди — или у блока, если он ближе.
                 Vec3 dir = Vec3.directionFromRotation(Pose.pitch, Pose.yaw);
-                var hit = level.clip(new net.minecraft.world.level.ClipContext(eye, eye.add(dir.scale(cfg.flashlightRange)),
+                double ahead = Math.min(6.0, cfg.flashlightRange);
+                var hit = level.clip(new net.minecraft.world.level.ClipContext(eye, eye.add(dir.scale(ahead)),
                         net.minecraft.world.level.ClipContext.Block.COLLIDER, net.minecraft.world.level.ClipContext.Fluid.NONE, sp));
-                if (hit.getType() == net.minecraft.world.phys.HitResult.Type.BLOCK) {
-                    BlockPos spot = hit.getBlockPos().relative(hit.getDirection());
-                    // дальше — слабее, как настоящий луч
-                    double dist = hit.getLocation().distanceTo(eye);
-                    int lvl = (int) Math.round(want - Math.max(0, dist - 6) * 0.25);
-                    if (lvl > 3 && lampFits(level, spot)) target.put(spot.immutable(), Math.min(15, lvl));
+                double dist = hit.getType() == net.minecraft.world.phys.HitResult.Type.BLOCK ? hit.getLocation().distanceTo(eye) - 0.3 : ahead;
+                // от этой точки назад к глазам — первая свободная клетка (не в воде/листве/стене)
+                for (double dd = Math.max(0.0, dist); dd >= 0.0; dd -= 0.5) {
+                    BlockPos spot = BlockPos.containing(eye.add(dir.scale(dd)));
+                    if (lampFits(level, spot)) { target.put(spot.immutable(), want); break; }
                 }
-                BlockPos head = BlockPos.containing(eye);
-                if (!target.containsKey(head) && lampFits(level, head)) target.put(head, 4);
             } else {
                 BlockPos head = BlockPos.containing(eye);
                 for (BlockPos c : new BlockPos[]{head, head.below(), head.above()})
@@ -151,6 +150,16 @@ public final class ServerBridge {
         if (sp == null) return;
         tickNo++;
         ServerLevel level = sp.level();
+
+        // Правила мира, которые важны SL: keep_inventory (сохранять инвентарь при смерти).
+        boolean keep = level.getGameRules().get(net.minecraft.world.level.gamerules.GameRules.KEEP_INVENTORY);
+        if (!Boolean.valueOf(keep).equals(lastKeepInv) || tickNo % 100 == 0) {
+            lastKeepInv = keep;
+            JsonObject r = new JsonObject();
+            r.addProperty("t", "rules");
+            r.addProperty("keepInv", keep);
+            bridge.send(r);
+        }
 
         // Голод не нужен: еда лечит в SL. Держим сытость полной, чтобы не было урона от голода.
         sp.getFoodData().setFoodLevel(20);
@@ -365,7 +374,21 @@ public final class ServerBridge {
         if (target == null) return false;
         sp.snapTo(target.getX() + 0.5, target.getY() + 0.05, target.getZ() + 0.5, sp.getYRot(), sp.getXRot());
         SlBridgeClient.LOG.info(Lang.t("[SLBridge] Игрок застрял в блоках — выталкиваю на {}", "[SLBridge] Player stuck in blocks — pushing out to {}"), target);
-        sendTeleport(sp);
+        // Не «телепорт» (он заново строит все коллизии и замораживает) — просто переставить игрока SL рядом.
+        teleportSeq++;
+        Vec3 p = sp.position();
+        Pose.teleport(p.x, p.y + SlBridgeClient.EYE_HEIGHT, p.z, teleportSeq);
+        lastSnap = p;
+        lastLevel = level;
+        lastFeetY = Double.NaN;
+        fallDist = 0;
+        JsonObject m = new JsonObject();
+        m.addProperty("t", "unstick");
+        m.addProperty("x", p.x);
+        m.addProperty("y", p.y);
+        m.addProperty("z", p.z);
+        m.addProperty("seq", teleportSeq);
+        bridge.send(m);
         return true;
     }
 
@@ -453,15 +476,29 @@ public final class ServerBridge {
                     || qs.is(net.minecraft.world.level.block.Blocks.COBWEB) || qs.is(net.minecraft.world.level.block.Blocks.POWDER_SNOW)
                     || qs.is(net.minecraft.world.level.block.Blocks.BUBBLE_COLUMN)) { fallDist = 0; return; }
         }
-        if (dy > 0.0005) { fallDist += dy; return; }
-        if (dy < -0.0005) { fallDist = 0; return; } // идём вверх (прыжок)
-        if (fallDist <= 0) return;
-        BlockPos below = BlockPos.containing(sp.getX(), feetY - 0.2, sp.getZ());
-        BlockState st = level.getBlockState(below);
-        if (st.getCollisionShape(level, below).isEmpty()) return; // ещё в воздухе (зависли на месте)
+        if (dy < -0.0005) { fallDist = 0; return; } // идём вверх (прыжок, лестница)
+        // Стоим ли на чём-то: коробка игрока, опущенная на 6 см, задевает блок. Проверяем КАЖДЫЙ тик —
+        // иначе спуск по ступенькам/склону копился бы как одно длинное падение.
+        AABB feetBox = new AABB(sp.getX() - 0.3, feetY - 0.06, sp.getZ() - 0.3, sp.getX() + 0.3, feetY + 0.5, sp.getZ() + 0.3);
+        boolean onGround = !level.noBlockCollision(sp, feetBox);
+        if (!onGround) { if (dy > 0.0005) fallDist += dy; return; }
         double d = fallDist;
         fallDist = 0;
-        if (d > 3.0) st.getBlock().fallOn(level, st, below, sp, d); // сам Minecraft посчитает урон (сено, слизь...)
+        if (d <= 0) return;
+        BlockPos below = BlockPos.containing(sp.getX(), feetY - 0.2, sp.getZ());
+        BlockState st = level.getBlockState(below);
+        // Как в Minecraft: урон = высота − 3 блока (сено и мёд — 20 %, кровать — 50 %, слизь — 0, сталагмит — ×2 и +2).
+        double mult = 1.0;
+        if (st.is(Blocks.SLIME_BLOCK)) mult = 0.0;
+        else if (st.is(Blocks.HAY_BLOCK) || st.is(Blocks.HONEY_BLOCK)) mult = 0.2;
+        else if (st.is(net.minecraft.tags.BlockTags.BEDS)) mult = 0.5;
+        else if (st.is(Blocks.POINTED_DRIPSTONE)) { d += 2.0; mult = 2.0; }
+        double safe = sp.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.SAFE_FALL_DISTANCE);
+        int dmg = (int) Math.floor((d - safe) * mult * sp.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.FALL_DAMAGE_MULTIPLIER));
+        if (dmg <= 0) return;
+        SlBridgeClient.LOG.info(Lang.t("[SLBridge] Падение {} бл. → урон {} (в SL ×{})", "[SLBridge] Fell {} blocks → damage {} (×{} in SL)"),
+                String.format("%.1f", d), dmg, SlBridgeClient.config.damageScale);
+        sp.hurtServer(level, st.is(Blocks.POINTED_DRIPSTONE) ? sp.damageSources().stalagmite() : sp.damageSources().fall(), dmg);
     }
 
     private void streamMobs(ServerPlayer sp, ServerLevel level) {

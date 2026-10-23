@@ -24,7 +24,7 @@ namespace SlBridge.Compositor
         {
             public float KR, KG, KB, KeyThreshold, KeySoftness, KeyMinBrightness, ShowMask, HasMc;
             public float SlOx, SlOy, SlSx, SlSy, McOx, McOy, McSx, McSy;
-            public float Adaptive, P0, P1, P2;
+            public float Adaptive, CurX, CurY, CurScale;
         }
 
         /// <summary>
@@ -56,6 +56,14 @@ namespace SlBridge.Compositor
         private static IDXGISwapChain1 _swap;
         private static ID3D11RenderTargetView _rtv;
         private static int _swapW, _swapH;
+        private static Func<Native.RECT> _slRectRef;
+
+        // Окно для OBS: обычное окно (не оверлей) с той же картинкой. Оверлей сделан через DirectComposition —
+        // OBS его снимает ненадёжно (кадр и чёрный экран). Это окно стоит прямо под окном SL, его не видно.
+        private static IntPtr _obsHwnd;
+        private static IDXGISwapChain1 _obsSwap;
+        private static ID3D11RenderTargetView _obsRtv;
+        private static int _obsW, _obsH;
         private static IDCompositionDevice _dcomp;
         private static IDCompositionTarget _target;
         private static IDCompositionVisual _visual;
@@ -94,6 +102,7 @@ namespace SlBridge.Compositor
             var sw = Stopwatch.StartNew();
             long lastLayout = -10000;
             Native.RECT slRect = default;
+            _slRectRef = () => slRect;
             bool visible = false;
 
             while (true)
@@ -133,10 +142,17 @@ namespace SlBridge.Compositor
                         Native.SetWindowPos(_hwnd, Native.HWND_TOPMOST, slRect.Left, slRect.Top, slRect.W, slRect.H, Native.SWP_NOACTIVATE | Native.SWP_SHOWWINDOW);
                         if (_mc != null && _s.ResizeMinecraft) FitMinecraft(slRect);
                         ResizeSwap(slRect.W, slRect.H);
+                        if (_obsHwnd != IntPtr.Zero)
+                        {
+                            // сразу под окном SL: картинка есть, а на экране его не видно
+                            Native.SetWindowPos(_obsHwnd, _sl.Hwnd, slRect.Left, slRect.Top, slRect.W, slRect.H, Native.SWP_NOACTIVATE | Native.SWP_SHOWWINDOW);
+                            ResizeObs(slRect.W, slRect.H);
+                        }
                     }
                     if (ok != visible)
                     {
                         Native.ShowWindow(_hwnd, ok ? 4 /*SW_SHOWNOACTIVATE*/ : 0 /*SW_HIDE*/);
+                        if (_obsHwnd != IntPtr.Zero) Native.ShowWindow(_obsHwnd, ok ? 4 : 0);
                         visible = ok;
                     }
                 }
@@ -181,6 +197,9 @@ namespace SlBridge.Compositor
         /// </summary>
         private static void FitMinecraft(Native.RECT slRect)
         {
+            // На 1 пиксель ниже окна SL: окно ровно во весь экран Windows выводит «в обход» сборки рабочего стола
+            // (independent flip) — тогда захват экрана в OBS видит застывший кадр окон Minecraft (верстак, инвентарь).
+            if (_s.AvoidFullscreenFlip) slRect.Bottom -= 1;
             if (Native.IsZoomed(_mc.Hwnd)) Native.ShowWindow(_mc.Hwnd, 9 /*SW_RESTORE*/);
             int style = Native.GetWindowLong(_mc.Hwnd, Native.GWL_STYLE);
             int strip = Native.WS_CAPTION | Native.WS_THICKFRAME | Native.WS_SYSMENU | Native.WS_MINIMIZEBOX | Native.WS_MAXIMIZEBOX;
@@ -257,6 +276,40 @@ namespace SlBridge.Compositor
             _hwnd = Native.CreateWindowEx(ex, "SlBridgeCompositor", "SCP:SL x Minecraft", Native.WS_POPUP, 0, 0, 640, 360,
                 IntPtr.Zero, IntPtr.Zero, wc.hInstance, IntPtr.Zero);
             if (_s.ClickThrough) Native.SetLayeredWindowAttributes(_hwnd, 0, 255, Native.LWA_ALPHA);
+
+            if (_s.ObsWindow)
+            {
+                var wc2 = wc;
+                wc2.lpszClassName = "SlBridgeObsView";
+                Native.RegisterClassEx(ref wc2);
+                _obsHwnd = Native.CreateWindowEx(Native.WS_EX_NOACTIVATE | 0x40000 /*WS_EX_APPWINDOW*/, "SlBridgeObsView",
+                    "SCP:SL x Minecraft (OBS)", Native.WS_POPUP, 0, 0, 640, 360, IntPtr.Zero, IntPtr.Zero, wc.hInstance, IntPtr.Zero);
+            }
+        }
+
+        private static void ResizeObs(int w, int h)
+        {
+            if (_obsHwnd == IntPtr.Zero || (_obsSwap != null && w == _obsW && h == _obsH)) return;
+            _obsRtv?.Dispose(); _obsRtv = null;
+            try
+            {
+                if (_obsSwap == null)
+                {
+                    using var dxgiDevice = _device.QueryInterface<IDXGIDevice>();
+                    using var adapter = dxgiDevice.GetAdapter();
+                    using var factory = adapter.GetParent<IDXGIFactory2>();
+                    _obsSwap = factory.CreateSwapChainForHwnd(_device, _obsHwnd, new SwapChainDescription1
+                    {
+                        Width = (uint)w, Height = (uint)h, Format = Format.B8G8R8A8_UNorm,
+                        SampleDescription = new SampleDescription(1, 0), BufferUsage = Usage.RenderTargetOutput,
+                        BufferCount = 2, SwapEffect = SwapEffect.FlipDiscard, AlphaMode = Vortice.DXGI.AlphaMode.Ignore, Scaling = Scaling.Stretch,
+                    });
+                }
+                else _obsSwap.ResizeBuffers(2, (uint)w, (uint)h, Format.B8G8R8A8_UNorm, SwapChainFlags.None).CheckError();
+                using (var back = _obsSwap.GetBuffer<ID3D11Texture2D>(0)) _obsRtv = _device.CreateRenderTargetView(back);
+                _obsW = w; _obsH = h;
+            }
+            catch (Exception e) { Log("Окно для OBS: " + e.Message); _obsSwap = null; _obsHwnd = IntPtr.Zero; }
         }
 
         private static void InitD3D()
@@ -316,7 +369,15 @@ namespace SlBridge.Compositor
                 KeyThreshold = _s.KeyThreshold, KeySoftness = _s.KeySoftness, KeyMinBrightness = _s.KeyMinBrightness,
                 ShowMask = (_mcUi && _mc != null && _mc.Srv != null) ? 2 : _showMask ? 1 : 0, HasMc = (_mc != null && _mc.Srv != null) ? 1 : 0,
                 Adaptive = _s.AdaptiveKey ? 1 : 0,
+                CurX = -1000, CurY = -1000, CurScale = 0,
             };
+            // Окно Minecraft (верстак, инвентарь): курсор Windows там не виден (его прячет SL) — рисуем свой.
+            if (p.ShowMask > 1.5 && _s.DrawCursorInUi && _slRectRef != null && Native.GetCursorPos(out var cp))
+            {
+                var r = _slRectRef();
+                p.CurX = cp.X - r.Left; p.CurY = cp.Y - r.Top;
+                p.CurScale = Math.Max(1f, _swapH / 1080f);
+            }
             ClientUv(_sl, out p.SlOx, out p.SlOy, out p.SlSx, out p.SlSy);
             ClientUv(_mc, out p.McOx, out p.McOy, out p.McSx, out p.McSy);
             _ctx.UpdateSubresource(in p, _cb);
@@ -331,6 +392,13 @@ namespace SlBridge.Compositor
             _ctx.PSSetShaderResource(1, (_mc != null && _mc.Srv != null) ? _mc.Srv : _sl.Srv);
             _ctx.Draw(3, 0);
             _swap.Present(0, PresentFlags.None);
+            if (_obsRtv != null)
+            {
+                _ctx.OMSetRenderTargets(_obsRtv);
+                _ctx.RSSetViewport(new Viewport(0, 0, _obsW, _obsH));
+                _ctx.Draw(3, 0);
+                _obsSwap.Present(0, PresentFlags.None);
+            }
         }
     }
 }

@@ -18,7 +18,8 @@ cbuffer P : register(b0)
     float4 SlUv;   // xy — смещение, zw — масштаб: клиентская часть окна внутри захваченного кадра
     float4 McUv;
     float AdaptiveKey;
-    float3 _pad2;
+    float2 Cursor;      // курсор в пикселях окна (окна Minecraft)
+    float CursorScale;  // 0 — не рисовать
 };
 
 struct V { float4 pos : SV_Position; float2 uv : TEXCOORD0; };
@@ -45,7 +46,21 @@ float4 PS(V i) : SV_Target
 {
     // Окно Minecraft открыто (верстак, инвентарь): показываем Minecraft целиком, без ключа.
     // Оверлей остаётся поверх — так рабочий стол всегда собирает DWM и захват экрана (OBS) не чернеет.
-    if (ShowMask > 1.5) return float4(McTex.Sample(Lin, McUv.xy + i.uv * McUv.zw).rgb, 1);
+    if (ShowMask > 1.5)
+    {
+        float3 mc = McTex.Sample(Lin, McUv.xy + i.uv * McUv.zw).rgb;
+        if (CursorScale > 0)
+        {
+            // стрелка-курсор: белая с чёрной обводкой, острие — в точке курсора
+            float2 d = (i.pos.xy - Cursor) / CursorScale;
+            if (d.x >= 0 && d.y >= 0 && d.y <= 17 && d.x <= d.y * 0.62 + 0.5 && d.x <= 11)
+            {
+                bool edge = d.x < 1.2 || d.x > d.y * 0.62 - 1.0 || d.y > 15.8 || d.x > 9.8;
+                return float4(edge ? float3(0, 0, 0) : float3(1, 1, 1), 1);
+            }
+        }
+        return float4(mc, 1);
+    }
     float2 slUv = SlUv.xy + i.uv * SlUv.zw;
     float3 s = SlTex.Sample(Lin, slUv).rgb;
 
