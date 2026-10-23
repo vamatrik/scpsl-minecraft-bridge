@@ -395,6 +395,19 @@ namespace SlBridge
         private float _lastShotDmg;
         private bool _lastMeleeCharged;
 
+        /// <summary>Сломанный Jailbird SL уберёт сам (после анимации) — он не выпадает при смерти и не сохраняется.</summary>
+        private static bool IsBrokenJailbird(Item it)
+        {
+            try
+            {
+                if (!(it?.Base is InventorySystem.Items.Jailbird.JailbirdItem jb)) return false;
+                var det = typeof(InventorySystem.Items.Jailbird.JailbirdItem).GetField("_deterioration", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?.GetValue(jb)
+                          as InventorySystem.Items.Jailbird.JailbirdDeteriorationTracker;
+                return det != null && det.IsBroken;
+            }
+            catch { return false; }
+        }
+
         /// <summary>
         /// Jailbird изнашивается и от ударов по мобам, как по игрокам в SL: каждый урон копится (обычный удар — немного,
         /// рывок — сильнее), а если рывок попал, когда дубинка уже сломана, — она взрывается.
@@ -624,7 +637,7 @@ namespace SlBridge
             // всё, что было, по порядку слотов: стаки Minecraft и предметы SL (с состоянием: обвесы, магазин, заряд)
             var all = new List<McStack>();
             foreach (var it in _player.Items.ToList())
-                all.Add(_inv.IsStack(it) ? _inv.Get(it).Clone() : McStack.ForSl(it));
+                if (!IsBrokenJailbird(it)) all.Add(_inv.IsStack(it) ? _inv.Get(it).Clone() : McStack.ForSl(it));
             _inv.TakeAll(_player);
             var ammo = new Dictionary<ItemType, ushort>();
             foreach (ItemType t in Enum.GetValues(typeof(ItemType)))
@@ -769,6 +782,29 @@ namespace SlBridge
         }
 
         /// <summary>Предмет SCP:SL, скрафченный в Minecraft: выдаём настоящий предмет (патроны — по 80 за штуку).</summary>
+        private readonly List<(Item item, string state, float at)> _reapply = new List<(Item, string, float)>();
+
+        private void TickReapply()
+        {
+            if (_reapply.Count == 0) return;
+            for (int i = _reapply.Count - 1; i >= 0; i--)
+            {
+                var r = _reapply[i];
+                if (Time.time < r.at) continue;
+                _reapply.RemoveAt(i);
+                try
+                {
+                    if (r.item is MicroHIDItem hid && !r.item.IsDestroyed)
+                    {
+                        float e = hid.Energy;
+                        hid.Energy = e > 0.5f ? e - 0.01f : e + 0.01f; // заметное изменение (заряд шлётся байтом) — чтобы ушло клиенту
+                        hid.Energy = e;
+                    }
+                }
+                catch { }
+            }
+        }
+
         private void GiveSl(McStack s)
         {
             if (!Enum.TryParse(s.Sl, out ItemType type) || type == ItemType.None)
@@ -788,7 +824,12 @@ namespace SlBridge
             for (int i = 0; i < s.Count; i++)
             {
                 Item added = _player.Items.Count() >= 8 ? null : _player.AddItem(type, InventorySystem.Items.ItemAddReason.AdminCommand);
-                if (added != null) SlItemState.Apply(added, s.State); // заряд, магазин, обвесы — как были
+                if (added != null)
+                {
+                    SlItemState.Apply(added, s.State); // заряд, магазин, обвесы — как были
+                    // заряд Micro HID клиент SL иногда не получает сразу у нового предмета (показывает 100%) — повторим чуть позже
+                    if (added is MicroHIDItem && !string.IsNullOrEmpty(s.State)) _reapply.Add((added, s.State, Time.time + 0.5f));
+                }
                 if (added == null)
                 {
                     var rest = s.Clone();
@@ -890,6 +931,7 @@ namespace SlBridge
             PollMelee();
             TickFlying();
             ConvertStrayPickups();
+            TickReapply();
 
             TickJailbirdCharge();
 
@@ -1233,7 +1275,7 @@ namespace SlBridge
             if (_player == null || _invWorld == null || !_mc.Connected) return;
             var items = new List<string>();
             if (_keptItems != null) foreach (var s in _keptItems) items.Add(s.ToJson()); // умер с keep_inventory
-            else foreach (var it in _player.Items.ToList()) items.Add(_inv.IsStack(it) ? _inv.Get(it).ToJson() : McStack.ForSl(it).ToJson());
+            else foreach (var it in _player.Items.ToList()) if (!IsBrokenJailbird(it)) items.Add(_inv.IsStack(it) ? _inv.Get(it).ToJson() : McStack.ForSl(it).ToJson());
             var ammo = new List<string>();
             var src = _keptAmmo;
             foreach (ItemType t in Enum.GetValues(typeof(ItemType)))
