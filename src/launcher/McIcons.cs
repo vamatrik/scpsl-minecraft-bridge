@@ -36,8 +36,20 @@ namespace SlBridge.Launcher
                 if (Directory.Exists(d)) foreach (var f in Directory.GetFiles(d, "*client*.jar")) yield return f;
             }
             yield return Path.Combine(app, ".minecraft", "versions", Version, Version + ".jar");
-            if (Config != null && !string.IsNullOrEmpty(Config.GameDirEffective))
-                yield return Path.Combine(Config.GameDirEffective, "versions", Version, Version + ".jar");
+            // Любой другой лаунчер (MultiMC, TLauncher, ATLauncher…): поднимаемся от папки игры вверх и ищем,
+            // где лежит клиент Minecraft — в libraries/com/mojang/minecraft/<версия> или versions/<версия>.
+            string dir = Config?.GameDirEffective;
+            for (int up = 0; up < 5 && !string.IsNullOrEmpty(dir); up++, dir = Path.GetDirectoryName(dir))
+            {
+                string lib = Path.Combine(dir, "libraries", "com", "mojang", "minecraft", Version);
+                if (Directory.Exists(lib)) foreach (var f in Directory.GetFiles(lib, "*client*.jar")) yield return f;
+                string ver = Path.Combine(dir, "versions", Version);
+                if (Directory.Exists(ver)) foreach (var f in Directory.GetFiles(ver, "*.jar")) yield return f;
+                string vers = Path.Combine(dir, "versions");
+                if (Directory.Exists(vers)) // у TLauncher/ATLauncher папка версии бывает «26.3-fabric…» или «Fabric 26.3»
+                    foreach (var d in Directory.GetDirectories(vers).Where(d => Path.GetFileName(d).Contains(Version) && !Path.GetFileName(d).Equals(Version)))
+                        foreach (var f in Directory.GetFiles(d, "*.jar")) yield return f;
+            }
         }
 
         private static void Open()

@@ -32,6 +32,11 @@ namespace SlBridge.Launcher
                 "Shapes can be mirrored left to right, small shapes can go anywhere in the grid. Minecraft iron and diamond chestplates are replaced by SL light and combat armor. " +
                 "Darkness in Minecraft is real — craft a lantern and hold it lit in your hand (or a flashlight — it shines a narrow beam where you look). " +
                 "Your SL items show up in Minecraft windows too: the Micro H.I.D., Jailbird and Particle Disruptor can be recharged (the “Recharge” group)."), full)));
+            if (!McIcons.Available)
+                flow.Controls.Add(Break(Ui.Wrap(L.T("⚠ Картинки предметов не загрузились: лаунчер не нашёл файлы Minecraft 26.3 (бывает с некоторыми лаунчерами). " +
+                                                    "Ниже — цветные обозначения. Все рецепты с настоящими предметами есть в игре: клавиша U — книга крафтов.",
+                                                    "⚠ Item pictures didn't load: the launcher couldn't find the Minecraft 26.3 files (happens with some launchers). " +
+                                                    "Colour codes are shown below. All recipes with real items are in the game: press U for the crafting book."), full, 10f, Ui.Warn)));
             flow.Controls.Add(Break(new LegendPanel(full)));
 
             string group = null;
