@@ -43,6 +43,15 @@ public final class CollisionStreamer {
 
     public void reset() { sent.clear(); dirty.clear(); }
 
+    // летящие гранаты / SCP-018 (координаты Minecraft); живут 1.5 с после последнего обновления
+    private static volatile double[][] focus;
+    private static volatile long focusUntil;
+
+    public static void setFocus(double[][] pts) {
+        focus = pts.length > 0 ? pts : null;
+        focusUntil = System.nanoTime() + 1_500_000_000L;
+    }
+
     public void tick(Level level, BridgeServer bridge, int radius, int budget) {
         // Клиент ещё в старом измерении (экран загрузки после портала), а позиция уже новая — не строим
         // коллизии нового места из блоков старого измерения.
@@ -57,19 +66,31 @@ public final class CollisionStreamer {
         int pcy = Math.floorDiv((int) Math.floor(Pose.feetY), C);
         int pcz = Math.floorDiv((int) Math.floor(Pose.z), C);
 
-        List<long[]> todo = new ArrayList<>(); // {key, dist²}
+        // центры: игрок и (на время полёта) гранаты / SCP-018 — вокруг каждого куб 3×3×3 ячейки
+        List<int[]> centers = new ArrayList<>();
+        centers.add(new int[]{pcx, pcy, pcz, 0});
+        double[][] fp = System.nanoTime() < focusUntil ? focus : null;
+        if (fp != null)
+            for (double[] f : fp)
+                centers.add(new int[]{Math.floorDiv((int) Math.floor(f[0]), C), Math.floorDiv((int) Math.floor(f[1]), C), Math.floorDiv((int) Math.floor(f[2]), C), 1});
+
+        Map<Long, Long> todoMap = new HashMap<>(); // key → приоритет (меньше — раньше)
         Set<Long> wanted = new HashSet<>();
-        for (int cx = pcx - radius; cx <= pcx + radius; cx++)
-            for (int cy = pcy - radius; cy <= pcy + radius; cy++)
-                for (int cz = pcz - radius; cz <= pcz + radius; cz++) {
-                    // ячейки выше/ниже мира тоже отправляем (пустыми) — SL знает, что там «построено» и не замораживает
-                    long key = BlockPos.asLong(cx, cy, cz);
-                    wanted.add(key);
-                    if (!sent.containsKey(key) || dirty.contains(key)) {
-                        int dx = cx - pcx, dy = cy - pcy, dz = cz - pcz;
-                        todo.add(new long[]{key, (long) dx * dx + (long) dy * dy + (long) dz * dz});
+        for (int[] ctr : centers)
+            for (int cx = ctr[0] - radius; cx <= ctr[0] + radius; cx++)
+                for (int cy = ctr[1] - radius; cy <= ctr[1] + radius; cy++)
+                    for (int cz = ctr[2] - radius; cz <= ctr[2] + radius; cz++) {
+                        // ячейки выше/ниже мира тоже отправляем (пустыми) — SL знает, что там «построено» и не замораживает
+                        long key = BlockPos.asLong(cx, cy, cz);
+                        wanted.add(key);
+                        if (!sent.containsKey(key) || dirty.contains(key)) {
+                            int dx = cx - ctr[0], dy = cy - ctr[1], dz = cz - ctr[2];
+                            long pr = (long) dx * dx + (long) dy * dy + (long) dz * dz + ctr[3];
+                            todoMap.merge(key, pr, Math::min);
+                        }
                     }
-                }
+        List<long[]> todo = new ArrayList<>(todoMap.size());
+        todoMap.forEach((k, v) -> todo.add(new long[]{k, v}));
         todo.sort((a, b) -> Long.compare(a[1], b[1]));
 
         int done = 0;

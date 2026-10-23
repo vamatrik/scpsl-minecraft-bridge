@@ -59,10 +59,15 @@ namespace SlBridge
         public float UnfreezeDelay { get; set; } = 0.3f;
         [Description("Сколько секунд максимум ждать пола под ногами после телепорта (если там правда пустота — потом отпускаем).")]
         public float TeleportMaxWait { get; set; } = 10f;
-        [Description("Плавание: ускорение всплытия в воде и в лаве (м/с²), и погружения, если присесть.")]
-        public float SwimRise { get; set; } = 3.5f;
-        public float SwimSink { get; set; } = 2.5f;
-        public float LavaRise { get; set; } = 1.5f;
+        [Description("Плавание и лестницы: скорость (м/с) всплытия в воде, погружения (если присесть), всплытия в лаве и подъёма/спуска по лестнице.")]
+        public float SwimRise { get; set; } = 2f;
+        public float SwimSink { get; set; } = 2f;
+        public float LavaRise { get; set; } = 1f;
+        public float ClimbSpeed { get; set; } = 2.4f;
+
+        [Description("Сила взрыва в Minecraft (как у динамита — 4): осколочная граната и SCP-018. 0 — не взрывать мир Minecraft.")]
+        public float GrenadeExplosionPower { get; set; } = 3f;
+        public float Scp018ExplosionPower { get; set; } = 1.5f;
 
         [Description("Яркость света в Minecraft от лампы (Lantern) в руке, 0–15. Без лампы в темноте темно.")]
         public int LanternLight { get; set; } = 14;

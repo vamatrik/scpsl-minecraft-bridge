@@ -143,6 +143,8 @@ namespace SlBridge
             PlayerEvents.SearchedToy += OnSearchedToy;
             PlayerEvents.DroppingItem += OnDropping;
             PlayerEvents.DroppingAmmo += OnDroppingAmmo;
+            PlayerEvents.ThrewProjectile += OnThrewProjectile;
+            ServerEvents.ExplosionSpawning += OnExplosion;
             PlayerEvents.Dying += OnDying;
             PlayerEvents.Hurting += OnHurting;
             PlayerEvents.ProcessedScp1509Message += On1509;
@@ -168,6 +170,8 @@ namespace SlBridge
             PlayerEvents.SearchedToy -= OnSearchedToy;
             PlayerEvents.DroppingItem -= OnDropping;
             PlayerEvents.DroppingAmmo -= OnDroppingAmmo;
+            PlayerEvents.ThrewProjectile -= OnThrewProjectile;
+            ServerEvents.ExplosionSpawning -= OnExplosion;
             PlayerEvents.Dying -= OnDying;
             PlayerEvents.Hurting -= OnHurting;
             PlayerEvents.ProcessedScp1509Message -= On1509;
@@ -347,8 +351,10 @@ namespace SlBridge
         {
             if (ev.Player != _player) return;
             if (!_worldItems.TryGetEntity(ev.Interactable, out int id, out var stack)) return;
+            // 8 слотов SL; патроны SL слота не занимают, стак Minecraft может долиться в такой же неполный
             bool hasRoom = _player.Items.Count() < 8
-                           || (stack != null && _inv.All.Any(s => s.Id == stack.Id && s.Count < s.Max));
+                           || (stack != null && stack.Sl != null && stack.Sl.StartsWith("Ammo"))
+                           || (stack != null && stack.Sl == null && _inv.All.Any(s => s.Id == stack.Id && s.Count < s.Max));
             if (!hasRoom) { _player.SendHint(L.T("<size=22>Инвентарь полон</size>", "<size=22>Inventory is full</size>"), 1.5f); return; }
             _mc.Send("{\"t\":\"pickup\",\"e\":" + id + "}");
         }
@@ -368,6 +374,43 @@ namespace SlBridge
             var stack = McStack.ForSl(ev.Item); // с состоянием: обвесы, магазин, заряд
             _player.RemoveItem(ev.Item);
             DropToMinecraft(stack, true);
+        }
+
+        // ───── гранаты и SCP-018 ─────
+        // Пока летят — Minecraft строит коллизии и вокруг них (иначе за пределами куба вокруг игрока они проваливаются,
+        // а SCP-018 не от чего отскакивать). Взрыв SL повторяется в мире Minecraft: ломает блоки, ранит мобов.
+        private readonly List<Projectile> _flying = new List<Projectile>();
+        private float _nextFocus;
+
+        private void OnThrewProjectile(PlayerThrewProjectileEventArgs ev)
+        {
+            if (ev.Player != _player || ev.Projectile == null) return;
+            _flying.Add(ev.Projectile);
+            if (_flying.Count > 6) _flying.RemoveAt(0);
+        }
+
+        private void TickFlying()
+        {
+            if (_flying.Count == 0 || Time.time < _nextFocus || !_mc.Connected) return;
+            _nextFocus = Time.time + 0.1f;
+            _flying.RemoveAll(p => p == null || p.IsDestroyed);
+            var pts = new List<string>();
+            foreach (var p in _flying)
+            {
+                var mc = CoordMap.SlToMc(p.Position);
+                pts.Add("[" + F(mc.x) + "," + F(mc.y) + "," + F(mc.z) + "]");
+            }
+            _mc.Send("{\"t\":\"focus\",\"p\":[" + string.Join(",", pts) + "]}");
+        }
+
+        private void OnExplosion(ExplosionSpawningEventArgs ev)
+        {
+            if (_player == null || !_hasSpawn || !_mc.Connected) return;
+            float power = ev.ExplosionType == ExplosionType.Grenade ? Config.GrenadeExplosionPower
+                        : ev.ExplosionType == ExplosionType.SCP018 ? Config.Scp018ExplosionPower : 0f;
+            if (power <= 0f) return;
+            var mc = CoordMap.SlToMc(ev.Position);
+            _mc.Send("{\"t\":\"explode\"," + Vec("", mc) + ",\"power\":" + F(power) + "}");
         }
 
         private void OnDroppingAmmo(PlayerDroppingAmmoEventArgs ev)
@@ -627,6 +670,7 @@ namespace SlBridge
             }
 
             PollMelee();
+            TickFlying();
 
             bool wantSolid = _player.CurrentItem is LabApi.Features.Wrappers.JailbirdItem;
             if (wantSolid != _mobsSolid)
@@ -737,15 +781,40 @@ namespace SlBridge
         /// </summary>
         private void ApplySwimGravity(bool noclip)
         {
-            Vector3 g = DefaultGravity * Config.GravityScale;
+            // вертикальная скорость по позиции (сглаженная)
+            float now = Time.time, dt = now - _lastVyTime;
+            if (dt > 0.02f)
+            {
+                float vy = (_player.Position.y - _lastVyY) / dt;
+                _vy = dt > 0.5f ? 0f : Mathf.Lerp(_vy, vy, 0.5f);
+                _lastVyY = _player.Position.y;
+                _lastVyTime = now;
+            }
+
+            // Целевая вертикальная скорость: как в Minecraft — в воде всплываешь (присел — тонешь), у поверхности держишься,
+            // на лестнице смотришь вверх — лезешь, вниз — спускаешься, прямо — висишь. Гравитация SL подгоняет к ней скорость.
+            float? target = null;
             if (!noclip)
             {
-                if (_fluidEye != 0) g = new Vector3(0f, IsSneaking() ? -Config.SwimSink : _fluidEye == 2 ? Config.LavaRise : Config.SwimRise, 0f);
-                else if (_fluidFeet != 0) g = new Vector3(0f, -6f, 0f); // голова над поверхностью — мягко тянет вниз, держимся на плаву
+                float look = _player.Camera.forward.y;
+                if (_fluidEye != 0) target = IsSneaking() ? -Config.SwimSink : _fluidEye == 2 ? Config.LavaRise : Config.SwimRise;
+                else if (_climb) target = IsSneaking() ? 0f : look > 0.3f ? Config.ClimbSpeed : look < -0.5f ? -Config.ClimbSpeed : 0f;
+                else if (_fluidFeet != 0) target = -0.3f; // голова над водой — держимся на плаву
             }
-            if ((_player.Gravity - g).sqrMagnitude < 0.0001f) return;
+            Vector3 g;
+            if (target == null) g = DefaultGravity * Config.GravityScale;
+            else g = new Vector3(0f, Mathf.Clamp((target.Value - _vy) * 8f, -25f, 25f), 0f);
+
+            // не дёргаем сеть по мелочи: обновляем, если изменилось заметно, и не чаще 10 раз в секунду
+            var cur = _player.Gravity;
+            bool normal = target == null;
+            if (normal ? (cur - g).sqrMagnitude < 0.0001f : (Mathf.Abs(cur.y - g.y) < 1f || now < _nextGravitySet)) return;
+            _nextGravitySet = now + 0.1f;
             _player.Gravity = g;
         }
+
+        private float _vy, _lastVyY, _lastVyTime, _nextGravitySet;
+        private bool _climb;
 
         private void FreezeIfNotBuilt(Vector3 pos)
         {
@@ -903,6 +972,7 @@ namespace SlBridge
                 case "fluid":
                     _fluidFeet = (int)m.Num("f");
                     _fluidEye = (int)m.Num("e");
+                    _climb = m.Num("c") > 0;
                     break;
 
                 case "sec":

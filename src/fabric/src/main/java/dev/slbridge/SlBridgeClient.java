@@ -70,6 +70,7 @@ public final class SlBridgeClient implements ClientModInitializer {
         // Урон игроку Minecraft не наносится — он пересылается в SCP:SL (×5) и снимается там.
         ServerLivingEntityEvents.ALLOW_DAMAGE.register((entity, source, amount) -> {
             if (!(entity instanceof ServerPlayer) || !isBridgeActive()) return true;
+            if (ServerBridge.ownExplosion) return false; // взрыв гранаты SL — игрока уже ранил сам SL
             boolean ignored = source.is(DamageTypes.IN_WALL) || source.is(DamageTypes.FLY_INTO_WALL)
                     || source.is(DamageTypes.CRAMMING) || source.is(DamageTypes.STARVE);
             if (!ignored && amount > 0 && !source.is(net.minecraft.tags.DamageTypeTags.BYPASSES_COOLDOWN)) {
@@ -142,6 +143,24 @@ public final class SlBridgeClient implements ClientModInitializer {
             case "resync" -> { // SL пересоздал коллизии/объекты — пришлём всё заново
                 mc.execute(collisions::reset);
                 serverBridge.resetStreams();
+            }
+            case "focus" -> { // летящие гранаты / SCP-018: вокруг них тоже строим коллизии
+                var arr = m.getAsJsonArray("p");
+                double[][] pts = new double[arr.size()][];
+                for (int i = 0; i < arr.size(); i++) {
+                    var a = arr.get(i).getAsJsonArray();
+                    pts[i] = new double[]{a.get(0).getAsDouble(), a.get(1).getAsDouble(), a.get(2).getAsDouble()};
+                }
+                CollisionStreamer.setFocus(pts);
+            }
+            case "explode" -> {
+                double ex = m.get("x").getAsDouble(), ey = m.get("y").getAsDouble(), ez = m.get("z").getAsDouble();
+                float power = m.get("power").getAsFloat();
+                onServer(() -> {
+                    IntegratedServer server = mc.getSingleplayerServer();
+                    ServerPlayer sp = server == null ? null : ServerBridge.player(server);
+                    if (sp != null) serverBridge.explode(sp, ex, ey, ez, power);
+                });
             }
             case "debug" -> mc.execute(() -> { // F3+B / F3+G из SL
                 String what = m.has("what") ? m.get("what").getAsString() : "";
@@ -224,6 +243,8 @@ public final class SlBridgeClient implements ClientModInitializer {
         if (screen instanceof net.minecraft.client.gui.screens.inventory.AbstractContainerScreen<?>
                 || screen instanceof net.minecraft.client.gui.screens.WinScreen) { // титры после Энда — показываем, их закрытие возвращает в Верхний мир
             if (!uiMode) { uiMode = true; mc.getWindow().setTitle(UI_TITLE); }
+        } else if (screen instanceof net.minecraft.client.gui.screens.InBedChatScreen) {
+            // спим: экран кровати не закрываем (его закрытие будит)
         } else {
             if (screen != null) mc.gui.setScreen(null);
             if (uiMode) {
@@ -253,7 +274,7 @@ public final class SlBridgeClient implements ClientModInitializer {
         p.getAbilities().mayfly = true;
         p.getAbilities().flying = true;
         p.setDeltaMovement(Vec3.ZERO);
-        p.snapTo(Pose.x, Pose.feetY, Pose.z, Pose.yaw, Pose.pitch);
+        if (!p.isSleeping()) p.snapTo(Pose.x, Pose.feetY, Pose.z, Pose.yaw, Pose.pitch);
 
         collisions.tick(mc.level, bridge, config.collisionRadiusCells, config.collisionCellsPerTick);
     }

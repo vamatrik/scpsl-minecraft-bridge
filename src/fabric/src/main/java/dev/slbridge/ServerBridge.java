@@ -168,6 +168,14 @@ public final class ServerBridge {
         // ждём, пока SL подтвердит телепорт (придёт поза с новым номером), иначе утащим игрока назад
         if (Pose.lastSeq < Pose.minSeq) return;
 
+        // 1б) Сон в кровати: тело Minecraft лежит в кровати (не тащим его за камерой). Ушёл в SL от кровати — проснулся.
+        if (sp.isSleeping()) {
+            if (sleepFrom == null) sleepFrom = new Vec3(Pose.x, Pose.feetY, Pose.z);
+            if (new Vec3(Pose.x, Pose.feetY, Pose.z).distanceToSqr(sleepFrom) > 2.25) sp.stopSleepInBed(true, true);
+            else { lastSnap = sp.position(); lastLevel = level; return; }
+        }
+        sleepFrom = null;
+
         // 2) Тело игрока — там, где камера SL. От этого зависят чанки, цели мобов, порталы.
         Vec3 prev = sp.position();
         double feetY = Pose.feetY;
@@ -365,6 +373,23 @@ public final class ServerBridge {
 
     private int lastFluidCode = -1;
     private int lastLedgeTick = -100;
+    private Vec3 sleepFrom;
+
+    /** Взрыв в мире Minecraft (граната, SCP-018) — блоки и мобы; игроку урон уже нанёс SL, второй раз не считаем. */
+    public static volatile boolean ownExplosion;
+
+    public void explode(ServerPlayer sp, double x, double y, double z, float power) {
+        ownExplosion = true;
+        try {
+            sp.level().explode(sp, x, y, z, power, net.minecraft.world.level.Level.ExplosionInteraction.TNT);
+        } finally {
+            ownExplosion = false;
+        }
+    }
+
+    private static boolean climbable(ServerLevel level, BlockPos p) {
+        return level.getBlockState(p).is(net.minecraft.tags.BlockTags.CLIMBABLE);
+    }
 
     private static int fluidAt(ServerLevel level, BlockPos p) {
         var fs = level.getFluidState(p);
@@ -375,19 +400,29 @@ public final class ServerBridge {
     private void fluids(ServerPlayer sp, ServerLevel level, Vec3 prev, Vec3 now, double feetY) {
         int f = fluidAt(level, BlockPos.containing(now.x, feetY + 0.2, now.z));
         int e = fluidAt(level, BlockPos.containing(Pose.x, Pose.y, Pose.z));
-        int code = f * 3 + e;
+        // лестница, лианы, строительные леса — у ног или на уровне тела
+        int c = climbable(level, BlockPos.containing(now.x, feetY + 0.2, now.z)) || climbable(level, BlockPos.containing(now.x, feetY + 1.0, now.z)) ? 1 : 0;
+        int code = (f * 3 + e) * 2 + c;
         if (code != lastFluidCode || tickNo % 20 == 0) {
             lastFluidCode = code;
             JsonObject m = new JsonObject();
             m.addProperty("t", "fluid");
             m.addProperty("f", f);
             m.addProperty("e", e);
+            m.addProperty("c", c);
             bridge.send(m);
         }
-        // Выбраться на берег: плывём у поверхности на блок впереди, над ним свободно — ставим ноги на его верх.
-        if (f == 0 || e != 0 || tickNo - lastLedgeTick < 8 || Pose.noclip) return;
+        // Выбраться на берег / с лестницы наверх: блок впереди, верх которого чуть выше ног, над ним свободно —
+        // ставим ноги на его верх (как Minecraft выпускает из воды и с лестницы).
+        boolean swimming = f != 0 && e == 0;
+        if (!(swimming || c != 0) || tickNo - lastLedgeTick < 8 || Pose.noclip) return;
         double vx = now.x - prev.x, vz = now.z - prev.z, hs = Math.hypot(vx, vz);
-        if (hs < 0.03) return;
+        if (hs < 0.03) {
+            if (c == 0) return;
+            // на лестнице упираемся в неё — берём направление взгляда
+            double yaw = Math.toRadians(Pose.yaw);
+            vx = -Math.sin(yaw); vz = Math.cos(yaw); hs = 1;
+        }
         BlockPos ahead = BlockPos.containing(now.x + vx / hs * 0.6, feetY + 0.2, now.z + vz / hs * 0.6);
         for (int dy = 0; dy <= 1; dy++) {
             BlockPos b = ahead.above(dy);
@@ -631,6 +666,16 @@ public final class ServerBridge {
         sp.resetFallDistance();
         fallDist = 0;
         lastFeetY = Double.NaN;
+        // Кровать / якорь возрождения — как в Minecraft; нет их (или кровать сломана) — точка появления мира.
+        try {
+            var tt = sp.findRespawnPositionAndUseSpawnBlock(true, net.minecraft.world.level.portal.TeleportTransition.DO_NOTHING);
+            if (tt != null && sp.getRespawnConfig() != null && !tt.missingRespawnBlock()) {
+                Vec3 p = tt.position();
+                sp.teleportTo(tt.newLevel(), p.x, p.y, p.z, Set.of(), tt.yRot(), 0f, true);
+                sendTeleport(sp);
+                return;
+            }
+        } catch (Exception e) { SlBridgeClient.LOG.warn("[SLBridge] respawn point", e); }
         ServerLevel ow = server.overworld();
         BlockPos sp0 = ow.getRespawnData().pos();
         ow.getChunk(sp0.getX() >> 4, sp0.getZ() >> 4); // загрузить чанк, иначе высота посчитается как дно мира

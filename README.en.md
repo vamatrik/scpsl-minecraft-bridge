@@ -51,6 +51,7 @@ You start with a machete (to break blocks and fight) and one medkit — everythi
 * **I** — Minecraft inventory with 2×2 crafting. Keys can be rebound in SL: Esc → Settings → Server-specific.
 * SL console (`~`): `.mc time set day`; in the admin panel: `mc give @s diamond 5`.
 * In water and lava you float up by yourself, crouch to dive; just swim into the shore to climb out. **F3+B** — hitboxes, **F3+G** — chunk borders.
+* Ladders and vines: look up to climb, down to descend. Beds: sleep and set your respawn point. Grenades and SCP-018 blow up the Minecraft world too.
 * Darkness is real: hold a lit **lantern** (lights up around you) or a **flashlight** (a narrow beam where you look).
 
 ## Crafting
