@@ -621,6 +621,17 @@ namespace SlBridge
             catch (Exception e) { Logger.Warn("[SlBridge] SCP-127 фраза: " + e.Message); }
         }
 
+        private static void Scp127ResetMisses(FirearmItem f127)
+        {
+            try
+            {
+                if (InventorySystem.Items.Firearms.Modules.ModulesUtils.TryGetModule(f127.Base, out InventorySystem.Items.Firearms.Modules.Scp127.Scp127BadAimVoiceTrigger bad, false))
+                    typeof(InventorySystem.Items.Firearms.Modules.Scp127.Scp127BadAimVoiceTrigger)
+                        .GetField("_missedAmmo", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?.SetValue(bad, 0);
+            }
+            catch { }
+        }
+
         private void Scp127KillAmmo(FirearmItem f127)
         {
             try
@@ -1502,6 +1513,8 @@ namespace SlBridge
                         // SCP-127 растёт от урона по живым целям — мобы Minecraft тоже считаются
                         if (_player.CurrentItem is FirearmItem f127 && f127.Type == ItemType.GunSCP127 && SlItemState.TryGet127(f127, out var m127))
                         {
+                            // попадание по мобу — для 127 это не промах (иначе после магазина он ворчит «опять мимо»)
+                            Scp127ResetMisses(f127);
                             // как в SL: опыт = урон; за убийство — ещё KillBonus оружия и патроны в магазин (KillBonus магазина)
                             float xp = _lastShotDmg;
                             if (m.Bool("dead")) xp += m127.KillBonus;

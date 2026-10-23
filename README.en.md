@@ -73,7 +73,7 @@ In Minecraft windows (crafting table, inventory, chest) drag items with the mous
 * **SCP-268 (cap)** makes you invisible to Minecraft mobs too: they lose track of you while it lasts.
 * **SCP-127** levels up from damage to mobs; kills give bonus XP, ammo and a kill line like for a human. Bosses get their own commentary: Warden — like SCP-939, Ender Dragon — like SCP-106, Wither — like SCP-049 (once 127 has befriended you).
 * **Boss health bar** (dragon, wither) is shown at the top of the screen.
-* **Your role** in the Minecraft world is chosen in the launcher, “⚙ Settings” tab: Tutorial, Class-D, Scientist, Facility Guard, MTF, Chaos Insurgency (their uniform is green — parts may show through). **Micro H.I.D.** damage and range match the game. **Grenades and SCP-018** blow up the Minecraft world too.
+* **Your role** in the Minecraft world is chosen in the launcher, “⚙ Settings” tab: Class-D (default), Tutorial, Scientist, Facility Guard, MTF, Chaos Insurgency (their uniform is green — parts may show through). **Micro H.I.D.** damage and range match the game. **Grenades and SCP-018** blow up the Minecraft world too.
 * **Water and lava.** You float up by yourself; crouch or walk slowly to dive; swim into the shore to climb out. Water cancels fall damage. Lava burns; fire goes out after death.
 * **Ladders and vines.** Look up to climb, down to descend, straight to hang. No fall damage on them.
 * **Falling** follows Minecraft rules: damage = height − 3 blocks (hay, honey, beds, slime soften it).

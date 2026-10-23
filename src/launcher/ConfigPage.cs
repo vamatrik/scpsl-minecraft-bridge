@@ -45,8 +45,8 @@ namespace SlBridge.Launcher
 
         private static readonly (string, string, string)[] Roles =
         {
-            ("Tutorial", "Обучение (по умолчанию)", "Tutorial (default)"),
-            ("ClassD", "Класс D", "Class-D"),
+            ("ClassD", "Класс D (по умолчанию)", "Class-D (default)"),
+            ("Tutorial", "Обучение", "Tutorial"),
             ("Scientist", "Научный сотрудник", "Scientist"),
             ("FacilityGuard", "Охрана комплекса", "Facility Guard"),
             ("NtfPrivate", "МОГ: рядовой", "MTF Private"),

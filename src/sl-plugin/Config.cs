@@ -19,7 +19,7 @@ namespace SlBridge
         public float OriginZ { get; set; } = 3000f;
 
         [Description("Роль, которой играет игрок в мире Minecraft.")]
-        public RoleTypeId Role { get; set; } = RoleTypeId.Tutorial;
+        public RoleTypeId Role { get; set; } = RoleTypeId.ClassD;
 
         [Description("Стартовый набор (только при первом входе в мир или по .kit start): деревянный мультитул — ломать и бить, аптечка. Остальное крафтится.")]
         public List<ItemType> Loadout { get; set; } = new List<ItemType> { ItemType.SCP1509, ItemType.Medkit };
@@ -104,7 +104,7 @@ namespace SlBridge
         [Description("Сколько секунд держать E, чтобы подобрать предмет Minecraft.")]
         public float PickupTime { get; set; } = 0.4f;
         [Description("Через сколько секунд после смерти возрождаться.")]
-        public float RespawnDelay { get; set; } = 5f;
+        public float RespawnDelay { get; set; } = 3f;
         [Description("Сколько коллизионных примитивов создавать за кадр (меньше — плавнее, но медленнее подгрузка).")]
         public int CollisionBudgetPerFrame { get; set; } = 120;
 
@@ -126,8 +126,8 @@ namespace SlBridge
         public float JailbirdSplash { get; set; } = 1f;
         [Description("Рывок Jailbird врезался в моба: на сколько секунд связать игрока (рывок останавливается).")]
         public float JailbirdHitStun { get; set; } = 0.4f;
-        [Description("SCP-127 получает опыт за урон по мобам Minecraft: множитель (1 — как за урон по игрокам).")]
-        public float Scp127ExpMultiplier { get; set; } = 1f;
+        [Description("SCP-127 получает опыт за урон по мобам Minecraft: множитель (1 — как за урон по игрокам; 0.3 — мобов много, а уровень у моста не сбрасывается).")]
+        public float Scp127ExpMultiplier { get; set; } = 0.3f;
         public float Scp1509Damage { get; set; } = 0f;
 
         [Description("Выключить всё, что мешает в мире Minecraft: обеззараживание ЛКЗ, Dead Man's Sequence, боеголовку, прибытие отрядов.")]
