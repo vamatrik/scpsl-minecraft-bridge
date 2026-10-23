@@ -33,7 +33,7 @@ namespace SlBridge
             if (SlItemNames.All.TryGetValue(key, out var n)) { name = L.T(n.Ru, n.En); icon = n.Icon; }
             if (ammo > 0) name += " (" + ammo + ")";
             if (!string.IsNullOrEmpty(state)) name += SlItemState.Describe(state);
-            return new McStack { Id = "minecraft:barrier", Name = name, Count = 1, Max = 64, Sl = key, Model = "minecraft:" + icon, Ammo = ammo, State = state };
+            return new McStack { Id = "minecraft:trial_key", Name = name, Count = 1, Max = 64, Sl = key, Model = "minecraft:" + icon, Ammo = ammo, State = state };
         }
 
         /// <summary>Настоящий предмет SL (с его состоянием) как предмет Minecraft.</summary>

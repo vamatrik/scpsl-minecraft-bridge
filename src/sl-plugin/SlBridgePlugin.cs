@@ -184,7 +184,7 @@ namespace SlBridge
             ServerSpecificSettingsSync.ServerOnSettingValueReceived -= OnSetting;
             StaticUnityMethods.OnUpdate -= OnUpdate;
             _mc?.Stop();
-            _collision?.Clear();
+            _collision?.DestroyAll();
             _backdrop?.Destroy();
             _waypoints?.Clear();
             _worldItems?.Clear();
@@ -503,7 +503,8 @@ namespace SlBridge
             var items = _player.Items.ToList();
             _useSerials = items.Select(i => i.Serial).ToList();
             _slSentSerials = items.Where(i => !_inv.IsStack(i)).Select(i => i.Serial).ToList();
-            heldSlot = _player.CurrentItem != null ? _useSerials.IndexOf(_player.CurrentItem.Serial) : -1;
+            // в руке Minecraft — только стак Minecraft; предмет SL в руке = пустая рука (иначе заглушку можно «применить»)
+            heldSlot = _player.CurrentItem != null && _inv.IsStack(_player.CurrentItem) ? _useSerials.IndexOf(_player.CurrentItem.Serial) : -1;
             return "[" + string.Join(",", items.Select(i => (_inv.IsStack(i) ? _inv.Get(i) : McStack.ForSl(i)).ToJson())) + "]";
         }
 
@@ -604,6 +605,7 @@ namespace SlBridge
             _mc.Drain(Handle);
             DisableDeconOnce();
             _collision.Process(Config.CollisionBudgetPerFrame);
+            _collision.Tick();
 
             if (_player == null || !_player.IsOnline)
             {

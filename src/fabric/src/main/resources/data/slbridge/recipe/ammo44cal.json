@@ -9,7 +9,7 @@
   "G": "minecraft:gunpowder"
  },
  "result": {
-  "id": "minecraft:barrier",
+  "id": "minecraft:trial_key",
   "count": 1,
   "components": {
    "minecraft:custom_data": {

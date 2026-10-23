@@ -104,21 +104,76 @@ namespace SlBridge
             _latest[key] = null;
         }
 
+        // ── Пул примитивов ──
+        // Создать/удалить сетевой объект в SL дорого (особенно клиенту), а сдвинуть готовый — дёшево. Поэтому коробки
+        // не удаляются, а «паркуются» далеко внизу и потом переезжают на новое место. Переезжающая коробка на полсекунды
+        // становится нестатичной (чтобы клиент применил новую позицию), потом снова статичной.
+        private static readonly Vector3 ParkPos = new Vector3(0f, -4000f, 0f);
+        private readonly List<PrimitiveObjectToy> _pool = new List<PrimitiveObjectToy>(); // как стек (Stack в BCL игры нет)
+        private readonly List<KeyValuePair<PrimitiveObjectToy, float>> _settling = new List<KeyValuePair<PrimitiveObjectToy, float>>();
+        public int PoolSize => _pool.Count;
+
+        private PrimitiveObjectToy NewToy(Vector3 c, Vector3 s)
+        {
+            var toy = PrimitiveObjectToy.Create(c, Quaternion.identity, s, null, false);
+            toy.Type = PrimitiveType.Cube;
+            toy.Flags = _cfg.DebugShowCollision ? (PrimitiveFlags.Collidable | PrimitiveFlags.Visible) : PrimitiveFlags.Collidable;
+            toy.Color = new Color(1f, 0.55f, 0.1f, 1f); // отладка: оранжевые (не зелёные — зелёный это ключ)
+            toy.MovementSmoothing = 0;
+            toy.IsStatic = true;
+            toy.Spawn();
+            return toy;
+        }
+
+        private void Move(PrimitiveObjectToy toy, Vector3 c, Vector3 s)
+        {
+            if ((toy.Position - c).sqrMagnitude < 1e-6f && (toy.Scale - s).sqrMagnitude < 1e-6f) return;
+            if (toy.IsStatic) toy.IsStatic = false;
+            toy.Position = c;
+            toy.Scale = s;
+            _settling.Add(new KeyValuePair<PrimitiveObjectToy, float>(toy, Time.time + 0.5f));
+        }
+
+        private void Park(PrimitiveObjectToy toy)
+        {
+            if (toy == null || toy.IsDestroyed) return;
+            Move(toy, ParkPos, Vector3.one * 0.01f);
+            _pool.Add(toy);
+        }
+
+        /// <summary>Каждый кадр: переехавшие коробки снова делаем статичными (клиенту не нужно их обновлять).</summary>
+        public void Tick()
+        {
+            if (_settling.Count == 0) return;
+            float now = Time.time;
+            int w = 0;
+            for (int i = 0; i < _settling.Count; i++)
+            {
+                var kv = _settling[i];
+                if (kv.Key == null || kv.Key.IsDestroyed) continue;
+                if (now >= kv.Value) { if (!kv.Key.IsStatic) kv.Key.IsStatic = true; }
+                else _settling[w++] = kv;
+            }
+            _settling.RemoveRange(w, _settling.Count - w);
+        }
+
         public void Apply(string key, float[] b)
         {
-            Remove(key);
-            var list = new List<PrimitiveObjectToy>(b.Length / 6);
-            for (int i = 0; i + 5 < b.Length; i += 6)
+            _sections.TryGetValue(key, out var old);
+            int n = b.Length / 6;
+            var list = new List<PrimitiveObjectToy>(n);
+            for (int i = 0; i < n; i++)
             {
-                CoordMap.McBoxToSl(b[i], b[i + 1], b[i + 2], b[i + 3], b[i + 4], b[i + 5], out var c, out var s);
-                var toy = PrimitiveObjectToy.Create(c, Quaternion.identity, s, null, false);
-                toy.Type = PrimitiveType.Cube;
-                toy.Flags = _cfg.DebugShowCollision ? (PrimitiveFlags.Collidable | PrimitiveFlags.Visible) : PrimitiveFlags.Collidable;
-                toy.Color = new Color(1f, 0.55f, 0.1f, 1f); // отладка: оранжевые (не зелёные — зелёный это ключ)
-                toy.IsStatic = true;
-                toy.Spawn();
+                int j = i * 6;
+                CoordMap.McBoxToSl(b[j], b[j + 1], b[j + 2], b[j + 3], b[j + 4], b[j + 5], out var c, out var s);
+                PrimitiveObjectToy toy = null;
+                if (old != null && i < old.Count && old[i] != null && !old[i].IsDestroyed) toy = old[i];
+                while (toy == null && _pool.Count > 0) { var p = _pool[_pool.Count - 1]; _pool.RemoveAt(_pool.Count - 1); if (p != null && !p.IsDestroyed) toy = p; }
+                if (toy == null) toy = NewToy(c, s);
+                else Move(toy, c, s);
                 list.Add(toy);
             }
+            if (old != null) for (int i = n; i < old.Count; i++) Park(old[i]);
             _builtAt[key] = Time.time; // время последнего обновления: новые коробки ещё должны дойти до клиента
             _sections[key] = list;
             ReceivedSinceReset++;
@@ -127,7 +182,7 @@ namespace SlBridge
         public void Remove(string key)
         {
             if (!_sections.TryGetValue(key, out var list)) return;
-            foreach (var t in list) if (!t.IsDestroyed) t.Destroy();
+            foreach (var t in list) Park(t);
             _sections.Remove(key);
             _builtAt.Remove(key);
         }
@@ -138,6 +193,15 @@ namespace SlBridge
             _pending.Clear();
             _latest.Clear();
             ReceivedSinceReset = 0;
+        }
+
+        /// <summary>Конец раунда/выгрузка: удалить всё, включая пул.</summary>
+        public void DestroyAll()
+        {
+            Clear();
+            foreach (var t in _pool) if (t != null && !t.IsDestroyed) t.Destroy();
+            _pool.Clear();
+            _settling.Clear();
         }
     }
 

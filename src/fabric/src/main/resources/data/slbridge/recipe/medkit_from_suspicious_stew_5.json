@@ -10,7 +10,7 @@
   "minecraft:suspicious_stew"
  ],
  "result": {
-  "id": "minecraft:barrier",
+  "id": "minecraft:trial_key",
   "count": 3,
   "components": {
    "minecraft:custom_data": {

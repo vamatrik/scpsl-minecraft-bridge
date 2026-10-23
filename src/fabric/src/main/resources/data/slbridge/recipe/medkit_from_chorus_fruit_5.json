@@ -10,7 +10,7 @@
   "minecraft:chorus_fruit"
  ],
  "result": {
-  "id": "minecraft:barrier",
+  "id": "minecraft:trial_key",
   "count": 2,
   "components": {
    "minecraft:custom_data": {

@@ -10,7 +10,7 @@
   "minecraft:golden_carrot"
  ],
  "result": {
-  "id": "minecraft:barrier",
+  "id": "minecraft:trial_key",
   "count": 3,
   "components": {
    "minecraft:custom_data": {

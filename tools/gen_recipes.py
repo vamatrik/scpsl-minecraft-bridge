@@ -126,7 +126,7 @@ LANG_RU, LANG_EN = {}, {}
 def result(key, name, icon, count):
     tkey = "item.slbridge." + key.lower()
     LANG_RU[tkey] = name; LANG_EN[tkey] = NAMES_EN[key]
-    return {"id": "minecraft:barrier", "count": count, "components": {  # барьер не участвует ни в одном рецепте — заглушку нельзя случайно скрафтить во что-то
+    return {"id": "minecraft:trial_key", "count": count, "components": {  # ключ испытаний: не блок (не ставится), ни в одном рецепте, сам ничего не делает
         "minecraft:custom_data": {"slItem": key},
         "minecraft:item_name": {"translate": tkey, "fallback": NAMES_EN[key]},
         "minecraft:item_model": "minecraft:" + icon,
@@ -180,7 +180,7 @@ for key, ru, en in RECHARGE:
     base = next(x for x in SHAPED if x[0] == key)
     obj = {"type": "minecraft:crafting_shaped", "category": "equipment", "pattern": ["rrr", "r*r", "rrr"],
            "key": {"r": "minecraft:redstone_block",
-                   "*": {"fabric:type": "fabric:custom_data", "base": ["minecraft:barrier", "minecraft:paper"], "nbt": {"slItem": key}}},
+                   "*": {"fabric:type": "fabric:custom_data", "base": ["minecraft:trial_key", "minecraft:barrier", "minecraft:paper"], "nbt": {"slItem": key}}},
            "result": result(key, base[1], base[2], 1)}
     put(f"data/slbridge/recipe/recharge_{key.lower()}.json", obj)
     table.append(dict(key=key, name=ru, name_en=en, group='Перезарядка', shaped=True, grid=["rrr", "r*r", "rrr"], legend=['r', '*'], count=1))
