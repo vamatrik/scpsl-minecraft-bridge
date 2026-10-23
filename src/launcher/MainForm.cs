@@ -180,7 +180,7 @@ namespace SlBridge.Launcher
             };
             var sod = new CheckBox
             {
-                Text = L.T("Sodium — быстрее рисует мир (для 26.3 пока бета)", "Sodium — faster world rendering (still beta for 26.3)"),
+                Text = L.T("Sodium — быстрее рисует мир (меняет отрисовку сильнее всех — включай вторым)", "Sodium — faster world rendering (changes rendering the most — enable it second)"),
                 AutoSize = true, ForeColor = Ui.Text, Checked = _cfg.SodiumMod, Margin = new Padding(0, 2, 0, 2),
             };
             async void SyncOpt()
