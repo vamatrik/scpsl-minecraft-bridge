@@ -309,3 +309,7 @@ Feel free to use the bridge in your YouTube videos and streams (or anywhere else
 ## Authors
 
 **Claude x Vamatrik** — idea, testing and direction — Vamatrik; architecture and code — Claude (Anthropic).
+
+## License
+
+[MIT](LICENSE) — free to use, modify and distribute as long as the authors are credited. SCP: Secret Laboratory and Minecraft belong to their owners (Northwood Studios, Mojang); the bridge contains none of their files.

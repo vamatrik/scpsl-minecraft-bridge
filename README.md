@@ -309,3 +309,7 @@ dotnet publish -c Release -r win-x64 --self-contained -p:PublishSingleFile=true 
 ## Авторы
 
 **Claude x Vamatrik** — идея, тесты и направление — Vamatrik; архитектура и код — Claude (Anthropic).
+
+## Лицензия
+
+[MIT](LICENSE) — можно использовать, менять и распространять, сохранив упоминание авторов. SCP: Secret Laboratory и Minecraft принадлежат их правообладателям (Northwood Studios, Mojang); мост не содержит их файлов.
