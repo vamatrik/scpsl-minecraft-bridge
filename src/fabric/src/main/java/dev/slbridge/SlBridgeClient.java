@@ -93,6 +93,12 @@ public final class SlBridgeClient implements ClientModInitializer {
                     amount = net.minecraft.world.damagesource.CombatRules.getDamageAfterAbsorb(entity, amount, source,
                             entity.getArmorValue(), (float) entity.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.ARMOR_TOUGHNESS));
                 }
+                // чары бронежилета SL (они на броне Minecraft): Защита, Огнеупорность, Невесомость… и Шипы
+                if (entity.level() instanceof net.minecraft.server.level.ServerLevel sl && !source.is(net.minecraft.tags.DamageTypeTags.BYPASSES_ENCHANTMENTS)) {
+                    float prot = net.minecraft.world.item.enchantment.EnchantmentHelper.getDamageProtection(sl, entity, source);
+                    if (prot > 0) amount = net.minecraft.world.damagesource.CombatRules.getDamageAfterMagicAbsorb(amount, prot);
+                    try { net.minecraft.world.item.enchantment.EnchantmentHelper.doPostAttackEffects(sl, entity, source); } catch (Exception thornsErr) { }
+                }
                 JsonObject m = new JsonObject();
                 m.addProperty("t", "hurt");
                 m.addProperty("amount", amount * config.damageScale);
@@ -244,18 +250,20 @@ public final class SlBridgeClient implements ClientModInitializer {
                 double mr = m.has("mr") ? m.get("mr").getAsDouble() : 0, moff = m.has("moff") ? m.get("moff").getAsDouble() : 1.5;
                 float splash = m.has("splash") ? m.get("splash").getAsFloat() : 0f;
                 float mine = m.has("mine") ? m.get("mine").getAsFloat() : 1f;
+                String ench = m.has("ench") ? m.get("ench").getAsString() : "";
                 onServer(() -> {
                     IntegratedServer server = mc.getSingleplayerServer();
                     ServerPlayer sp = server == null ? null : ServerBridge.player(server);
                     if (sp == null) return;
                     actions.mine = mine;
+                    actions.ench = ench;
                     try {
                         if (mr > 0) actions.melee(sp.level(), sp, from, dir, range, mr, moff, dmg, splash, breaks, config, bridge);
                         else actions.shot(sp.level(), sp, from, dir, range, dmg, breaks, kb, config, bridge);
-                    } finally { actions.mine = 1f; }
+                    } finally { actions.mine = 1f; actions.ench = ""; }
                 });
             }
-            case "pickup", "drop", "use", "openInv", "armor", "craftList", "craft", "smeltList", "smelt", "cmd", "respawnReq" -> onServer(() -> {
+            case "pickup", "drop", "use", "openInv", "armor", "xpTake", "craftList", "craft", "smeltList", "smelt", "cmd", "respawnReq" -> onServer(() -> {
                 IntegratedServer server = mc.getSingleplayerServer();
                 if (server != null) serverBridge.handle(server, m);
             });

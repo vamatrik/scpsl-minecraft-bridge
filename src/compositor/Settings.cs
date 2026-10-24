@@ -21,6 +21,8 @@ namespace SlBridge.Compositor
         public float KeyMinBrightness { get; set; } = 0.06f;
         /// <summary>Подстраивать ключ под эффекты SL (низкое HP, ослепление): эталон фона берётся с краёв кадра.</summary>
         public bool AdaptiveKey { get; set; } = true;
+        /// <summary>Пиксель, у которого ключевой канал темнее фона «сейчас» больше чем в 1/x раз, — не фон (тёмный металл оружия). 0 — выключить.</summary>
+        public float KeyRelBrightness { get; set; } = 0.55f;
         /// <summary>
         /// Куда девать окно Minecraft: "offscreen" — за пределы экрана (не перехватывает мышь и фокус),
         /// "behind" — под окном SL.

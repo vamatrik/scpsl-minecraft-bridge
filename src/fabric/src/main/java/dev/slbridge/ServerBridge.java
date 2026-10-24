@@ -57,6 +57,8 @@ public final class ServerBridge {
     public volatile boolean uiOpen;
     /** Уровень брони из SL: 0 — нет, 1 — железо (лёгкая), 2 — алмаз (боевая), 3 — незерит (тяжёлая). */
     private int armorTier;
+    private String armorEnch = "";
+    private int lastXp = -1;
 
     public ServerBridge(BridgeServer bridge, BridgeConfig cfg) {
         this.bridge = bridge;
@@ -150,6 +152,24 @@ public final class ServerBridge {
         if (sp == null) return;
         tickNo++;
         ServerLevel level = sp.level();
+        SlEnchants.regs = server.registryAccess();
+        if (tickNo % 10 == 0) {
+            // предметы SL в инвентаре (в т.ч. только что скрафченные) — зачаровываемые по своему типу
+            var inv = sp.getInventory();
+            for (int i = 0; i < inv.getContainerSize(); i++) {
+                ItemStack st = inv.getItem(i);
+                if (!st.isEmpty() && ItemJson.slKey(st) != null) SlEnchants.ensureEnchantable(st);
+            }
+        }
+        // опыт, который подобрал игрок, — SL чинит им Jailbird с «Починкой» (и вернёт, сколько потратил)
+        int xpNow = sp.totalExperience;
+        if (lastXp >= 0 && xpNow > lastXp) {
+            JsonObject x = new JsonObject();
+            x.addProperty("t", "xp");
+            x.addProperty("n", xpNow - lastXp);
+            bridge.send(x);
+        }
+        lastXp = xpNow;
 
         // Правила мира, которые важны SL: keep_inventory (сохранять инвентарь при смерти).
         boolean keep = level.getGameRules().get(net.minecraft.world.level.gamerules.GameRules.KEEP_INVENTORY);
@@ -321,7 +341,18 @@ public final class ServerBridge {
         for (int i = 0; i < 4; i++) {
             ItemStack cur = sp.getItemBySlot(slots[i]);
             if (set == null) { if (!cur.isEmpty()) sp.setItemSlot(slots[i], ItemStack.EMPTY); }
-            else if (cur.getItem() != set[i]) sp.setItemSlot(slots[i], new ItemStack(set[i]));
+            else if (cur.getItem() != set[i] || !armorEnch.equals(cur.getOrDefault(net.minecraft.core.component.DataComponents.CUSTOM_DATA, net.minecraft.world.item.component.CustomData.EMPTY).copyTag().getStringOr("slArmorEnch", ""))) {
+                // чары бронежилета SL — на каждую часть брони, которой они подходят (Невесомость — ботинкам, Подводное дыхание — шлему)
+                ItemStack piece = new ItemStack(set[i]);
+                var all = SlEnchants.fromString(armorEnch);
+                var mut = new net.minecraft.world.item.enchantment.ItemEnchantments.Mutable(net.minecraft.world.item.enchantment.ItemEnchantments.EMPTY);
+                for (var e : all.entrySet()) if (e.getKey().value().canEnchant(piece)) mut.set(e.getKey(), e.getIntValue());
+                piece.set(net.minecraft.core.component.DataComponents.ENCHANTMENTS, mut.toImmutable());
+                net.minecraft.nbt.CompoundTag t = new net.minecraft.nbt.CompoundTag();
+                t.putString("slArmorEnch", armorEnch);
+                piece.set(net.minecraft.core.component.DataComponents.CUSTOM_DATA, net.minecraft.world.item.component.CustomData.of(t));
+                sp.setItemSlot(slots[i], piece);
+            }
         }
     }
 
@@ -596,7 +627,8 @@ public final class ServerBridge {
                 r.addProperty("open", true);
                 bridge.send(r);
             }
-            case "armor" -> armorTier = m.get("tier").getAsInt();
+            case "armor" -> { armorTier = m.get("tier").getAsInt(); armorEnch = m.has("ench") ? m.get("ench").getAsString() : ""; }
+            case "xpTake" -> { int n = m.get("n").getAsInt(); if (n > 0) { sp.giveExperiencePoints(-n); lastXp = sp.totalExperience; } }
             case "craftList" -> bridge.send(crafting.craftList(sp, level, ItemJson.listFromJson(m.get("inv"))));
             case "craft" -> bridge.send(crafting.craft(sp, level, m.get("rid").getAsString(), m.get("times").getAsInt(), ItemJson.listFromJson(m.get("inv"))));
             case "smeltList" -> bridge.send(crafting.smeltList(sp, level, ItemJson.listFromJson(m.get("inv"))));
@@ -643,7 +675,18 @@ public final class ServerBridge {
         JsonObject r = new JsonObject();
         BlockHitResult hit = level.clip(new ClipContext(from, from.add(dir.scale(cfg.reach)), ClipContext.Block.OUTLINE, ClipContext.Fluid.NONE, sp));
         boolean done = false;
-        if (hit.getType() == HitResult.Type.BLOCK) {
+        // Сначала существо под прицелом (ближе блока): житель — торговля (или «нет» головой), овца — стрижка,
+        // корова — молоко, бирка, поводок, седло, кормёжка для размножения… — всё как ПКМ по мобу в Minecraft.
+        Vec3 blockEnd = hit.getType() == HitResult.Type.BLOCK ? hit.getLocation() : from.add(dir.scale(cfg.reach));
+        var eh = net.minecraft.world.entity.projectile.ProjectileUtil.getEntityHitResult(level, sp, from, blockEnd,
+                new AABB(from, blockEnd).inflate(1.0), e -> e != sp && e.isAlive() && e.isPickable() && !e.isSpectator(), 0f);
+        if (eh != null) {
+            Entity target = eh.getEntity();
+            InteractionResult res = sp.interactOn(target, InteractionHand.MAIN_HAND, eh.getLocation().subtract(target.position()));
+            done = res.consumesAction();
+            if (done) hit = BlockHitResult.miss(blockEnd, net.minecraft.core.Direction.UP, BlockPos.containing(blockEnd)); // блок за мобом не трогаем
+        }
+        if (!done && hit.getType() == HitResult.Type.BLOCK) {
             // Стройка под себя: блок ставится туда, где стоит тело игрока, а игрок в прыжке (ноги выше пола).
             // Minecraft бы отказал (место занято игроком) — поднимаем тело над новым блоком, а SL сообщаем подняться.
             BlockPos place = level.getBlockState(hit.getBlockPos()).canBeReplaced() ? hit.getBlockPos() : hit.getBlockPos().relative(hit.getDirection());

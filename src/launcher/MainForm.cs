@@ -67,7 +67,7 @@ namespace SlBridge.Launcher
             side.Controls.Add(logo);
             _nav = new[] { NavButton(L.T("1  Подготовка", "1  Setup"), 0), NavButton(L.T("2  Играть", "2  Play"), 1), NavButton(L.T("⚒  Крафты", "⚒  Crafting"), 2), NavButton(L.T("⚙  Настройки", "⚙  Settings"), 4), NavButton(L.T("?  Справка", "?  Help"), 3) };
             for (int i = 0; i < _nav.Length; i++) { _nav[i].Location = new Point(10, 100 + i * 46); side.Controls.Add(_nav[i]); }
-            var ver = Ui.Label(L.T("мост 1.2.0\nClaude x Vamatrik", "bridge 1.2.0\nClaude x Vamatrik"), 8.5f, Ui.Muted);
+            var ver = Ui.Label(L.T("мост 1.3.0\nClaude x Vamatrik", "bridge 1.3.0\nClaude x Vamatrik"), 8.5f, Ui.Muted);
             ver.Location = new Point(18, 626);
             side.Controls.Add(ver);
 
@@ -317,7 +317,7 @@ namespace SlBridge.Launcher
             _wOpen = new RadioButton { Text = L.T("Открыть мир", "Open world"), AutoSize = true, ForeColor = Ui.Text, Location = new Point(16, 44), Checked = true };
             _wCreate = new RadioButton { Text = L.T("Создать новый", "Create new"), AutoSize = true, ForeColor = Ui.Text, Location = new Point(150, 44) };
             _wOpen.CheckedChanged += (_, _) => { _worlds.Visible = _wOpen.Checked; _createPanel.Visible = !_wOpen.Checked; };
-            _worlds = new ListBox { Location = new Point(14, 76), Size = new Size(302, 430), BackColor = Ui.Input, ForeColor = Ui.Text, BorderStyle = BorderStyle.None, Font = Ui.F(10.5f), IntegralHeight = false };
+            _worlds = new ListBox { Location = new Point(14, 76), Size = new Size(302, 388), BackColor = Ui.Input, ForeColor = Ui.Text, BorderStyle = BorderStyle.None, Font = Ui.F(10.5f), IntegralHeight = false };
 
             _createPanel = new Panel { Location = new Point(14, 76), Size = new Size(302, 430), BackColor = Ui.Card, Visible = false };
             int y = 0;
@@ -335,7 +335,13 @@ namespace SlBridge.Launcher
             _cheats = new CheckBox { Text = L.T("Читы (команды .mc …)", "Cheats (.mc … commands)"), AutoSize = true, ForeColor = Ui.Text, Checked = true, Location = new Point(0, y + 4) };
             _createPanel.Controls.Add(_cheats);
 
-            worldCard.Controls.AddRange(new Control[] { wt, _wOpen, _wCreate, _worlds, _createPanel });
+            // удалить выбранный мир (в корзину) и открыть папку миров
+            _btnDelWorld = Btn(L.T("🗑  Удалить", "🗑  Delete"), DeleteSelectedWorld, Ui.Bad);
+            _btnDelWorld.AutoSize = false; _btnDelWorld.SetBounds(14, 472, 148, 34);
+            _btnSavesDir = Btn(L.T("📂  Папка миров", "📂  Worlds folder"), () => Open(Path.Combine(_cfg.GameDirEffective, "saves")));
+            _btnSavesDir.AutoSize = false; _btnSavesDir.SetBounds(168, 472, 148, 34);
+            _wOpen.CheckedChanged += (_, _) => { _btnDelWorld.Visible = _btnSavesDir.Visible = _wOpen.Checked; };
+            worldCard.Controls.AddRange(new Control[] { wt, _wOpen, _wCreate, _worlds, _createPanel, _btnDelWorld, _btnSavesDir });
             page.Controls.Add(worldCard);
 
             // состояние + кнопки
@@ -371,12 +377,42 @@ namespace SlBridge.Launcher
             return page;
         }
 
+        private Button _btnDelWorld, _btnSavesDir;
+        private bool _exclusiveWarned;
+
+        /// <summary>Удалить выбранный мир — в корзину Windows (можно восстановить). Пока Minecraft запущен — нельзя.</summary>
+        private void DeleteSelectedWorld()
+        {
+            int i = _worlds.SelectedIndex;
+            if (i < 0 || i >= _worldFolders.Length) return;
+            if (Orchestrator.MinecraftProcess != null)
+            {
+                MessageBox.Show(this, L.T("Сначала закрой Minecraft (кнопка «Стоп») — открытый мир удалить нельзя.", "Close Minecraft first (the Stop button) — an open world can't be deleted."),
+                    "SCP:SL ↔ Minecraft", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+            string folder = _worldFolders[i];
+            string dir = Path.Combine(_cfg.GameDirEffective, "saves", folder);
+            if (!Directory.Exists(dir)) { LoadWorlds(); return; }
+            if (MessageBox.Show(this, L.T($"Удалить мир «{folder}»?\nОн попадёт в корзину — оттуда его можно восстановить.", $"Delete the world \"{folder}\"?\nIt goes to the Recycle Bin — you can restore it from there."),
+                    "SCP:SL ↔ Minecraft", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes) return;
+            try
+            {
+                Microsoft.VisualBasic.FileIO.FileSystem.DeleteDirectory(dir, Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs,
+                    Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin);
+                if (_cfg.LastWorld == folder) { _cfg.LastWorld = ""; try { _cfg.Save(); } catch { } }
+                Log(L.T("Мир удалён (в корзину): ", "World deleted (to Recycle Bin): ") + folder);
+            }
+            catch (Exception e) { Log(L.T("Не удалось удалить мир: ", "Couldn't delete the world: ") + e.Message); }
+            LoadWorlds();
+        }
+
         private void LoadWorlds()
         {
             string keep = _worlds.SelectedIndex >= 0 && _worldFolders.Length > _worlds.SelectedIndex ? _worldFolders[_worlds.SelectedIndex] : _cfg.LastWorld;
             _worlds.Items.Clear();
-            var recent = _orc.Recent();
             var all = _orc.Worlds();
+            var recent = _orc.Recent().Where(r => all.Contains(r.Folder)).ToList(); // удалённые миры из «недавних» не показываем
             var folders = new System.Collections.Generic.List<string>();
             foreach (var r in recent) { _worlds.Items.Add("★ " + r.Name + (r.Name != r.Folder ? "  (" + r.Folder + ")" : "")); folders.Add(r.Folder); }
             foreach (var f in all.Where(f => !recent.Any(r => r.Folder == f))) { _worlds.Items.Add("   " + f); folders.Add(f); }
@@ -425,7 +461,17 @@ namespace SlBridge.Launcher
             bool bridge = _orc.BridgeConnected;
             _rows[2].Set(bridge ? Ui.Ok : Ui.Off, bridge ? "SCP:SL ↔ Minecraft" : L.T("нет связи", "not connected"));
             bool comp = Orchestrator.CompositorRunning;
-            _rows[3].Set(comp ? Ui.Ok : Ui.Off, comp ? L.T("работает (Ctrl+Shift+F12)", "running (Ctrl+Shift+F12)") : L.T("выключен", "off"));
+            bool exclusive = comp && File.Exists(Path.Combine(Path.GetDirectoryName(_cfg.CompositorExe) ?? "", "exclusive.flag"));
+            _rows[3].Set(!comp ? Ui.Off : exclusive ? Ui.Bad : Ui.Ok, !comp ? L.T("выключен", "off")
+                : exclusive ? L.T("не виден: SL в эксклюзивном режиме", "hidden: SL is exclusive fullscreen")
+                : L.T("работает (Ctrl+Shift+F12)", "running (Ctrl+Shift+F12)"));
+            if (exclusive && !_exclusiveWarned)
+            {
+                _exclusiveWarned = true;
+                Log(L.T("⚠ SCP:SL в эксклюзивном полноэкранном режиме — Windows прячет оверлей, и вместо Minecraft виден зелёный фон. В SL: Настройки → Графика → Режим окна → «Без рамки» (Borderless).",
+                        "⚠ SCP:SL is in exclusive fullscreen — Windows hides the overlay, so you see the green backdrop instead of Minecraft. In SL: Settings → Graphics → Window mode → Borderless."));
+            }
+            if (!comp) _exclusiveWarned = false;
             bool cl = Orchestrator.SlClientRunning;
             _rows[4].Set(cl ? Ui.Ok : Ui.Off, cl ? L.T("запущен", "running") : L.T("выключен", "off"));
             _btnPlay.Enabled = !_busy;

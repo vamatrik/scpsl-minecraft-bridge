@@ -25,6 +25,7 @@ namespace SlBridge.Compositor
             public float KR, KG, KB, KeyThreshold, KeySoftness, KeyMinBrightness, ShowMask, HasMc;
             public float SlOx, SlOy, SlSx, SlSy, McOx, McOy, McSx, McSy;
             public float Adaptive, CurX, CurY, CurScale;
+            public float KeyRel, Pad1, Pad2, Pad3;
         }
 
         /// <summary>
@@ -82,6 +83,74 @@ namespace SlBridge.Compositor
         private static WindowCapture _sl, _mc;
 
         private static System.IO.StreamWriter _log;
+
+        private static ID3D11Texture2D _refStage;
+        private static bool _presentErrLogged;
+        private static int _diagLeft = 3;
+        private static bool? _exclusive;
+
+        /// <summary>
+        /// SL в эксклюзивном полноэкранном режиме — Windows не показывает поверх него ни одного окна, оверлей тоже.
+        /// Пишем в лог и кладём файл-флаг: лаунчер покажет подсказку «поставь в SL режим без рамки».
+        /// </summary>
+        private static void CheckExclusive()
+        {
+            try
+            {
+                bool ex = _sl != null && Native.GetForegroundWindow() == _sl.Hwnd
+                          && Native.SHQueryUserNotificationState(out int st) == 0 && st == 3;
+                if (_exclusive == ex) return;
+                _exclusive = ex;
+                string flag = System.IO.Path.Combine(AppContext.BaseDirectory, "exclusive.flag");
+                if (ex)
+                {
+                    Log("SCP:SL в ЭКСКЛЮЗИВНОМ полноэкранном режиме — оверлей поверх него не виден. В настройках SL: режим окна «Без рамки» (Borderless).");
+                    System.IO.File.WriteAllText(flag, DateTime.Now.ToString("O"));
+                }
+                else if (System.IO.File.Exists(flag)) System.IO.File.Delete(flag);
+            }
+            catch { }
+        }
+
+        /// <summary>Диагностика ключа: какой «фон сейчас» видит компоновщик и что ключ даёт для него самого.</summary>
+        private static void DiagRef()
+        {
+            try
+            {
+                if (_refTex == null || _ctx == null) return;
+                _refStage ??= _device.CreateTexture2D(new Texture2DDescription
+                {
+                    Width = 1, Height = 1, MipLevels = 1, ArraySize = 1, Format = Format.R16G16B16A16_Float,
+                    SampleDescription = new SampleDescription(1, 0), Usage = ResourceUsage.Staging, CPUAccessFlags = CpuAccessFlags.Read,
+                });
+                _ctx.CopyResource(_refStage, _refTex);
+                var m = _ctx.Map(_refStage, 0, MapMode.Read);
+                ushort* h = (ushort*)m.DataPointer;
+                float r = (float)BitConverter.UInt16BitsToHalf(h[0]), g = (float)BitConverter.UInt16BitsToHalf(h[1]), b = (float)BitConverter.UInt16BitsToHalf(h[2]), n = (float)BitConverter.UInt16BitsToHalf(h[3]);
+                _ctx.Unmap(_refStage, 0);
+                float other = Math.Max(r, b), dom = (g - other) / Math.Max(g, 1e-3f);
+                float k = Math.Clamp((dom - _s.KeyThreshold) / Math.Max(_s.KeySoftness, 1e-3f), 0, 1) * Math.Clamp((g - _s.KeyMinBrightness) / 0.04f, 0, 1);
+                bool vis = Native.IsWindowVisible(_hwnd);
+                Native.DwmGetWindowAttribute(_hwnd, 14 /*DWMWA_CLOAKED*/, out int cloaked, 4);
+                Native.GetWindowRect(_hwnd, out var wr);
+                // окна выше оверлея (по z-порядку), видимые и пересекающие его
+                var above = new System.Collections.Generic.List<string>();
+                for (IntPtr w = Native.GetWindow(_hwnd, 3 /*GW_HWNDPREV*/); w != IntPtr.Zero && above.Count < 6; w = Native.GetWindow(w, 3))
+                {
+                    if (!Native.IsWindowVisible(w)) continue;
+                    Native.GetWindowRect(w, out var r2);
+                    if (r2.Right <= wr.Left || r2.Left >= wr.Right || r2.Bottom <= wr.Top || r2.Top >= wr.Bottom) continue;
+                    var t = new System.Text.StringBuilder(128); Native.GetWindowText(w, t, 128);
+                    var c = new System.Text.StringBuilder(128); Native.GetClassName(w, c, 128);
+                    Native.GetWindowThreadProcessId(w, out uint pid);
+                    string pn = ""; try { pn = System.Diagnostics.Process.GetProcessById((int)pid).ProcessName; } catch { }
+                    above.Add($"{pn}:{c}:«{t}» {r2.Left},{r2.Top} {r2.W}x{r2.H}");
+                }
+                Log($"Окно оверлея: {wr.Left},{wr.Top} {wr.W}x{wr.H}, скрыто DWM: {cloaked}, стиль {Native.GetWindowLong(_hwnd, -20):X}, выше него: {(above.Count == 0 ? "никого" : string.Join(" | ", above))}");
+                Log($"Ключ: фон сейчас ({r * 255:0},{g * 255:0},{b * 255:0}), согласны {n:0}/12, ключ фона {k:0.00}, отсечка {_s.KeyRelBrightness:0.00}, оверлей {(vis ? "виден" : "СКРЫТ")}{(_enabled ? "" : ", ВЫКЛЮЧЕН (Ctrl+Shift+F12)")}{(_showMask ? ", маска" : "")}");
+            }
+            catch (Exception e) { Log("Диагностика ключа: " + e.Message); }
+        }
 
         public static void Log(string msg)
         {
@@ -175,6 +244,8 @@ namespace SlBridge.Compositor
                 {
                     double sec = (sw.ElapsedMilliseconds - _fpsAt) / 1000.0;
                     Log($"FPS: SL {_fpsSl / sec:0}, Minecraft {_fpsMc / sec:0}, оверлей {_fpsOut / sec:0}, кадр оверлея {(_fpsOut > 0 ? _renderMs / _fpsOut : 0):0.00} мс{(_mcUi ? " (окно Minecraft)" : "")}");
+                    if (_diagLeft > 0) { _diagLeft--; DiagRef(); }
+                    CheckExclusive();
                     _fpsSl = _fpsMc = _fpsOut = 0; _renderMs = 0; _fpsAt = sw.ElapsedMilliseconds;
                 }
                 if (!newSl && !(_mcUi && newMc)) { Thread.Sleep(1); continue; }
@@ -339,6 +410,13 @@ namespace SlBridge.Compositor
             D3D11.D3D11CreateDevice(null, DriverType.Hardware, DeviceCreationFlags.BgraSupport,
                 new[] { FeatureLevel.Level_11_1, FeatureLevel.Level_11_0 }, out _device, out _ctx).CheckError();
             _rtDevice = WindowCapture.CreateWinRtDevice(_device);
+            try
+            {
+                using var dx = _device.QueryInterface<IDXGIDevice>();
+                using var ad = dx.GetAdapter();
+                Log("Видеокарта оверлея: " + ad.Description.Description);
+            }
+            catch { }
 
             var vsBlob = Compiler.Compile(Shaders.Source, "VS", "compositor.hlsl", "vs_5_0");
             var psBlob = Compiler.Compile(Shaders.Source, "PS", "compositor.hlsl", "ps_5_0");
@@ -400,6 +478,7 @@ namespace SlBridge.Compositor
                 KeyThreshold = _s.KeyThreshold, KeySoftness = _s.KeySoftness, KeyMinBrightness = _s.KeyMinBrightness,
                 ShowMask = (_mcUi && _mc != null && _mc.Srv != null) ? 2 : _showMask ? 1 : 0, HasMc = (_mc != null && _mc.Srv != null) ? 1 : 0,
                 Adaptive = _s.AdaptiveKey ? 1 : 0,
+                KeyRel = _s.KeyRelBrightness,
                 CurX = -1000, CurY = -1000, CurScale = 0,
             };
             // Окно Minecraft (верстак, инвентарь): курсор Windows там не виден (его прячет SL) — рисуем свой.
@@ -435,7 +514,8 @@ namespace SlBridge.Compositor
             _ctx.PSSetShaderResource(1, (_mc != null && _mc.Srv != null) ? _mc.Srv : _sl.Srv);
             _ctx.PSSetShaderResource(2, _refSrv);
             _ctx.Draw(3, 0);
-            _swap.Present(0, PresentFlags.None);
+            var pr = _swap.Present(0, PresentFlags.None);
+            if (pr.Failure && !_presentErrLogged) { _presentErrLogged = true; Log("Present: ошибка " + pr); }
             if (_obsRtv != null)
             {
                 _ctx.OMSetRenderTargets(_obsRtv);

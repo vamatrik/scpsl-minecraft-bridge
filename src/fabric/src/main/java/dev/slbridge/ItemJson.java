@@ -26,12 +26,28 @@ public final class ItemJson {
         o.addProperty("name", s.getHoverName().getString());
         o.addProperty("max", s.getMaxStackSize());
         String sl = slKey(s);
+        if (sl == null) {
+            // обычный предмет Minecraft с «особенностями» (книга с чарами, зачарованный меч, зелье, имя, износ) —
+            // переносим все изменённые компоненты, чтобы в инвентаре SL они не терялись
+            String comp = encodeComponents(s);
+            if (comp != null) o.addProperty("comp", comp);
+            // в названии карты SL — какие чары (у книги — запасённые)
+            var en = s.getOrDefault(DataComponents.STORED_ENCHANTMENTS, net.minecraft.world.item.enchantment.ItemEnchantments.EMPTY);
+            if (en.isEmpty()) en = s.getOrDefault(DataComponents.ENCHANTMENTS, net.minecraft.world.item.enchantment.ItemEnchantments.EMPTY);
+            if (!en.isEmpty()) {
+                List<String> parts = new ArrayList<>();
+                for (var e : en.entrySet()) parts.add(net.minecraft.world.item.enchantment.Enchantment.getFullname(e.getKey(), e.getIntValue()).getString());
+                o.addProperty("name", s.getHoverName().getString() + " (" + String.join(", ", parts) + ")");
+            }
+        }
         if (sl != null) {
             o.addProperty("sl", sl);
             CompoundTag tag = s.get(DataComponents.CUSTOM_DATA).copyTag();
             int ammo = tag.getIntOr("slAmmo", 0);
             if (ammo > 0) o.addProperty("slAmmo", ammo);
-            String state = tag.getStringOr("slState", "");
+            // чары (стол зачарований, книга на наковальне) — в состояние предмета SL
+            String state = SlEnchants.withEnch(tag.getStringOr("slState", ""),
+                    SlEnchants.toString(s.getOrDefault(DataComponents.ENCHANTMENTS, net.minecraft.world.item.enchantment.ItemEnchantments.EMPTY)));
             if (!state.isEmpty()) o.addProperty("slState", state); // заряд, патроны в магазине, обвесы
             Identifier model = s.get(DataComponents.ITEM_MODEL);
             if (model != null) o.addProperty("model", model.toString());
@@ -64,6 +80,7 @@ public final class ItemJson {
         Item it = item(o.get("id").getAsString());
         if (it == net.minecraft.world.item.Items.AIR) return ItemStack.EMPTY;
         ItemStack st = new ItemStack(it, Math.max(1, o.get("count").getAsInt()));
+        if (o.has("comp") && !o.has("sl")) applyComponents(st, o.get("comp").getAsString());
         if (o.has("sl")) {
             // предмет SCP:SL, лежащий в мире Minecraft (не влез в инвентарь) — восстанавливаем метку
             CompoundTag tag = new CompoundTag();
@@ -74,8 +91,34 @@ public final class ItemJson {
             if (o.has("name")) st.set(DataComponents.ITEM_NAME, Component.literal(o.get("name").getAsString()));
             if (o.has("model")) { Identifier m = Identifier.tryParse(o.get("model").getAsString()); if (m != null) st.set(DataComponents.ITEM_MODEL, m); }
             st.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true);
+            String ench = o.has("slState") ? SlEnchants.stateEnch(o.get("slState").getAsString()) : "";
+            if (!ench.isEmpty()) st.set(DataComponents.ENCHANTMENTS, SlEnchants.fromString(ench));
+            SlEnchants.ensureEnchantable(st);
         }
         return st;
+    }
+
+    /** Изменённые компоненты предмета (как в /give: чары, зелье, имя…) строкой JSON; null — предмет обычный. */
+    public static String encodeComponents(ItemStack s) {
+        var patch = s.getComponentsPatch();
+        var regs = SlEnchants.regs;
+        if (patch.isEmpty() || regs == null) return null;
+        try {
+            return net.minecraft.core.component.DataComponentPatch.CODEC
+                    .encodeStart(regs.createSerializationContext(com.mojang.serialization.JsonOps.INSTANCE), patch)
+                    .result().map(JsonElement::toString).orElse(null);
+        } catch (Exception ex) { return null; }
+    }
+
+    public static void applyComponents(ItemStack st, String comp) {
+        var regs = SlEnchants.regs;
+        if (regs == null || comp == null || comp.isEmpty()) return;
+        try {
+            JsonElement j = com.google.gson.JsonParser.parseString(comp);
+            net.minecraft.core.component.DataComponentPatch.CODEC
+                    .parse(regs.createSerializationContext(com.mojang.serialization.JsonOps.INSTANCE), j)
+                    .result().ifPresent(st::applyComponents);
+        } catch (Exception ex) { SlBridgeClient.LOG.warn("[SLBridge] компоненты предмета: {}", ex.toString()); }
     }
 
     public static List<ItemStack> listFromJson(JsonElement e) {

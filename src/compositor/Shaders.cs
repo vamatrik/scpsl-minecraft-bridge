@@ -21,6 +21,8 @@ cbuffer P : register(b0)
     float AdaptiveKey;
     float2 Cursor;      // курсор в пикселях окна (окна Minecraft)
     float CursorScale;  // 0 — не рисовать
+    float KeyRelBrightness; // пиксель темнее фона «сейчас» в столько раз (по ключевому каналу) — уже не фон
+    float3 _pad;
 };
 
 struct V { float4 pos : SV_Position; float2 uv : TEXCOORD0; };
@@ -105,14 +107,27 @@ float4 PS(V i) : SV_Target
     float dom = (keyCh - other) / max(keyCh, 1e-3);
     float k = saturate((dom - KeyThreshold) / max(KeySoftness, 1e-3));
     k *= saturate((keyCh - KeyMinBrightness) / 0.04);
+    // Отсечка по яркости относительно фона «сейчас»: фон яркий, а тёмный металл с зеленоватым бликом —
+    // нет. Пиксель вдвое темнее фона (по зелёному каналу) фоном не считается, каким бы зелёным он ни был.
+    float rel = 1.0;
+    if (bestN >= 6 && KeyRelBrightness > 0)
+    {
+        float refK = dot(refC, kc);
+        rel = saturate((keyCh - refK * KeyRelBrightness) / max(refK * 0.12, 0.01));
+    }
     // фон «сейчас»: половина образцов согласна, что это он, и он не чёрный (маска очков SCP-1344 — не фон)
     if (AdaptiveKey > 0.5 && bestN >= 6 && Lum(refC) > 0.012)
     {
         float dist = length(Hue(s) - Hue(refC));
         float lr = Lum(s) / max(Lum(refC), 1e-3);
         float kr = (1.0 - saturate((dist - 0.05) / 0.08)) * saturate((lr - 0.45) / 0.15) * saturate((2.0 - lr) / 0.3);
+        // серый/тёмный металл почти бесцветен, а фон насыщенный — не путаем их по одному оттенку
+        float satS = (max(s.r, max(s.g, s.b)) - min(s.r, min(s.g, s.b))) / max(max(s.r, max(s.g, s.b)), 1e-3);
+        float satR = (max(refC.r, max(refC.g, refC.b)) - min(refC.r, min(refC.g, refC.b))) / max(max(refC.r, max(refC.g, refC.b)), 1e-3);
+        kr *= saturate((satS - satR * 0.6) / max(satR * 0.15, 0.02));
         k = max(k, kr);
     }
+    k *= rel;
     // Despill: убираем зелёный оттенок с полупрозрачного (дым, искры, края) — он становится серым.
     float3 despilled = s;
     float limit = other;

@@ -19,6 +19,8 @@
   },
   "mixins": [
     "PlayerMixins$NoAutoPickup",
-    "InvisibleMixin"
+    "InvisibleMixin",
+    "EnchantMixin",
+    "CraftKeepEnchantsMixin"
   ]
 }

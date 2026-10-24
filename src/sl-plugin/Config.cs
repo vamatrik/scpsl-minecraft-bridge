@@ -87,7 +87,7 @@ namespace SlBridge
         public float WallLightIntensity { get; set; } = 0f;
         public float WallLightRange { get; set; } = 2.2f;
         [Description("«Неон» зелёных стен: множитель яркости цвета (1 — обычный).")]
-        public float BackdropGlow { get; set; } = 1.2f;
+        public float BackdropGlow { get; set; } = 2f;
 
         [Description("Раз в секунду убирать трупы SL, кровь и следы от пуль.")]
         public bool CleanupRagdolls { get; set; } = true;

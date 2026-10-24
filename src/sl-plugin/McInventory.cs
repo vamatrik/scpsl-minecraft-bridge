@@ -22,8 +22,13 @@ namespace SlBridge
         public int Ammo;
         /// <summary>Состояние предмета SL (обвесы, магазин, заряд) — см. SlItemState.</summary>
         public string State;
+        /// <summary>Изменённые компоненты предмета Minecraft (чары, зелье, имя…) — JSON, который понимает только мод.</summary>
+        public string Comp;
 
-        public McStack Clone() => new McStack { Id = Id, Name = Name, Count = Count, Max = Max, Sl = Sl, Model = Model, Ammo = Ammo, State = State };
+        /// <summary>Можно ли сложить в один стак: тот же предмет с теми же компонентами.</summary>
+        public bool SameKind(McStack o) => o != null && Id == o.Id && (Comp ?? "") == (o.Comp ?? "");
+
+        public McStack Clone() => new McStack { Id = Id, Name = Name, Count = Count, Max = Max, Sl = Sl, Model = Model, Ammo = Ammo, State = State, Comp = Comp };
 
         /// <summary>Предмет SL как предмет Minecraft (для выпадения в мир).</summary>
         public static McStack ForSl(ItemType type, int ammo = 0, string state = null)
@@ -52,6 +57,7 @@ namespace SlBridge
                 Model = o.Has("model") ? o.Str("model") : null,
                 Ammo = (int)o.Num("slAmmo", 0),
                 State = o.Has("slState") ? o.Str("slState") : null,
+                Comp = o.Has("comp") ? o.Str("comp") : null,
             };
         }
 
@@ -60,7 +66,8 @@ namespace SlBridge
                + (Sl != null ? ",\"sl\":\"" + MiniJson.Escape(Sl) + "\"" : "")
                + (Model != null ? ",\"model\":\"" + MiniJson.Escape(Model) + "\"" : "")
                + (Ammo > 0 ? ",\"slAmmo\":" + Ammo : "")
-               + (!string.IsNullOrEmpty(State) ? ",\"slState\":\"" + MiniJson.Escape(State) + "\"" : "") + "}";
+               + (!string.IsNullOrEmpty(State) ? ",\"slState\":\"" + MiniJson.Escape(State) + "\"" : "")
+               + (!string.IsNullOrEmpty(Comp) ? ",\"comp\":\"" + MiniJson.Escape(Comp) + "\"" : "") + "}";
     }
 
     /// <summary>
@@ -128,7 +135,7 @@ namespace SlBridge
             {
                 if (left <= 0) break;
                 var s = kv.Value;
-                if (s.Id != add.Id || s.Count >= s.Max) continue;
+                if (!s.SameKind(add) || s.Count >= s.Max) continue;
                 int k = Math.Min(left, s.Max - s.Count);
                 s.Count += k;
                 left -= k;
@@ -137,7 +144,7 @@ namespace SlBridge
             while (left > 0 && p.Items.Count() < 8)
             {
                 int k = Math.Min(left, add.Max);
-                var s = new McStack { Id = add.Id, Name = add.Name, Count = k, Max = add.Max };
+                var s = new McStack { Id = add.Id, Name = add.Name, Count = k, Max = add.Max, Comp = add.Comp };
                 if (CreateCard(p, s) == null) break;
                 left -= k;
             }
@@ -151,7 +158,7 @@ namespace SlBridge
             int have = _stacks.Values.Where(s => s.Id == id).Sum(s => s.Count);
             if (have < count) return false;
             // сначала из самых маленьких стаков
-            foreach (var kv in _stacks.Where(k => k.Value.Id == id).OrderBy(k => k.Value.Count).ToList())
+            foreach (var kv in _stacks.Where(k => k.Value.Id == id).OrderBy(k => string.IsNullOrEmpty(k.Value.Comp) ? 0 : 1).ThenBy(k => k.Value.Count).ToList())
             {
                 if (count <= 0) break;
                 int k = Math.Min(count, kv.Value.Count);

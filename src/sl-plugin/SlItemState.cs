@@ -52,12 +52,59 @@ namespace SlBridge
 
         public static string TierOf(Item it) => it != null && Tier.TryGetValue(it.Serial, out var t) ? t : null;
 
+        // ── Зачарования (стол зачарований / книги на наковальне в Minecraft): «sharpness:3,looting:1» ──
+        public static readonly Dictionary<ushort, string> Ench = new Dictionary<ushort, string>();
+
+        public static string EnchOf(Item it) => it != null && Ench.TryGetValue(it.Serial, out var e) ? e : "";
+
+        public static int EnchLevel(Item it, string name)
+        {
+            foreach (var p in EnchOf(it).Split(','))
+            {
+                int i = p.IndexOf(':');
+                if (i > 0 && p.Substring(0, i) == name && int.TryParse(p.Substring(i + 1), NumberStyles.Integer, Inv, out var lvl)) return lvl;
+            }
+            return 0;
+        }
+
+        private static readonly Dictionary<string, (string Ru, string En)> EnchNames = new Dictionary<string, (string, string)>
+        {
+            { "sharpness", ("Острота", "Sharpness") }, { "smite", ("Небесная кара", "Smite") }, { "bane_of_arthropods", ("Бич членистоногих", "Bane of Arthropods") },
+            { "fire_aspect", ("Заговор огня", "Fire Aspect") }, { "knockback", ("Отдача", "Knockback") }, { "sweeping_edge", ("Разящий клинок", "Sweeping Edge") },
+            { "looting", ("Добыча", "Looting") }, { "efficiency", ("Эффективность", "Efficiency") }, { "fortune", ("Удача", "Fortune") },
+            { "silk_touch", ("Шёлковое касание", "Silk Touch") }, { "power", ("Сила", "Power") }, { "flame", ("Горящая стрела", "Flame") },
+            { "piercing", ("Пронзание", "Piercing") }, { "infinity", ("Бесконечность", "Infinity") }, { "unbreaking", ("Прочность", "Unbreaking") },
+            { "mending", ("Починка", "Mending") }, { "protection", ("Защита", "Protection") }, { "fire_protection", ("Огнеупорность", "Fire Protection") },
+            { "blast_protection", ("Взрывоустойчивость", "Blast Protection") }, { "projectile_protection", ("Защита от снарядов", "Projectile Protection") },
+            { "thorns", ("Шипы", "Thorns") }, { "feather_falling", ("Невесомость", "Feather Falling") }, { "respiration", ("Подводное дыхание", "Respiration") },
+            { "depth_strider", ("Подводная ходьба", "Depth Strider") },
+        };
+
+        private static string Roman(int n) => n >= 1 && n <= 10 ? new[] { "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X" }[n - 1] : n.ToString(Inv);
+
+        /// <summary>Чары предмета для подсказки SL: «Острота III, Добыча II» (пусто — без чар).</summary>
+        public static string DescribeEnch(Item it)
+        {
+            var parts = new List<string>();
+            foreach (var p in EnchOf(it).Split(','))
+            {
+                int i = p.IndexOf(':');
+                if (i <= 0) continue;
+                string id = p.Substring(0, i);
+                int.TryParse(p.Substring(i + 1), NumberStyles.Integer, Inv, out var lvl);
+                string n = EnchNames.TryGetValue(id, out var nm) ? L.T(nm.Ru, nm.En) : id;
+                parts.Add(id == "infinity" || id == "mending" || id == "silk_touch" || id == "flame" ? n : n + " " + Roman(lvl));
+            }
+            return string.Join(", ", parts);
+        }
+
         public static string Capture(Item it)
         {
             var d = new List<string>();
             try
             {
                 if (it != null && it.Type == ItemType.SCP1509 && TierOf(it) is string tier) d.Add("tier=" + tier);
+                if (it != null && EnchOf(it) is string en && en.Length > 0) d.Add("ench=" + en);
                 switch (it)
                 {
                     case FirearmItem fa:
@@ -104,6 +151,7 @@ namespace SlBridge
             try
             {
                 if (it.Type == ItemType.SCP1509 && d.TryGetValue("tier", out var tr)) Tier[it.Serial] = tr;
+                if (d.TryGetValue("ench", out var ench) && ench.Length > 0) Ench[it.Serial] = ench; else Ench.Remove(it.Serial);
                 switch (it)
                 {
                     case FirearmItem fa:

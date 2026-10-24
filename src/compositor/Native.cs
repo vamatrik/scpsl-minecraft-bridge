@@ -43,6 +43,10 @@ namespace SlBridge.Compositor
         [DllImport("user32")] public static extern bool IsWindow(IntPtr h);
         [DllImport("user32")] public static extern bool IsWindowVisible(IntPtr h);
         [DllImport("user32")] public static extern bool IsIconic(IntPtr h);
+        [DllImport("user32")] public static extern IntPtr GetWindow(IntPtr h, uint cmd);
+        /// <summary>3 = QUNS_RUNNING_D3D_FULL_SCREEN: на переднем плане игра в эксклюзивном полноэкранном режиме.</summary>
+        [DllImport("shell32")] public static extern int SHQueryUserNotificationState(out int state);
+        [DllImport("dwmapi")] public static extern int DwmGetWindowAttribute(IntPtr h, int attr, out int v, int size);
         [DllImport("user32")] public static extern bool GetClientRect(IntPtr h, out RECT r);
         [DllImport("user32")] public static extern bool GetWindowRect(IntPtr h, out RECT r);
         [DllImport("user32")] public static extern bool ClientToScreen(IntPtr h, ref POINT p);

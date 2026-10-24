@@ -62,6 +62,8 @@ namespace SlBridge
         private float _nextCharge;
         private float _last1509;
         private int _armorTier = -1;
+        private string _armorEnch = "";
+        private int _depthStrider;
         private float _nextHousekeeping;
         private bool _frozen;
         // Жидкость у ног и у глаз (0 — нет, 1 — вода, 2 — лава), присылает Minecraft
@@ -266,7 +268,7 @@ namespace SlBridge
             // после смерти — пусто, а с keep_inventory — то, что было
             RestoreKeptInventory();
             ApplyMovement(ev.Player);
-            _armorTier = -1;
+            _armorTier = -1; _armorEnch = "";
             _lastGoodPos = Vector3.zero;
             _frozen = false;
             _arriving = false;
@@ -284,6 +286,13 @@ namespace SlBridge
             if (ev.Player != _player) return;
             float dmg = Config.WeaponDamage.TryGetValue(ev.FirearmItem.Type, out var v) ? v : Config.DefaultWeaponDamage;
             SendShot(Config.ShotRange, dmg, true);
+            // «Бесконечность»: примерно каждый третий выстрел патрон не тратится
+            try
+            {
+                if (SlItemState.EnchLevel(ev.FirearmItem, "infinity") > 0 && UnityEngine.Random.value < 1f / 3f && ev.FirearmItem.StoredAmmo < ev.FirearmItem.MaxAmmo)
+                    ev.FirearmItem.StoredAmmo += 1;
+            }
+            catch (Exception e) { Logger.Warn("[SlBridge] Бесконечность: " + e.Message); }
         }
 
         private void OnJailbird(PlayerProcessedJailbirdMessageEventArgs ev)
@@ -291,7 +300,7 @@ namespace SlBridge
             if (ev.Player != _player) return;
             // Рывок: врезался в моба — бьём заряженным ударом и на миг связываем игрока (рывок останавливается),
             // см. TickJailbirdCharge. Обычный удар — как раньше.
-            if (ev.Message == JailbirdMessageType.ChargeStarted) { _chargeUntil = Time.time + 1.6f; return; }
+            if (ev.Message == JailbirdMessageType.ChargeStarted) { _chargeUntil = Time.time + 1.6f; JailbirdUnbreakingCharge(); return; }
             if (ev.Message == JailbirdMessageType.AttackPerformed)
             {
                 if (Time.time < _chargeHitIgnoreUntil) return; // удар рывка уже засчитан
@@ -331,7 +340,7 @@ namespace SlBridge
                 _lastShotDmg = chargeDmg;
                 _mc.Send("{\"t\":\"shot\"," + Vec("", from) + "," + Vec("d", dir) + ",\"dmg\":" + F(chargeDmg)
                          + ",\"range\":" + F(Config.MeleeRange + 1.5f) + ",\"breaks\":false,\"kb\":true"
-                         + ",\"mr\":" + F(MeleeRadius()) + ",\"moff\":" + F(MeleeOffset()) + ",\"splash\":" + F(Config.JailbirdSplash) + "}");
+                         + ",\"mr\":" + F(MeleeRadius()) + ",\"moff\":" + F(MeleeOffset()) + ",\"splash\":" + F(Config.JailbirdSplash) + HeldEnchJson() + "}");
                 return;
             }
         }
@@ -393,9 +402,19 @@ namespace SlBridge
             var cam = _player.Camera;
             _mc.Send("{\"t\":\"shot\"," + Vec("", CoordMap.SlToMc(cam.position)) + "," + Vec("d", CoordMap.DirSlToMc(cam.forward))
                      + ",\"dmg\":" + F(dmg) + ",\"range\":" + F(Config.MeleeRange) + ",\"breaks\":true,\"kb\":true"
-                     + ",\"mr\":" + F(MeleeRadius()) + ",\"moff\":" + F(MeleeOffset()) + ",\"splash\":" + F(splash) + ",\"mine\":" + F(mine) + "}");
+                     + ",\"mr\":" + F(MeleeRadius()) + ",\"moff\":" + F(MeleeOffset()) + ",\"splash\":" + F(splash) + ",\"mine\":" + F(mine) + HeldEnchJson() + "}");
         }
         private float _lastShotDmg;
+
+        /// <summary>Чары предмета в руке — для сообщения о выстреле/ударе (эффекты чар считает Minecraft).</summary>
+        /// <summary>Это карта-стак Minecraft, а не предмет SL.</summary>
+        public bool IsMcStack(Item i) => _inv != null && _inv.IsStack(i);
+
+        private string HeldEnchJson()
+        {
+            string e = SlItemState.EnchOf(_player?.CurrentItem);
+            return e.Length == 0 ? "" : ",\"ench\":\"" + MiniJson.Escape(e) + "\"";
+        }
         private bool _lastMeleeCharged;
 
         /// <summary>Сломанный Jailbird SL уберёт сам (после анимации) — он не выпадает при смерти и не сохраняется.</summary>
@@ -427,7 +446,9 @@ namespace SlBridge
                 // а не та, что сломалась от урона по толпе мобов в этот же удар
                 bool wasRed = det != null && det.WearState >= InventorySystem.Items.Jailbird.JailbirdWearState.AlmostBroken;
                 var prop = t.GetProperty("TotalMeleeDamageDealt");
-                prop?.SetValue(jb, (float)prop.GetValue(jb) + damage);
+                // «Прочность»: износ от ударов меньше в (уровень+1) раз, как у инструментов Minecraft
+                int unb = SlItemState.EnchLevel(_player.CurrentItem, "unbreaking");
+                prop?.SetValue(jb, (float)prop.GetValue(jb) + damage / (unb + 1f));
                 det?.RecheckUsage();
                 if (charged && wasRed && det != null && det.IsBroken)
                 {
@@ -436,6 +457,70 @@ namespace SlBridge
                 }
             }
             catch (Exception e) { Logger.Warn("[SlBridge] износ Jailbird: " + e.Message); }
+        }
+
+        /// <summary>«Прочность» Jailbird: рывок с шансом уровень/(уровень+1) не засчитывается в износ.</summary>
+        private void JailbirdUnbreakingCharge()
+        {
+            try
+            {
+                if (!(_player.CurrentItem?.Base is InventorySystem.Items.Jailbird.JailbirdItem jb)) return;
+                int unb = SlItemState.EnchLevel(_player.CurrentItem, "unbreaking");
+                if (unb <= 0 || UnityEngine.Random.value >= unb / (unb + 1f)) return;
+                var t = typeof(InventorySystem.Items.Jailbird.JailbirdItem);
+                if (jb.TotalChargesPerformed > 0) t.GetProperty("TotalChargesPerformed")?.SetValue(jb, jb.TotalChargesPerformed - 1);
+                (t.GetField("_deterioration", BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(jb) as InventorySystem.Items.Jailbird.JailbirdDeteriorationTracker)?.RecheckUsage();
+            }
+            catch (Exception e) { Logger.Warn("[SlBridge] Прочность Jailbird: " + e.Message); }
+        }
+
+        /// <summary>
+        /// «Починка»: опыт, который подобрал игрок в Minecraft, чинит Jailbird с этими чарами (в руке — первым).
+        /// 1 опыт — минус 10 к накопленному урону, 8 опыта — минус один рывок. Потраченный опыт забираем у игрока.
+        /// </summary>
+        private void MendWithXp(int xp)
+        {
+            if (_player == null || xp <= 0) return;
+            int used = 0;
+            try
+            {
+                var t = typeof(InventorySystem.Items.Jailbird.JailbirdItem);
+                var items = _player.Items.Where(i => i.Base is InventorySystem.Items.Jailbird.JailbirdItem && SlItemState.EnchLevel(i, "mending") > 0)
+                                         .OrderByDescending(i => i == _player.CurrentItem).ToList();
+                foreach (var it in items)
+                {
+                    if (used >= xp) break;
+                    var jb = (InventorySystem.Items.Jailbird.JailbirdItem)it.Base;
+                    var det = t.GetField("_deterioration", BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(jb) as InventorySystem.Items.Jailbird.JailbirdDeteriorationTracker;
+                    if (det != null && det.IsBroken) continue;
+                    while (used < xp && (jb.TotalMeleeDamageDealt > 0f || jb.TotalChargesPerformed > 0))
+                    {
+                        used++;
+                        if (jb.TotalMeleeDamageDealt > 0f) t.GetProperty("TotalMeleeDamageDealt")?.SetValue(jb, Mathf.Max(0f, jb.TotalMeleeDamageDealt - 10f));
+                        else if (used % 8 == 0) t.GetProperty("TotalChargesPerformed")?.SetValue(jb, jb.TotalChargesPerformed - 1);
+                    }
+                    det?.RecheckUsage();
+                }
+            }
+            catch (Exception e) { Logger.Warn("[SlBridge] Починка Jailbird: " + e.Message); }
+            // Micro HID с «Починкой»: 1 опыт — +1% заряда (сломанный не чинится)
+            try
+            {
+                foreach (var it in _player.Items.Where(i => i is MicroHIDItem && SlItemState.EnchLevel(i, "mending") > 0)
+                                                .OrderByDescending(i => i == _player.CurrentItem).ToList())
+                {
+                    var hid = (MicroHIDItem)it;
+                    if (hid.IsBroken) continue;
+                    while (used < xp && hid.Energy < 0.999f)
+                    {
+                        used++;
+                        hid.Energy = Mathf.Min(1f, hid.Energy + 0.01f);
+                    }
+                    if (hid.Serial == _hidSerial) _hidLastEnergy = hid.Energy; // это не расход — Прочность не трогает
+                }
+            }
+            catch (Exception e) { Logger.Warn("[SlBridge] Починка Micro HID: " + e.Message); }
+            if (used > 0 && _mc.Connected) _mc.Send("{\"t\":\"xpTake\",\"n\":" + used + "}");
         }
 
         // ── настоящие числа оружия ближнего боя — прямо из предмета SL (урон, радиус и вынос шара удара) ──
@@ -471,7 +556,7 @@ namespace SlBridge
             _lastShotDmg = dmg;
             var cam = _player.Camera;
             _mc.Send("{\"t\":\"shot\"," + Vec("", CoordMap.SlToMc(cam.position)) + "," + Vec("d", CoordMap.DirSlToMc(cam.forward))
-                     + ",\"dmg\":" + F(dmg) + ",\"range\":" + F(range) + ",\"breaks\":" + (breaks ? "true" : "false") + ",\"kb\":" + (knockback ? "true" : "false") + "}");
+                     + ",\"dmg\":" + F(dmg) + ",\"range\":" + F(range) + ",\"breaks\":" + (breaks ? "true" : "false") + ",\"kb\":" + (knockback ? "true" : "false") + HeldEnchJson() + "}");
         }
 
         private void OnSearchedToy(PlayerSearchedToyEventArgs ev)
@@ -481,7 +566,7 @@ namespace SlBridge
             // 8 слотов SL; патроны SL слота не занимают, стак Minecraft может долиться в такой же неполный
             bool hasRoom = _player.Items.Count() < 8
                            || (stack != null && stack.Sl != null && stack.Sl.StartsWith("Ammo"))
-                           || (stack != null && stack.Sl == null && _inv.All.Any(s => s.Id == stack.Id && s.Count < s.Max));
+                           || (stack != null && stack.Sl == null && _inv.All.Any(s => s.SameKind(stack) && s.Count < s.Max));
             if (!hasRoom) { _player.SendHint(L.T("<size=22>Инвентарь полон</size>", "<size=22>Inventory is full</size>"), 1.5f); return; }
             if (stack != null && stack.Sl != null && Enum.TryParse<ItemType>(stack.Sl, out var slType) && OverCategoryLimit(slType))
             { _player.SendHint(L.T("<size=22>Больше таких не унести (лимит SL)</size>", "<size=22>Can't carry more of these (SL limit)</size>"), 1.5f); return; }
@@ -647,14 +732,20 @@ namespace SlBridge
         /// <summary>Взял в руку мультитул — на пару секунд его название цветом материала и характеристики (SL сам их не покажет).</summary>
         private void OnChangedItem(PlayerChangedItemEventArgs ev)
         {
-            if (ev.Player != _player || ev.NewItem == null || ev.NewItem.Type != ItemType.SCP1509) return;
-            string tier = SlItemState.TierOf(ev.NewItem);
-            if (tier == null) return;
+            if (ev.Player != _player || ev.NewItem == null) return;
+            string ench = SlItemState.DescribeEnch(ev.NewItem);
+            string tier = ev.NewItem.Type == ItemType.SCP1509 ? SlItemState.TierOf(ev.NewItem) : null;
+            if (tier == null)
+            {
+                if (ench.Length > 0) _player.SendHint($"<size=19><color=#B58CFF>{ench}</color></size>", 2.5f);
+                return;
+            }
             var st = SlItemState.TierStats(tier);
             string name = L.T(st.Ru, st.En);
             name = char.ToUpper(name[0]) + name.Substring(1);
             _player.SendHint($"<size=26><b><color={SlItemState.TierColor(tier)}>{name}</color></b></size>\n" +
-                             $"<size=17><color=#9A9A9A>ID: SCP-1509 · {L.T("урон", "damage")} ×{st.Dmg:0.##} · {L.T("копание", "digging")} ×{st.Mine:0.#}</color></size>", 2.5f);
+                             $"<size=17><color=#9A9A9A>ID: SCP-1509 · {L.T("урон", "damage")} ×{st.Dmg:0.##} · {L.T("копание", "digging")} ×{st.Mine:0.#}</color></size>"
+                             + (ench.Length > 0 ? $"\n<size=17><color=#B58CFF>{ench}</color></size>" : ""), 2.5f);
         }
 
         private void OnPickupCreated(PickupCreatedEventArgs ev)
@@ -997,7 +1088,14 @@ namespace SlBridge
                     _player.EnableEffect<FogControl>(1, 0f); // 1 = FogType.None
                 // броня SL → броня Minecraft
                 int tier = _player.Items.Any(i => i.Type == ItemType.ArmorHeavy) ? 3 : _player.Items.Any(i => i.Type == ItemType.ArmorCombat) ? 2 : _player.Items.Any(i => i.Type == ItemType.ArmorLight) ? 1 : 0;
-                if (tier != _armorTier && _mc.Connected) { _armorTier = tier; _mc.Send("{\"t\":\"armor\",\"tier\":" + tier + "}"); }
+                var armorItem = _player.Items.FirstOrDefault(i => i.Type == (tier == 3 ? ItemType.ArmorHeavy : tier == 2 ? ItemType.ArmorCombat : ItemType.ArmorLight));
+                string armorEnch = tier > 0 ? SlItemState.EnchOf(armorItem) : "";
+                _depthStrider = tier > 0 ? SlItemState.EnchLevel(armorItem, "depth_strider") : 0;
+                if ((tier != _armorTier || armorEnch != _armorEnch) && _mc.Connected)
+                {
+                    _armorTier = tier; _armorEnch = armorEnch;
+                    _mc.Send("{\"t\":\"armor\",\"tier\":" + tier + ",\"ench\":\"" + MiniJson.Escape(armorEnch) + "\"}");
+                }
             }
 
             if (_hasSpawn && !_arriving && _hasSpawnMc && pos.y < CoordMap.Origin.y + Config.VoidY && Time.time >= _nextVoidTp)
@@ -1193,7 +1291,9 @@ namespace SlBridge
             {
                 float look = _player.Camera.forward.y;
                 // под водой: смотришь вниз (или присел) — ныряешь, иначе всплываешь
-                if (_fluidEye != 0) target = IsSneaking() ? -Config.SwimSink : _fluidEye == 2 ? Config.LavaRise : Config.SwimRise;
+                // «Подводная ходьба» бронежилета: всплытие и погружение в воде быстрее (+⅓ за уровень)
+                float ds = _fluidEye == 1 ? 1f + _depthStrider / 3f : 1f;
+                if (_fluidEye != 0) target = IsSneaking() ? -Config.SwimSink * ds : _fluidEye == 2 ? Config.LavaRise : Config.SwimRise * ds;
                 else if (_climb) target = IsSneaking() ? 0f : look > 0.3f ? Config.ClimbSpeed : look < -0.5f ? -Config.ClimbSpeed : 0f;
                 else if (_fluidFeet != 0) target = -0.3f; // голова над водой — держимся на плаву
             }
@@ -1248,9 +1348,37 @@ namespace SlBridge
                 _player.Position = _lastGoodPos; // заморожен — стоим на месте
         }
 
+        private ushort _hidSerial;
+        private float _nextHidEnergy;
+        private float _hidLastEnergy = -1f;
+
+        /// <summary>
+        /// Micro HID с «Прочностью» (и «Бесконечностью») расходует заряд медленнее: часть того, что SL списал
+        /// с момента прошлой проверки, возвращаем. Прочность I — ×0.67, II — ×0.5, III — ×0.4; Бесконечность — ещё ×0.67.
+        /// </summary>
+        private void HidSaveEnergy(MicroHIDItem hid)
+        {
+            int unb = SlItemState.EnchLevel(hid, "unbreaking"), inf = SlItemState.EnchLevel(hid, "infinity");
+            if (hid.Serial != _hidSerial) { _hidSerial = hid.Serial; _hidLastEnergy = -1f; }
+            float e = hid.Energy;
+            if ((unb > 0 || inf > 0) && _hidLastEnergy >= 0f && e < _hidLastEnergy && _hidLastEnergy - e < 0.2f && !hid.IsBroken)
+            {
+                float mult = 1f / (1f + 0.5f * unb);
+                if (inf > 0) mult *= 2f / 3f;
+                e = _hidLastEnergy - (_hidLastEnergy - e) * mult;
+                hid.Energy = Mathf.Clamp01(e);
+            }
+            _hidLastEnergy = hid.Energy;
+        }
+
         private void PollMelee()
         {
             var item = _player.CurrentItem;
+            if (item is MicroHIDItem hidE && Time.time >= _nextHidEnergy)
+            {
+                _nextHidEnergy = Time.time + 0.1f;
+                try { HidSaveEnergy(hidE); } catch (Exception e) { Logger.Warn("[SlBridge] Прочность Micro HID: " + e.Message); }
+            }
             if (item is MicroHIDItem hid)
             {
                 // ЛКМ (PrimaryFire) — быстрый луч; ПКМ (ChargeFire) — долгий заряд, бьёт сильнее и дальше.
@@ -1522,6 +1650,10 @@ namespace SlBridge
                             if (m.Bool("dead")) { Scp127KillAmmo(f127); Scp127Speak(f127, m.Str("entity", "")); }
                         }
                     }
+                    break;
+
+                case "xp":
+                    MendWithXp((int)m.Num("n", 0));
                     break;
 
                 case "items":

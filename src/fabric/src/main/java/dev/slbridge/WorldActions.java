@@ -33,6 +33,8 @@ public final class WorldActions {
     private int nextBreakerId = 1_000_000;
     /** Сила «добычи» следующего удара: сколько попаданий засчитать блоку (мультитул: дерево 1.5 … незерит 6.5). */
     public float mine = 1f;
+    /** Чары предмета SL в руке («sharpness:3,looting:1»), пусто — без чар. */
+    public String ench = "";
 
     /**
      * Удар ближнего боя как в SCP:SL (Jailbird, SCP-1509): шар радиусом radius на offset м перед камерой, только цели
@@ -60,6 +62,9 @@ public final class WorldActions {
             if (dot > best) { best = dot; primary = e; }
         }
         if (primary == null) { shot(level, player, from, dir, range, slDamage, breaks, true, cfg, bridge); return; }
+        // «Разящий клинок»: остальные цели в области получают больше (как у меча: I — ½, II — ⅔, III — ¾ от удара)
+        int sweep = SlEnchants.level(ench, "sweeping_edge");
+        if (sweep > 0) splash = splash + (1f - splash) * sweep / (sweep + 1f);
         JsonObject res = new JsonObject();
         res.addProperty("t", "hit");
         res.addProperty("kind", "entity");
@@ -81,7 +86,32 @@ public final class WorldActions {
         var src = !knockback && target instanceof net.minecraft.world.entity.monster.Enderman
                 ? level.damageSources().thrown(player, player)
                 : level.damageSources().playerAttack(player);
-        boolean hurt = target.hurtServer(level, src, mcDamage);
+        ItemStack weapon = ench.isEmpty() ? ItemStack.EMPTY : SlEnchants.weapon(ench);
+        if (!weapon.isEmpty()) {
+            if (knockback) mcDamage = net.minecraft.world.item.enchantment.EnchantmentHelper.modifyDamage(level, weapon, target, src, mcDamage); // Острота, Небесная кара, Бич членистоногих
+            else mcDamage *= 1f + 0.10f * SlEnchants.level(ench, "power"); // Сила: +10% за уровень
+        }
+        boolean hurt;
+        // на время удара предмет с чарами — «в руке» игрока Minecraft: так работают Добыча и Заговор огня
+        ItemStack prevHand = player.getMainHandItem();
+        if (!weapon.isEmpty()) player.setItemSlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND, weapon);
+        try {
+            hurt = target.hurtServer(level, src, mcDamage);
+            if (hurt && !weapon.isEmpty()) {
+                if (knockback) {
+                    float kb = net.minecraft.world.item.enchantment.EnchantmentHelper.modifyKnockback(level, weapon, target, src, 0f);
+                    if (kb > 0 && target instanceof LivingEntity lk) {
+                        float yaw = player.getYRot() * ((float) Math.PI / 180f);
+                        lk.knockback(kb * 0.5f, Math.sin(yaw), -Math.cos(yaw), src, 0f);
+                    }
+                    net.minecraft.world.item.enchantment.EnchantmentHelper.doPostAttackEffectsWithItemSource(level, target, src, weapon);
+                } else if (SlEnchants.level(ench, "flame") > 0) {
+                    target.igniteForSeconds(5f); // Горящая стрела
+                }
+            }
+        } finally {
+            if (!weapon.isEmpty()) player.setItemSlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND, prevHand);
+        }
         if (!knockback) target.setDeltaMovement(velBefore);
         if (target instanceof LivingEntity le1) le1.damageCooldownTime = 0;
         target.setInvulnerableTime(0);
@@ -108,42 +138,16 @@ public final class WorldActions {
         BlockHitResult solidHit = level.clip(new ClipContext(from, to, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, player));
         Vec3 solidEnd = solidHit.getType() == HitResult.Type.MISS ? to : solidHit.getLocation();
         AABB sweep = new AABB(from, solidEnd).inflate(1.0);
-        EntityHitResult entityHit = ProjectileUtil.getEntityHitResult(level, player, from, solidEnd, sweep,
-                e -> e != player && e.isAlive() && e.isPickable() && !e.isSpectator(), 0f); // строго по хитбоксу
+        // «Пронзание»: пуля проходит сквозь столько мобов подряд (+1 за уровень)
+        List<Entity> hits = rayEntities(level, player, from, solidEnd, sweep, 1 + SlEnchants.level(ench, "piercing"));
         // Блок для разрушения — любой, включая траву (по контуру).
         BlockHitResult blockHit = level.clip(new ClipContext(from, to, ClipContext.Block.OUTLINE, ClipContext.Fluid.NONE, player));
 
         JsonObject res = new JsonObject();
         res.addProperty("t", "hit");
-        if (entityHit != null) {
-            Entity target = entityHit.getEntity();
-            float mcDamage = slDamage / cfg.damageScale;
-            target.setInvulnerableTime(0); // автомат стреляет чаще 10 тиков
-            // У мобов нет «бессмертия» после попадания: в 26.x это damageCooldownTime (10 тиков) — обнуляем до и после.
-            if (target instanceof LivingEntity le0) { le0.damageCooldownTime = 0; le0.hurtTime = 0; }
-            target.setInvulnerableTime(0);
-            Vec3 velBefore = target.getDeltaMovement();
-            // Эндермен уворачивается от пуль, как от стрел: снаряд → он телепортируется и урона не получает.
-            // Холодное оружие (Jailbird, мачете — с отбрасыванием) бьёт его обычным ударом.
-            var src = !knockback && target instanceof net.minecraft.world.entity.monster.Enderman
-                    ? level.damageSources().thrown(player, player)
-                    : level.damageSources().playerAttack(player);
-            boolean hurt = target.hurtServer(level, src, mcDamage);
-            // эндермен увернулся (телепортировался) — в SL без хитмаркера
-            if (!hurt && !knockback && target instanceof net.minecraft.world.entity.monster.Enderman) res.addProperty("dodged", true);
-            // отбрасывание — только от холодного оружия (Jailbird, SCP-1509); пули и Micro HID моба не толкают
-            if (!knockback) target.setDeltaMovement(velBefore);
-            if (target instanceof LivingEntity le1) le1.damageCooldownTime = 0;
-            target.setInvulnerableTime(0);
+        if (!hits.isEmpty()) {
             res.addProperty("kind", "entity");
-            res.addProperty("entity", BuiltInRegistries.ENTITY_TYPE.getKey(target.getType()).toString());
-            res.addProperty("dmg", mcDamage);
-            // дракон Края получает урон частями тела — здоровье и смерть берём у него самого
-            Entity owner = target instanceof net.minecraft.world.entity.boss.enderdragon.EnderDragonPart part ? part.parentMob : target;
-            if (owner instanceof LivingEntity living) {
-                if (Float.isFinite(living.getHealth())) res.addProperty("hp", living.getHealth());
-                res.addProperty("dead", living.isDeadOrDying());
-            }
+            for (int i = 0; i < hits.size(); i++) hitEntity(level, player, hits.get(i), slDamage, knockback, cfg, i == 0 ? res : null);
         } else if (breaks && blockHit.getType() == HitResult.Type.BLOCK
                 && level.getBlockState(blockHit.getBlockPos()).is(net.minecraft.world.level.block.Blocks.DRAGON_EGG)) {
             // яйцо дракона не ломается, а отпрыгивает — как от удара в Minecraft
@@ -162,7 +166,7 @@ public final class WorldActions {
             } else {
                 int needed = Math.max(1, (int) Math.ceil(hardness * cfg.shotsPerHardness));
                 Damage d = blockDamage.computeIfAbsent(pos, p -> { Damage n = new Damage(); n.breakerId = nextBreakerId++; return n; });
-                d.hits += Math.max(0.1f, mine);
+                d.hits += Math.max(0.1f, mine) * (1f + 0.25f * SlEnchants.level(ench, "efficiency")); // Эффективность: +25% за уровень
                 d.lastNanos = System.nanoTime();
                 res.addProperty("progress", Math.min(1f, d.hits / needed));
                 if (d.hits >= needed) {
@@ -180,10 +184,45 @@ public final class WorldActions {
         bridge.send(res);
     }
 
+    /** Мобы на луче from→to (строго по хитбоксу), ближние первыми, не больше max. */
+    private static List<Entity> rayEntities(ServerLevel level, ServerPlayer player, Vec3 from, Vec3 to, AABB sweep, int max) {
+        List<Entity> cand = level.getEntities(player, sweep, e -> e != player && e.isAlive() && e.isPickable() && !e.isSpectator());
+        List<Map.Entry<Double, Entity>> hit = new java.util.ArrayList<>();
+        for (Entity e : cand) {
+            AABB b = e.getBoundingBox();
+            if (b.contains(from)) { hit.add(Map.entry(0.0, e)); continue; }
+            b.clip(from, to).ifPresent(p -> hit.add(Map.entry(from.distanceToSqr(p), e)));
+        }
+        hit.sort(Map.Entry.comparingByKey());
+        List<Entity> r = new java.util.ArrayList<>();
+        for (var h : hit) {
+            Entity e = h.getValue();
+            // части дракона — одна цель
+            Entity owner = e instanceof net.minecraft.world.entity.boss.enderdragon.EnderDragonPart part ? part.parentMob : e;
+            boolean dup = false;
+            for (Entity x : r) { Entity ox = x instanceof net.minecraft.world.entity.boss.enderdragon.EnderDragonPart px ? px.parentMob : x; if (ox == owner) dup = true; }
+            if (dup) continue;
+            r.add(e);
+            if (r.size() >= max) break;
+        }
+        return r;
+    }
+
     private void breakBlock(ServerLevel level, ServerPlayer player, BlockPos pos, BlockState state, BridgeServer bridge) {
         BlockEntity be = level.getBlockEntity(pos);
         // Дроп считаем как будто ломали алмазной киркой: камень → булыжник, руды → ресурсы.
-        List<ItemStack> drops = Block.getDrops(state, level, pos, be, player, new ItemStack(Items.DIAMOND_PICKAXE));
+        ItemStack tool = new ItemStack(Items.DIAMOND_PICKAXE);
+        // Удача и Шёлковое касание мультитула — на «кирку», которой считаем дроп
+        if (!ench.isEmpty()) {
+            var all = SlEnchants.fromString(ench);
+            var mut = new net.minecraft.world.item.enchantment.ItemEnchantments.Mutable(net.minecraft.world.item.enchantment.ItemEnchantments.EMPTY);
+            for (var e : all.entrySet()) {
+                String n = SlEnchants.name(e.getKey());
+                if ("fortune".equals(n) || "silk_touch".equals(n)) mut.set(e.getKey(), e.getIntValue());
+            }
+            tool.set(net.minecraft.core.component.DataComponents.ENCHANTMENTS, mut.toImmutable());
+        }
+        List<ItemStack> drops = Block.getDrops(state, level, pos, be, player, tool);
         level.destroyBlock(pos, false, player, 512);
         // Выпавшее — настоящими предметами в мире Minecraft; в SL их подбирают на E.
         for (ItemStack s : drops) {
@@ -193,7 +232,7 @@ public final class WorldActions {
             ie.setDefaultPickUpDelay();
             level.addFreshEntity(ie);
         }
-        state.spawnAfterBreak(level, pos, new ItemStack(Items.DIAMOND_PICKAXE), true); // опыт из руд и т.п.
+        state.spawnAfterBreak(level, pos, tool, true); // опыт из руд и т.п.
 
         JsonObject m = new JsonObject();
         m.addProperty("t", "drops");

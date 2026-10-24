@@ -35,7 +35,9 @@ The protocol between the parts is in [`docs/PROTOCOL.md`](docs/PROTOCOL.md).
 1. Download the archive from [Releases](../../releases), unpack it, run `SlBridgeLauncher.exe`.
 2. **Setup** tab — go through the steps: SCP:SL and SCP:SL Dedicated Server from Steam (same version),
    Minecraft 26.3 + Fabric (easiest with [Prism Launcher](https://prismlauncher.org)), the “Install mod” button.
-3. **Play** tab — pick or create a world, press “Play”. In SL: Play → Direct connect → Ctrl+V.
+3. **Play** tab — pick or create a world, press “Play”. In SL: Play → Direct connect → Ctrl+V. Old worlds can be removed right there with **“Delete”** (to the Recycle Bin); **“Worlds folder”** opens them in Explorer.
+
+> **SL window mode must be Borderless.** In exclusive fullscreen Windows shows no windows on top of the game, so you see the green backdrop instead of Minecraft. The launcher detects this and tells you. Any resolution or stretching (e.g. 4:3 via NVIDIA) is fine.
 
 If the overlay covers something: **Ctrl+Shift+F12** turns it off/on, **Ctrl+Shift+F11** shows the mask.
 **Ctrl+Shift+F10** — quick exit (closes SL, Minecraft with saving, the server and the overlay; same as the “Quit” button in SL: Esc → Settings → Server-specific).
@@ -59,6 +61,8 @@ The main options (role, jump, light, green screen, performance) are in the launc
 | **F4** / **F4+B** / **F4+G** | Minecraft debug screen / hitboxes / chunk borders (F3 is SL's own debug) |
 | `~` → `.mc <command>` | a Minecraft command, e.g. `.mc time set day`; in the admin panel — `mc time set day` |
 | `~` → `.kit start` | get the starter kit again |
+| `~` → `.enchant <enchantment> [level]` | enchant the SL item in hand: `.enchant sharpness 5`; `.enchant list` — what fits, `.enchant clear` — remove |
+| `~` → `.bridge` | help for the bridge commands |
 | Ctrl+Shift+F10 | quick exit (or the “Quit” button in Server-specific) |
 | Ctrl+Shift+F12 / F11 | turn the overlay off / show the green-screen mask |
 
@@ -82,12 +86,25 @@ In Minecraft windows (crafting table, inventory, chest) drag items with the mous
 * **Bed** — sleep through the night, and it sets your respawn point any time.
 * **Death.** Everything, SL items included, drops as Minecraft items (`.mc gamerule keep_inventory true` to keep them). You respawn at your bed or world spawn.
 * **Your SL inventory** is saved in the world folder and comes back next time; each world has its own. Item state (attachments, loaded ammo, Micro H.I.D. charge, Jailbird wear, SCP-127 and multitool tiers) is kept everywhere.
+* **Villager trading** — E on a villager opens the usual trading window.
+* **Enchanting.** SL items can be enchanted at an enchanting table, with books on an anvil (and with `.enchant`); a grindstone removes enchantments. Enchantments stay on the item everywhere — when dropped, on death, when recharged at a crafting table, between sessions. Consumables can't be enchanted.
+
+  | Item | Enchantments |
+  |---|---|
+  | Firearms | **Power** (+10% damage per level), **Flame** (sets on fire), **Piercing** (the bullet goes through +1 mob per level), **Infinity** (about every third shot is free). No Punch |
+  | Micro H.I.D. | the same + **Unbreaking** (drains slower) and **Mending** (experience → +1% charge per point) |
+  | Machete and multitools | **Sharpness, Smite, Bane of Arthropods, Fire Aspect, Knockback, Looting** — like a sword; **Sweeping Edge** — more damage to the other targets in the area; **Efficiency** (+25% digging per level), **Fortune**, **Silk Touch** |
+  | Jailbird | melee enchantments + **Unbreaking** (less wear) and **Mending** (experience repairs it) |
+  | Armor | all **Protection** types, **Thorns**, **Feather Falling**, **Respiration**, **Depth Strider** (faster swimming up and down) — copied onto the Minecraft armor |
+
+  Enchanted books and other Minecraft items, potions and renamed things keep everything in the SL inventory too — the card name shows their enchantments.
 * **No hunger** — food is crafted into medkits (see Crafting). Experience is picked up automatically.
 
 ## Performance
 
 Two games share one graphics card and the overlay combines their pictures (the overlay itself costs a fraction of a millisecond per frame). Extra frames in one game are taken from the other, so:
 
+* **Run SL in Borderless window mode**, otherwise the overlay is hidden (see above).
 * **Cap FPS at 60 in each game** — in the SCP:SL graphics settings and in the Minecraft settings (**O** in game). This usually makes the real result noticeably smoother.
 * Turn off VSync in Minecraft and enable Sodium (checkbox in the launcher).
 * SL graphics can be low: SL only draws the weapon and UI, Minecraft draws the world.
