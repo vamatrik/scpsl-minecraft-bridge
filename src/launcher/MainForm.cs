@@ -67,7 +67,7 @@ namespace SlBridge.Launcher
             side.Controls.Add(logo);
             _nav = new[] { NavButton(L.T("1  Подготовка", "1  Setup"), 0), NavButton(L.T("2  Играть", "2  Play"), 1), NavButton(L.T("⚒  Крафты", "⚒  Crafting"), 2), NavButton(L.T("⚙  Настройки", "⚙  Settings"), 4), NavButton(L.T("?  Справка", "?  Help"), 3) };
             for (int i = 0; i < _nav.Length; i++) { _nav[i].Location = new Point(10, 100 + i * 46); side.Controls.Add(_nav[i]); }
-            var ver = Ui.Label(L.T("мост 1.3.2\nClaude x Vamatrik", "bridge 1.3.2\nClaude x Vamatrik"), 8.5f, Ui.Muted);
+            var ver = Ui.Label(L.T("мост 1.3.3\nClaude x Vamatrik", "bridge 1.3.3\nClaude x Vamatrik"), 8.5f, Ui.Muted);
             ver.Location = new Point(18, 626);
             side.Controls.Add(ver);
 
