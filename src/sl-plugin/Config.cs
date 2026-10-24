@@ -136,7 +136,7 @@ namespace SlBridge
         [Description("Показывать коллизии (для отладки).")]
         public bool DebugShowCollision { get; set; } = false;
 
-        [Description("Если упал ниже этой высоты Minecraft — вернуть на точку появления.")]
+        [Description("Ниже этой высоты Minecraft — пустота: игрок умирает, как в Minecraft (в ноуклипе — возврат на точку появления).")]
         public float VoidY { get; set; } = -80f;
     }
 }

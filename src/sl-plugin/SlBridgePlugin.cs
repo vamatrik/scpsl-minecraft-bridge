@@ -1122,10 +1122,19 @@ namespace SlBridge
 
             if (_hasSpawn && !_arriving && _hasSpawnMc && pos.y < CoordMap.Origin.y + Config.VoidY && Time.time >= _nextVoidTp)
             {
-                // выпал сквозь мир — просим Minecraft вернуть на точку появления (дальше — обычное «прибытие»)
                 _nextVoidTp = Time.time + 3f;
-                _player.SendHint(L.T("<size=22>Ты выпал из мира — возвращаю на точку появления.</size>", "<size=22>You fell out of the world — returning you to spawn.</size>"), 4f);
-                SendMinecraftCommand($"execute in minecraft:overworld run tp @s {F(_spawnMc.x)} {F(_spawnMc.y)} {F(_spawnMc.z)}", null);
+                if (!IsNoclip() && _player.IsAlive)
+                {
+                    // пустота под миром (Край, дыра в бедроке) — как в Minecraft: смерть. Предметы падают в пустоту,
+                    // если не включён keep_inventory; возрождение — у кровати или на спавне
+                    _player.Kill(L.T("Выпал из мира", "Fell out of the world"));
+                }
+                else
+                {
+                    // ноуклип (полёт сквозь блоки) — не убиваем, а возвращаем на точку появления
+                    _player.SendHint(L.T("<size=22>Ты вылетел из мира — возвращаю на точку появления.</size>", "<size=22>You flew out of the world — returning you to spawn.</size>"), 4f);
+                    SendMinecraftCommand($"execute in minecraft:overworld run tp @s {F(_spawnMc.x)} {F(_spawnMc.y)} {F(_spawnMc.z)}", null);
+                }
             }
 
             PollMelee();

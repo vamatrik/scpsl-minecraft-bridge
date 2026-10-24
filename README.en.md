@@ -99,6 +99,7 @@ In Minecraft windows (crafting table, inventory, chest) drag items with the mous
 
   Enchanted books and other Minecraft items, potions and renamed things keep everything in the SL inventory too — the card name shows their enchantments.
 * **Boats, minecarts and horses** can't be ridden: movement in the bridge is driven by SL. Feeding and breeding animals works.
+* **The void.** Falling below the world (the End, a hole in bedrock) kills you, like in Minecraft.
 * **No hunger** — food is crafted into medkits (see Crafting). Experience is picked up automatically.
 
 ## Performance
