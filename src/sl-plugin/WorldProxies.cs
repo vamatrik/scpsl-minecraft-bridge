@@ -1,3 +1,4 @@
+using System.Linq;
 using System;
 using System.Collections.Generic;
 using LabApi.Features.Wrappers;
@@ -129,6 +130,7 @@ namespace SlBridge
 
         private void Move(PrimitiveObjectToy toy, Vector3 c, Vector3 s)
         {
+            if (_phased.Remove(toy)) SetCollidable(toy, true); // коробка переехала (новый блок) — снова твёрдая
             if ((toy.Position - c).sqrMagnitude < 1e-6f && (toy.Scale - s).sqrMagnitude < 1e-6f) return;
             if (toy.IsStatic) toy.IsStatic = false;
             toy.Position = c;
@@ -136,8 +138,57 @@ namespace SlBridge
             _settling[toy] = Time.time + 0.6f;
         }
 
+        // ── «Сквозь стены» (белая конфета SCP-330): коробки рядом, выше ног, временно без коллизии ──
+        private readonly HashSet<PrimitiveObjectToy> _phased = new HashSet<PrimitiveObjectToy>();
+
+        private void SetCollidable(PrimitiveObjectToy t, bool on)
+        {
+            if (t == null || t.IsDestroyed) return;
+            var vis = _cfg.DebugShowCollision ? PrimitiveFlags.Visible : 0;
+            t.Flags = on ? (PrimitiveFlags.Collidable | vis) : vis;
+        }
+
+        /// <summary>Выключить коллизию у коробок в радиусе r от ног, которые выше ног (стены), — пол остаётся.</summary>
+        public void Phase(Vector3 feet, float r)
+        {
+            var keep = new HashSet<PrimitiveObjectToy>();
+            foreach (var list in _sections.Values)
+                foreach (var t in list)
+                {
+                    if (t == null || t.IsDestroyed) continue;
+                    Vector3 c = t.Position, h = new Vector3(Mathf.Abs(t.Scale.x), Mathf.Abs(t.Scale.y), Mathf.Abs(t.Scale.z)) * 0.5f;
+                    float dx = Mathf.Max(0f, Mathf.Abs(feet.x - c.x) - h.x), dz = Mathf.Max(0f, Mathf.Abs(feet.z - c.z) - h.z);
+                    if (dx * dx + dz * dz > r * r) continue;
+                    if (c.y + h.y <= feet.y + 0.25f || c.y - h.y >= feet.y + 1.9f) continue;
+                    keep.Add(t);
+                    if (_phased.Add(t)) SetCollidable(t, false);
+                }
+            foreach (var t in _phased.ToList())
+                if (!keep.Contains(t)) { _phased.Remove(t); SetCollidable(t, true); }
+        }
+
+        public void Unphase()
+        {
+            foreach (var t in _phased) SetCollidable(t, true);
+            _phased.Clear();
+        }
+
+        /// <summary>Точка внутри какой-нибудь коробки (в том числе выключенной) — там в Minecraft твёрдый блок.</summary>
+        public bool ContainsPoint(Vector3 p)
+        {
+            foreach (var list in _sections.Values)
+                foreach (var t in list)
+                {
+                    if (t == null || t.IsDestroyed) continue;
+                    Vector3 c = t.Position, h = new Vector3(Mathf.Abs(t.Scale.x), Mathf.Abs(t.Scale.y), Mathf.Abs(t.Scale.z)) * 0.5f;
+                    if (Mathf.Abs(p.x - c.x) <= h.x && Mathf.Abs(p.y - c.y) <= h.y && Mathf.Abs(p.z - c.z) <= h.z) return true;
+                }
+            return false;
+        }
+
         private void Park(PrimitiveObjectToy toy)
         {
+            if (_phased.Remove(toy)) SetCollidable(toy, true);
             if (toy == null || toy.IsDestroyed) return;
             Move(toy, ParkPos, Vector3.one * 0.01f);
             _pool.Add(toy);

@@ -67,7 +67,18 @@ public final class SlBridgeClient implements ClientModInitializer {
         });
 
         // выход из мира — убрать свет лампы, чтобы не остался в сохранении
-        net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STOPPING.register(server -> serverBridge.clearLamp());
+        net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STOPPING.register(server -> { serverBridge.clearLamp(); serverBridge.fun.clearXray(); });
+
+        // Игрок убил моба — SL узнаёт (злая конфета пополняет AHP за убийства)
+        ServerLivingEntityEvents.AFTER_DEATH.register((entity, source) -> {
+            if (!isBridgeActive() || entity instanceof ServerPlayer || !(source.getEntity() instanceof ServerPlayer)) return;
+            if (entity instanceof net.minecraft.world.entity.monster.Witch && entity.level() instanceof net.minecraft.server.level.ServerLevel wl)
+                serverBridge.fun.witchCandy(wl, entity);
+            JsonObject k = new JsonObject();
+            k.addProperty("t", "kill");
+            k.addProperty("mob", BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType()).toString());
+            bridge.send(k);
+        });
 
         // Урон игроку Minecraft не наносится — он пересылается в SCP:SL (×5) и снимается там.
         ServerLivingEntityEvents.ALLOW_DAMAGE.register((entity, source, amount) -> {
@@ -104,6 +115,7 @@ public final class SlBridgeClient implements ClientModInitializer {
                 m.addProperty("amount", amount * config.damageScale);
                 m.addProperty("mcAmount", amount);
                 m.addProperty("source", source.getMsgId());
+                try { m.addProperty("death", source.getLocalizedDeathMessage(entity).getString()); } catch (Exception deathErr) { }
                 if (source.getEntity() != null) {
                     m.addProperty("attacker", BuiltInRegistries.ENTITY_TYPE.getKey(source.getEntity().getType()).toString());
                 }
@@ -191,7 +203,7 @@ public final class SlBridgeClient implements ClientModInitializer {
                 mc.debugEntries.toggleStatus(id);
             });
             case "pose" -> { Pose.lamp = m.has("lamp") ? m.get("lamp").getAsInt() : 0; Pose.beam = m.has("beam") && m.get("beam").getAsInt() != 0;
-                Pose.noclip = m.has("nc") && m.get("nc").getAsInt() != 0; Pose.invisible = m.has("inv") && m.get("inv").getAsInt() != 0; Pose.set(m.get("x").getAsDouble(), m.get("y").getAsDouble(), m.get("z").getAsDouble(),
+                Pose.noclip = m.has("nc") && m.get("nc").getAsInt() != 0; Pose.invisible = m.has("inv") && m.get("inv").getAsInt() != 0; Pose.fx = m.has("fx") ? m.get("fx").getAsInt() : 0; Pose.set(m.get("x").getAsDouble(), m.get("y").getAsDouble(), m.get("z").getAsDouble(),
                     m.get("yaw").getAsFloat(), m.get("pitch").getAsFloat(), m.has("seq") ? m.get("seq").getAsInt() : 0,
                     m.has("fy") ? m.get("fy").getAsDouble() : Double.NaN);
             }
@@ -263,7 +275,7 @@ public final class SlBridgeClient implements ClientModInitializer {
                     } finally { actions.mine = 1f; actions.ench = ""; }
                 });
             }
-            case "pickup", "drop", "use", "openInv", "armor", "xpTake", "craftList", "craft", "smeltList", "smelt", "cmd", "respawnReq" -> onServer(() -> {
+            case "pickup", "drop", "use", "openInv", "armor", "xpTake", "craftList", "craft", "smeltList", "smelt", "cmd", "respawnReq", "candy", "chorus", "phaseEnd", "totem", "evilKill" -> onServer(() -> {
                 IntegratedServer server = mc.getSingleplayerServer();
                 if (server != null) serverBridge.handle(server, m);
             });

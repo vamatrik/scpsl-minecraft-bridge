@@ -40,4 +40,7 @@
     <Reference Include="Pooling"><HintPath>$(SLManaged)\Pooling.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="netstandard"><HintPath>$(SLManaged)\netstandard.dll</HintPath><Private>false</Private></Reference>
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="sounds\scp096_rage.wav" LogicalName="SlBridge.sounds.scp096_rage.wav" />
+  </ItemGroup>
 </Project>

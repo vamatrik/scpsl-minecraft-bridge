@@ -22,7 +22,7 @@ using Logger = LabApi.Features.Console.Logger;
 
 namespace SlBridge
 {
-    public sealed class SlBridgePlugin : Plugin<Config>
+    public sealed partial class SlBridgePlugin : Plugin<Config>
     {
         public static SlBridgePlugin Instance { get; private set; }
 
@@ -151,6 +151,8 @@ namespace SlBridge
             PlayerEvents.Hurting += OnHurting;
             ServerEvents.PickupCreated += OnPickupCreated;
             PlayerEvents.ChangedItem += OnChangedItem;
+            PlayerEvents.UsedItem += OnUsedItemFun;
+            PlayerEvents.ItemUsageEffectsApplying += OnUsageApplyingFun;
             PlayerEvents.ProcessedScp1509Message += On1509;
             ServerEvents.WaitingForPlayers += OnWaiting;
             ServerEvents.RoundStarted += OnRoundStarted;
@@ -180,6 +182,8 @@ namespace SlBridge
             PlayerEvents.Hurting -= OnHurting;
             ServerEvents.PickupCreated -= OnPickupCreated;
             PlayerEvents.ChangedItem -= OnChangedItem;
+            PlayerEvents.UsedItem -= OnUsedItemFun;
+            PlayerEvents.ItemUsageEffectsApplying -= OnUsageApplyingFun;
             PlayerEvents.ProcessedScp1509Message -= On1509;
             ServerEvents.WaitingForPlayers -= OnWaiting;
             ServerEvents.RoundStarted -= OnRoundStarted;
@@ -657,7 +661,8 @@ namespace SlBridge
             if (_player == null || !_hasSpawn || !_mc.Connected) return;
             float power = ev.ExplosionType == ExplosionType.Grenade ? Config.GrenadeExplosionPower
                         : ev.ExplosionType == ExplosionType.SCP018 ? Config.Scp018ExplosionPower
-                        : ev.ExplosionType == ExplosionType.Jailbird ? Config.JailbirdExplosionPower : 0f;
+                        : ev.ExplosionType == ExplosionType.Jailbird ? Config.JailbirdExplosionPower
+                        : ev.ExplosionType == ExplosionType.PinkCandy ? Config.PinkCandyExplosionPower : 0f;
             if (power <= 0f) return;
             var mc = CoordMap.SlToMc(ev.Position);
             _mc.Send("{\"t\":\"explode\"," + Vec("", mc) + ",\"power\":" + F(power) + "}");
@@ -771,6 +776,7 @@ namespace SlBridge
 
         private void OnPickupCreated(PickupCreatedEventArgs ev)
         {
+            if (ev.Pickup is Scp330Pickup) _candyDroppedAt = Time.time; // выброшенная конфета — не «съедена»
             if (_player == null || !_hasSpawn || _inFacility || ev.Pickup == null || ev.Pickup is Projectile) return;
             _strayPickups.Add(ev.Pickup);
         }
@@ -816,6 +822,8 @@ namespace SlBridge
         private void OnDying(PlayerDyingEventArgs ev)
         {
             if (ev.Player != _player) return;
+            if (TryTotem(ev)) return;
+            FunCleanup();
             // Как в Minecraft: всё выпадает там, где умер — и стаки Minecraft, и предметы SL (как предметы Minecraft:
             // обычные «пикапы» SL упали бы сквозь коллизии и пропали). Подбираются на E и снова становятся предметами SL.
             // всё, что было, по порядку слотов: стаки Minecraft и предметы SL (с состоянием: обвесы, магазин, заряд)
@@ -907,7 +915,8 @@ namespace SlBridge
         /// </summary>
         private string InvForMinecraft(out int heldSlot)
         {
-            var items = _player.Items.ToList();
+            // надетые очки SCP-1344 остаются в SL: пересоздание предмета сняло бы их
+            var items = _player.Items.Where(i => !IsWorn1344(i)).ToList();
             _useSerials = items.Select(i => i.Serial).ToList();
             _slSentSerials = items.Where(i => !_inv.IsStack(i)).Select(i => i.Serial).ToList();
             // в руке Minecraft — только стак Minecraft; предмет SL в руке = пустая рука (иначе заглушку можно «применить»)
@@ -1090,6 +1099,7 @@ namespace SlBridge
                 if (!_frozen) ApplySwimGravity(noclip);
                 PadTick(pos);
             }
+            FunTick(pos);
 
             if (Time.time >= _nextHousekeeping)
             {
@@ -1325,6 +1335,7 @@ namespace SlBridge
                 // «Подводная ходьба» бронежилета: всплытие и погружение в воде быстрее (+⅓ за уровень)
                 float ds = _fluidEye == 1 ? 1f + _depthStrider / 3f : 1f;
                 if (_fluidEye != 0) target = IsSneaking() ? -Config.SwimSink * ds : _fluidEye == 2 ? Config.LavaRise : Config.SwimRise * ds;
+                if (_fluidEye == 1 && On<Metal>()) target = -Config.SwimSink * 1.5f; // серая конфета: тяжёлый — идёшь ко дну
                 else if (_climb) target = IsSneaking() ? 0f : look > 0.3f ? Config.ClimbSpeed : look < -0.5f ? -Config.ClimbSpeed : 0f;
                 else if (_fluidFeet != 0) target = -0.3f; // голова над водой — держимся на плаву
             }
@@ -1446,12 +1457,13 @@ namespace SlBridge
             CoordMap.DirToMcAngles(cam.forward, out float yaw, out float pitch);
             float feet = CoordMap.SlToMc(_player.Position).y - FeetOffset(_player);
             _mc.Send("{\"t\":\"pose\",\"x\":" + F(eye.x) + ",\"y\":" + F(eye.y) + ",\"z\":" + F(eye.z)
-                + ",\"fy\":" + F(feet) + ",\"yaw\":" + F(yaw) + ",\"pitch\":" + F(pitch) + ",\"seq\":" + _poseSeq + ",\"lamp\":" + LampLevel() + ",\"beam\":" + (_player.CurrentItem?.Type == ItemType.Flashlight ? 1 : 0) + ",\"nc\":" + (IsNoclip() ? 1 : 0) + ",\"inv\":" + (IsInvisible() ? 1 : 0) + "}");
+                + ",\"fy\":" + F(feet) + ",\"yaw\":" + F(yaw) + ",\"pitch\":" + F(pitch) + ",\"seq\":" + _poseSeq + ",\"lamp\":" + LampLevel() + ",\"beam\":" + (_player.CurrentItem?.Type == ItemType.Flashlight ? 1 : 0) + ",\"nc\":" + (IsNoclip() ? 1 : 0) + ",\"inv\":" + (IsInvisible() ? 1 : 0) + ",\"fx\":" + FunFx() + "}");
         }
 
         /// <summary>Лампа (Lantern) или фонарик в руке и включены — светят в Minecraft.</summary>
         private int LampLevel()
         {
+            if (On<OrangeCandy>()) return 15; // оранжевая конфета SCP-330 — светишься сам
             if (!(_player.CurrentItem is LightItem li) || !li.IsEmitting) return 0;
             return li.Type == ItemType.Lantern ? Config.LanternLight : li.Type == ItemType.Flashlight ? Config.FlashlightLight : 0;
         }
@@ -1571,6 +1583,7 @@ namespace SlBridge
         private void Handle(Dictionary<string, object> m)
         {
             string t = m.Str("t");
+            if (HandleFun(t, m)) return;
             switch (t)
             {
                 case "hello":
@@ -1656,7 +1669,8 @@ namespace SlBridge
                     {
                         float amount = (float)m.Num("amount");
                         string who = m.Str("attacker") ?? m.Str("source", "?");
-                        _player.Damage(amount, "Minecraft: " + who);
+                        // как в Minecraft: «Игрок был убит зомби», «… свалился с высоты» — текст присылает мод
+                        _player.Damage(amount, m.Str("death") ?? ("Minecraft: " + who));
                     }
                     break;
 

@@ -74,6 +74,8 @@ namespace SlBridge
         public float GrenadeExplosionPower { get; set; } = 3f;
         public float Scp018ExplosionPower { get; set; } = 1.5f;
         public float JailbirdExplosionPower { get; set; } = 2f;
+        [Description("Розовая конфета SCP-330 (и взрыв от чёрной) — взрыв и в мире Minecraft.")]
+        public float PinkCandyExplosionPower { get; set; } = 3f;
 
         [Description("Яркость света в Minecraft от лампы (Lantern) в руке, 0–15. Без лампы в темноте темно.")]
         public int LanternLight { get; set; } = 14;

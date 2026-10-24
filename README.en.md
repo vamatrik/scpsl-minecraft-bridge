@@ -101,7 +101,16 @@ In Minecraft windows (crafting table, inventory, chest) drag items with the mous
   | Armor | all **Protection** types, **Thorns**, **Feather Falling**, **Respiration**, **Depth Strider** (faster swimming up and down) — copied onto the Minecraft armor |
 
   Enchanted books and other Minecraft items, potions and renamed things keep everything in the SL inventory too — the card name shows their enchantments.
-* **Boats, minecarts and horses** can't be ridden: movement in the bridge is driven by SL. Feeding and breeding animals works.
+* **Boats, minecarts and horses** can't be ridden: movement in the bridge is driven by SL (they refuse you with a joke instead). Feeding and breeding animals works.
+* **SCP-330 candies (SL Halloween build)** work in the Minecraft world too: red — fire breath ignites mobs, TNT and wood;
+  white — walk through walls horizontally; orange — mobs glow; gray — you sink and ground-pound after a fall;
+  green — plants grow under your feet; yellow — ram mobs; purple — fire resistance; blue — clears effects; rainbow — animals fall in love,
+  sheep become "jeb_"; brown — the puddle slows mobs; evil — lightning strikes monsters, and every kill gives +100 AHP (up to 450);
+  black — a chorus-fruit teleport. Witches drop candy (1–2 random).
+* **SCP-1344** gives X-ray instead of darkening: ores glow through stone, mobs are outlined. Taking it off gives Severed Eyes.
+* **Easter eggs:** a mob name-tagged "SCP-173" only moves when you don't look at it; an angry enderman plays SCP-096's scream;
+  a Totem of Undying in hand saves you from death; milk clears SL effects; potions can be drunk and thrown; elytra toggle noclip;
+  bows, shields, fishing rods and other "last century" gear get a comment; Minecraft advancements and death messages show in SL.
 * **The void.** Falling below the world (the End, a hole in bedrock) kills you, like in Minecraft.
 * **No hunger** — food is crafted into medkits (see Crafting). Experience is picked up automatically.
 
@@ -338,4 +347,4 @@ Questions, bugs and ideas — message me on Discord: **vamatrultra**. You can al
 
 ## License
 
-[MIT](LICENSE) — free to use, modify and distribute as long as the authors are credited. SCP: Secret Laboratory and Minecraft belong to their owners (Northwood Studios, Mojang); the bridge contains none of their files.
+[MIT](LICENSE) — free to use, modify and distribute as long as the authors are credited. SCP: Secret Laboratory and Minecraft belong to their owners (Northwood Studios, Mojang); the bridge contains none of their files, except the SCP-096 scream sound from SCP: Secret Laboratory (Northwood Studios, CC BY-SA 3.0).

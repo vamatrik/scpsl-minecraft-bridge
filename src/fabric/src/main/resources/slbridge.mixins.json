@@ -21,6 +21,9 @@
     "PlayerMixins$NoAutoPickup",
     "InvisibleMixin",
     "EnchantMixin",
-    "CraftKeepEnchantsMixin"
+    "CraftKeepEnchantsMixin",
+    "AdvancementMixin",
+    "DisplayAccessors$Base",
+    "DisplayAccessors$Block"
   ]
 }

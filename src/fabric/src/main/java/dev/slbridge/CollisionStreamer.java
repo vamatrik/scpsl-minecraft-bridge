@@ -43,6 +43,12 @@ public final class CollisionStreamer {
 
     public void reset() { sent.clear(); dirty.clear(); sweepAt = 0; }
 
+    /**
+     * Белая конфета SCP-330: коллизии строятся только НИЖЕ ног (блоки на уровне ног и выше не отправляются) —
+     * сквозь стены проходишь, а пол остаётся. Уровень только опускается (упал — новый пол), подняться нельзя.
+     */
+    static volatile int cutY = Integer.MAX_VALUE;
+
     /** Клиент получил чанк — ячейки в нём (на всю высоту рядом с игроком) пересчитать: раньше там могло быть «пусто». */
     public static void markChunkDirty(int chunkX, int chunkZ) {
         int cy0 = Math.floorDiv((int) Math.floor(Pose.feetY), C) - 4;
@@ -76,6 +82,10 @@ public final class CollisionStreamer {
             reset();
         }
         String dimId = level.dimension().identifier().toString(); // SL отбрасывает ячейки чужого измерения
+        boolean white = (Pose.fx & Fun.FX_WHITE) != 0 && !Double.isNaN(Pose.feetY);
+        int feetLevel = (int) Math.round(Pose.feetY);
+        int wantCut = !white ? Integer.MAX_VALUE : Math.min(cutY, feetLevel);
+        if (wantCut != cutY) { cutY = wantCut; dirty.addAll(sent.keySet()); }
         int pcx = Math.floorDiv((int) Math.floor(Pose.x), C);
         int pcy = Math.floorDiv((int) Math.floor(Pose.feetY), C);
         int pcz = Math.floorDiv((int) Math.floor(Pose.z), C);
@@ -173,6 +183,7 @@ public final class CollisionStreamer {
     }
 
     private static boolean isFull(Level level, BlockPos.MutableBlockPos p) {
+        if (p.getY() >= cutY) return false;
         BlockState s = level.getBlockState(p);
         return !s.isAir() && s.isCollisionShapeFullBlock(level, p);
     }
@@ -188,6 +199,7 @@ public final class CollisionStreamer {
             for (int z = 0; z < C; z++)
                 for (int x = 0; x < C; x++) {
                     p.set(ox + x, oy + y, oz + z);
+                    if (p.getY() >= cutY) continue; // белая конфета: выше пола — насквозь
                     BlockState s = level.getBlockState(p);
                     if (s.isAir()) continue;
                     // Жидкости коллизий не дают: в них плавают (всплывание — гравитацией в SL, см. ServerBridge.fluids).

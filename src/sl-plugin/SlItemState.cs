@@ -119,6 +119,10 @@ namespace SlBridge
                     case JailbirdItem jb:
                         d.Add("jc=" + jb.Base.TotalChargesPerformed.ToString(Inv));
                         break;
+                    case Scp330Item bag:
+                        // конфеты в пакете SCP-330 (иначе после окна Minecraft или смерти пакет возвращался пустым)
+                        if (bag.Candies.Count > 0) d.Add("c330=" + string.Join(",", bag.Candies));
+                        break;
                 }
             }
             catch (Exception e) { Logger.Warn("[SlBridge] состояние предмета: " + e.Message); }
@@ -164,6 +168,15 @@ namespace SlBridge
                     case MicroHIDItem hid:
                         if (d.TryGetValue("en", out var e) && float.TryParse(e, NumberStyles.Float, Inv, out var en)) hid.Energy = Math.Max(0f, Math.Min(1f, en));
                         if (d.ContainsKey("br")) hid.IsBroken = true;
+                        break;
+                    case Scp330Item bag:
+                        if (d.TryGetValue("c330", out var cs))
+                        {
+                            var list = new List<InventorySystem.Items.Usables.Scp330.CandyKindID>();
+                            foreach (var k in cs.Split(','))
+                                if (Enum.TryParse(k, out InventorySystem.Items.Usables.Scp330.CandyKindID kind)) list.Add(kind);
+                            bag.SetCandies(list);
+                        }
                         break;
                     case JailbirdItem jb:
                         if (d.TryGetValue("jc", out var c) && int.TryParse(c, NumberStyles.Integer, Inv, out var jc))

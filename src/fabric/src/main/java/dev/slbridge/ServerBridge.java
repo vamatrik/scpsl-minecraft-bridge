@@ -44,6 +44,8 @@ public final class ServerBridge {
     private final BridgeServer bridge;
     private final BridgeConfig cfg;
     private final Crafting crafting = new Crafting();
+    final Fun fun;
+    private boolean xrayPurged;
 
     private Vec3 lastSnap;
     private Level lastLevel;
@@ -63,6 +65,7 @@ public final class ServerBridge {
     public ServerBridge(BridgeServer bridge, BridgeConfig cfg) {
         this.bridge = bridge;
         this.cfg = cfg;
+        this.fun = new Fun(bridge, this);
     }
 
     public static ServerPlayer player(MinecraftServer server) {
@@ -224,7 +227,7 @@ public final class ServerBridge {
             stuckTicks = 0;
         } else {
             // Страховка: если игрок SL всё-таки оказался внутри блоков — выталкиваем в ближайшее свободное место.
-            if (unstick(sp, level, feetY)) return;
+            if ((Pose.fx & Fun.FX_WHITE) == 0 && unstick(sp, level, feetY)) return; // белая конфета: сквозь стены можно
             // 3) Урон от падения по правилам Minecraft (вода, сено, слизь уменьшают/отменяют).
             fall(sp, level, feetY);
         }
@@ -237,6 +240,10 @@ public final class ServerBridge {
 
         // 3б) Лампа/фонарик в руке SL светят и в Minecraft: невидимый блок света у головы, едет за игроком.
         updateLamp(sp, level);
+
+        // 3в) Фишки: конфеты SCP-330, рентген SCP-1344, SCP-173 по табличке…
+        if (!xrayPurged) { xrayPurged = true; fun.purgeStaleXray(level, sp); }
+        fun.tick(sp, level, tickNo);
 
         // 4) Предметы на земле рядом — в SL (там их подбирают на E).
         if (tickNo % 4 == 0) streamItems(sp, level);
@@ -357,7 +364,7 @@ public final class ServerBridge {
         }
     }
 
-    private void sendTeleport(ServerPlayer sp) {
+    void sendTeleport(ServerPlayer sp) {
         teleportSeq++;
         Vec3 p = sp.position();
         Pose.dim = sp.level().dimension();
@@ -524,6 +531,7 @@ public final class ServerBridge {
         double d = fallDist;
         fallDist = 0;
         if (d <= 0) return;
+        fun.groundPound(sp, level, d);
         BlockPos below = BlockPos.containing(sp.getX(), feetY - 0.2, sp.getZ());
         BlockState st = level.getBlockState(below);
         // Как в Minecraft: урон = высота − 3 блока (сено и мёд — 20 %, кровать — 50 %, слизь — 0, сталагмит — ×2 и +2).
@@ -636,6 +644,11 @@ public final class ServerBridge {
             case "smelt" -> bridge.send(crafting.smelt(sp, level, m.get("rid").getAsString(), m.get("times").getAsInt(), ItemJson.listFromJson(m.get("inv"))));
             case "cmd" -> command(server, sp, m.get("text").getAsString());
             case "respawnReq" -> respawn(server, sp);
+            case "candy" -> fun.candy(sp, level, m.get("kind").getAsString());
+            case "chorus" -> fun.chorus(sp, level);
+            case "phaseEnd" -> fun.phaseEnd(sp, level);
+            case "totem" -> fun.totem(sp, level);
+            case "evilKill" -> fun.evilKill(sp, level);
             default -> {}
         }
     }
@@ -686,7 +699,7 @@ public final class ServerBridge {
             InteractionResult res = sp.interactOn(target, InteractionHand.MAIN_HAND, eh.getLocation().subtract(target.position()));
             done = res.consumesAction();
             // лодки, вагонетки, лошади: сесть нельзя — движением в мосте управляет SL, а не транспорт Minecraft
-            if (sp.isPassenger()) sp.stopRiding();
+            if (sp.isPassenger()) { Entity v = sp.getVehicle(); sp.stopRiding(); if (v != null) fun.refuseRide(v, level.getRandom()); }
             if (done) hit = BlockHitResult.miss(blockEnd, net.minecraft.core.Direction.UP, BlockPos.containing(blockEnd)); // блок за мобом не трогаем
         }
         if (!done && hit.getType() == HitResult.Type.BLOCK) {
@@ -726,6 +739,26 @@ public final class ServerBridge {
                 h.shrink(1);
                 r.addProperty("heal", food.nutrition() * cfg.healPerFoodPoint);
                 level.playSound(null, sp.getX(), sp.getY(), sp.getZ(), SoundEvents.GENERIC_EAT.value(), SoundSource.PLAYERS, 1f, 1f);
+            } else if (h.is(net.minecraft.world.item.Items.ELYTRA)) {
+                // элитры: «сила небес» — ноуклип SL вкл/выкл
+                JsonObject e = new JsonObject();
+                e.addProperty("t", "elytra");
+                bridge.send(e);
+                level.playSound(null, sp.getX(), sp.getY(), sp.getZ(), SoundEvents.ARMOR_EQUIP_ELYTRA.value(), SoundSource.PLAYERS, 1f, 1f);
+            } else if (fun.oldWeapon(h, level.getRandom())) {
+                // лук, щит, удочка… — фраза вместо действия
+            } else if (h.is(net.minecraft.world.item.Items.POTION) || h.is(net.minecraft.world.item.Items.MILK_BUCKET)
+                    || h.is(net.minecraft.world.item.Items.HONEY_BOTTLE) || h.is(net.minecraft.world.item.Items.OMINOUS_BOTTLE)) {
+                // выпить сразу (удерживать кнопку в SL нельзя): эффекты Minecraft + то, что SL применит сам
+                boolean milk = h.is(net.minecraft.world.item.Items.MILK_BUCKET);
+                var contents = h.get(DataComponents.POTION_CONTENTS);
+                List<net.minecraft.world.effect.MobEffectInstance> effs = new ArrayList<>();
+                if (contents != null) contents.forEachEffect(effs::add, 1f);
+                ItemStack rest = h.finishUsingItem(level, sp);
+                sp.setItemInHand(InteractionHand.MAIN_HAND, rest);
+                level.playSound(null, sp.getX(), sp.getY(), sp.getZ(), milk ? SoundEvents.GENERIC_DRINK.value() : SoundEvents.GENERIC_DRINK.value(), SoundSource.PLAYERS, 1f, 1f);
+                if (milk) { JsonObject k = new JsonObject(); k.addProperty("t", "milk"); bridge.send(k); }
+                else fun.potionToSl(effs);
             } else {
                 sp.gameMode.useItem(sp, level, h, InteractionHand.MAIN_HAND);
             }

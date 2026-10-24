@@ -15,6 +15,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class InvisibleMixin {
     @Inject(method = "setTarget", at = @At("HEAD"), cancellable = true)
     private void slbridge$noTarget(LivingEntity target, CallbackInfo ci) {
-        if (target instanceof ServerPlayer && Pose.invisible && SlBridgeClient.isBridgeActive()) ci.cancel();
+        if (target instanceof ServerPlayer && Pose.invisible && SlBridgeClient.isBridgeActive()) { ci.cancel(); return; }
+        // эндермен впервые взял игрока в цель (посмотрел ему в глаза или получил удар) — крик SCP-096 в SL
+        Mob self = (Mob) (Object) this;
+        if (self instanceof net.minecraft.world.entity.monster.Enderman && target instanceof ServerPlayer
+                && self.getTarget() != target && SlBridgeClient.isBridgeActive()) dev.slbridge.Fun.endermanAngry();
     }
 }
