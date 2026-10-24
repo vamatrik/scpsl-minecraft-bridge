@@ -42,7 +42,7 @@ The protocol between the parts is in [`docs/PROTOCOL.md`](docs/PROTOCOL.md).
 If the overlay covers something: **Ctrl+Shift+F12** turns it off/on, **Ctrl+Shift+F11** shows the mask.
 **Ctrl+Shift+F10** — quick exit (closes SL, Minecraft with saving, the server and the overlay; same as the “Quit” button in SL: Esc → Settings → Server-specific).
 
-!!!IMPORTANT!!! Minecraft pause menu can be over your game wingow while playing, press F3 + P buttons in Minecraft (in the minecraft window). After this if you change windows minecraft won't be paused.
+!!!IMPORTANT!!! Minecraft pause menu can be over your game window while playing, press F3 + P buttons in Minecraft (in the Minecraft window). After this if you change windows minecraft won't be paused.
 !!!!!!!!!!!!!!!!!!!!!!!!Also you must turn off SCP: SL facility lights to correctly see greenscreen.
 
 You start with a machete (to break blocks and fight) and one medkit — everything else is crafted. When you die, everything, SL items included, drops on the ground as Minecraft items.
