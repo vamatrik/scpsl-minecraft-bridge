@@ -98,6 +98,7 @@ In Minecraft windows (crafting table, inventory, chest) drag items with the mous
   | Armor | all **Protection** types, **Thorns**, **Feather Falling**, **Respiration**, **Depth Strider** (faster swimming up and down) — copied onto the Minecraft armor |
 
   Enchanted books and other Minecraft items, potions and renamed things keep everything in the SL inventory too — the card name shows their enchantments.
+* **Boats, minecarts and horses** can't be ridden: movement in the bridge is driven by SL. Feeding and breeding animals works.
 * **No hunger** — food is crafted into medkits (see Crafting). Experience is picked up automatically.
 
 ## Performance
@@ -322,6 +323,10 @@ Layout for the launcher: next to `SlBridgeLauncher.exe` there is a `dist/` folde
 ## Videos and streams
 
 Feel free to use the bridge in your YouTube videos and streams (or anywhere else). If you want, you can leave the author's channel in the description: [youtube.com/@vamatrikultimate](https://www.youtube.com/@vamatrikultimate) — it's much appreciated.
+
+## Contact
+
+Questions, bugs and ideas — message me on Discord: **vamatrultra**. You can also report bugs in [Issues](../../issues).
 
 ## Authors
 

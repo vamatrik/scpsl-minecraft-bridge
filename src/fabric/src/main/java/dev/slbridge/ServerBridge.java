@@ -153,6 +153,7 @@ public final class ServerBridge {
         tickNo++;
         ServerLevel level = sp.level();
         SlEnchants.regs = server.registryAccess();
+        if (sp.isPassenger()) sp.stopRiding(); // на всякий случай (вагонетка на рельсах, команда /ride)
         if (tickNo % 10 == 0) {
             // предметы SL в инвентаре (в т.ч. только что скрафченные) — зачаровываемые по своему типу
             var inv = sp.getInventory();
@@ -684,6 +685,8 @@ public final class ServerBridge {
             Entity target = eh.getEntity();
             InteractionResult res = sp.interactOn(target, InteractionHand.MAIN_HAND, eh.getLocation().subtract(target.position()));
             done = res.consumesAction();
+            // лодки, вагонетки, лошади: сесть нельзя — движением в мосте управляет SL, а не транспорт Minecraft
+            if (sp.isPassenger()) sp.stopRiding();
             if (done) hit = BlockHitResult.miss(blockEnd, net.minecraft.core.Direction.UP, BlockPos.containing(blockEnd)); // блок за мобом не трогаем
         }
         if (!done && hit.getType() == HitResult.Type.BLOCK) {
