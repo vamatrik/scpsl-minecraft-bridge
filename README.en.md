@@ -37,7 +37,7 @@ The protocol between the parts is in [`docs/PROTOCOL.md`](docs/PROTOCOL.md).
    Minecraft 26.3 + Fabric (easiest with [Prism Launcher](https://prismlauncher.org)), the “Install mod” button.
 3. **Play** tab — pick or create a world, press “Play”. In SL: Play → Direct connect → Ctrl+V. Old worlds can be removed right there with **“Delete”** (to the Recycle Bin); **“Worlds folder”** opens them in Explorer.
 
-> **SL window mode must be Borderless.** In exclusive fullscreen Windows shows no windows on top of the game, so you see the green backdrop instead of Minecraft. The launcher detects this and tells you. Any resolution or stretching (e.g. 4:3 via NVIDIA) is fine.
+> **SL window mode must be Borderless.** In exclusive fullscreen Windows shows no windows on top of the game, so you see the green backdrop instead of Minecraft. The launcher detects this and tells you. Any resolution or stretching (e.g. 4:3 via NVIDIA) is fine. The launcher starts SL through Steam without launch options, so the mode comes from the game's own settings.
 
 If the overlay covers something: **Ctrl+Shift+F12** turns it off/on, **Ctrl+Shift+F11** shows the mask.
 **Ctrl+Shift+F10** — quick exit (closes SL, Minecraft with saving, the server and the overlay; same as the “Quit” button in SL: Esc → Settings → Server-specific).

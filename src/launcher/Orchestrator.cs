@@ -250,7 +250,8 @@ namespace SlBridge.Launcher
             if (!SlClientRunning)
             {
                 _log(L.T("Запускаю SCP:SL через Steam…", "Starting SCP:SL via Steam…"));
-                Process.Start(new ProcessStartInfo($"steam://run/700330//{_c.SlClientArgs}/") { UseShellExecute = true });
+                // без параметров запуска: с ними Steam каждый раз спрашивает подтверждение, а режим окна SL всё равно берёт из своих настроек
+                Process.Start(new ProcessStartInfo("steam://rungameid/700330") { UseShellExecute = true });
             }
             _log(L.T($"Готово! В SL: Play → Direct connect → 127.0.0.1:{_c.SlServerPort} (адрес в буфере обмена — Ctrl+V).", $"Done! In SL: Play → Direct connect → 127.0.0.1:{_c.SlServerPort} (the address is in your clipboard — Ctrl+V)."));
 

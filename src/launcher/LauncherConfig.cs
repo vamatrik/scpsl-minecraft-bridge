@@ -28,7 +28,8 @@ namespace SlBridge.Launcher
         public bool SodiumMod { get; set; } = false;
         /// <summary>Что поставил лаунчер: проект Modrinth → имя файла в mods (удаляем только своё).</summary>
         public System.Collections.Generic.Dictionary<string, string> OptModFiles { get; set; } = new();
-        public string SlClientArgs { get; set; } = "-screen-fullscreen 0 -window-mode borderless";
+        /// <summary>Не используется (SL запускается через Steam без параметров); оставлено для совместимости с launcher.json.</summary>
+        public string SlClientArgs { get; set; } = "";
 
         public static string BaseDir => AppContext.BaseDirectory;
         private static string File_ => Path.Combine(BaseDir, "launcher.json");
