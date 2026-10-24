@@ -189,7 +189,8 @@ public final class WorldActions {
         List<Entity> cand = level.getEntities(player, sweep, e -> e != player && e.isAlive() && e.isPickable() && !e.isSpectator());
         List<Map.Entry<Double, Entity>> hit = new java.util.ArrayList<>();
         for (Entity e : cand) {
-            AABB b = e.getBoundingBox();
+            // в воде мобы и сам игрок качаются, рыбы мелкие и юркие — там хитбокс чуть шире; на суше — строго по хитбоксу
+            AABB b = e.isInWater() ? e.getBoundingBox().inflate(0.2) : e.getBoundingBox();
             if (b.contains(from)) { hit.add(Map.entry(0.0, e)); continue; }
             b.clip(from, to).ifPresent(p -> hit.add(Map.entry(from.distanceToSqr(p), e)));
         }

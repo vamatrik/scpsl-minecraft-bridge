@@ -41,7 +41,9 @@ namespace SlBridge
                 if (_byEntity.TryGetValue(id, out var e))
                 {
                     e.Stack = stack;
-                    if ((e.Pos - pos).sqrMagnitude > 0.0025f && !e.Toy.IsDestroyed)
+                    // предмет в воде качается на волнах — не дёргаем «ручку» подбора из-за каждых сантиметров
+                    // (иначе удержание E сбрасывается и предмет не подобрать)
+                    if ((e.Pos - pos).sqrMagnitude > 0.09f && !e.Toy.IsDestroyed)
                     {
                         e.Toy.Position = pos;
                         e.Pos = pos;

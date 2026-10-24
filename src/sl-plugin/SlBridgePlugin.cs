@@ -372,6 +372,27 @@ namespace SlBridge
 
         private bool _deconPending = true;
 
+        private MapGeneration.Holidays.HubertMoon _moon;
+        private float _nextMoonCheck;
+
+        /// <summary>
+        /// Праздничная «Луна Хуберта»: за 30 минут раунда опускается и запускает Dead Man's Sequence с бомбардировкой
+        /// всех игроков. Раунд в мосте не кончается — держим луну на исходной высоте (останавливаем её ход).
+        /// </summary>
+        private void HoldHubertMoon()
+        {
+            if (!Config.DisableFacilityEvents || Time.time < _nextMoonCheck) return;
+            _nextMoonCheck = Time.time + 1f;
+            try
+            {
+                if (_moon == null) _moon = UnityEngine.Object.FindObjectOfType<MapGeneration.Holidays.HubertMoon>();
+                if (_moon == null) { _nextMoonCheck = Time.time + 15f; return; }
+                _moon.AnimSpeedMult = 0f;
+                if (_moon.Network_elapsedMovementTime > 0f) _moon.Network_elapsedMovementTime = 0f;
+            }
+            catch (Exception e) { Logger.Warn("[SlBridge] Луна Хуберта: " + e.Message); _nextMoonCheck = Time.time + 30f; }
+        }
+
         /// <summary>Один раз за раунд, когда контроллер обеззараживания готов: выключаем его через LabAPI.</summary>
         private void DisableDeconOnce()
         {
@@ -1021,6 +1042,7 @@ namespace SlBridge
             if (_mc == null) return;
             _mc.Drain(Handle);
             DisableDeconOnce();
+            HoldHubertMoon();
             _collision.Process(Config.CollisionBudgetPerFrame);
             _collision.Tick();
 
